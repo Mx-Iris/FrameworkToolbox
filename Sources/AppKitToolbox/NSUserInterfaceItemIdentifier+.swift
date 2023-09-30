@@ -2,7 +2,7 @@
 
 import AppKit
 
-extension NSUserInterfaceItemIdentifier: ExpressibleByStringLiteral {
+extension NSUserInterfaceItemIdentifier: ExpressibleByStringInterpolation {
     public init(stringLiteral value: StringLiteralType) {
         self.init(value)
     }
