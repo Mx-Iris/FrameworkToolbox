@@ -9,8 +9,16 @@ let package = Package(
     products: [
         .library(
             name: "FrameworkToolbox",
-            targets: ["FrameworkToolbox"]),
-        .library(name: "AppKitToolbox", targets: ["AppKitToolbox"])
+            targets: ["FrameworkToolbox"]
+        ),
+        .library(
+            name: "SwiftStdlibToolbox",
+            targets: ["SwiftStdlibToolbox"]
+        ),
+        .library(
+            name: "FoundationToolbox",
+            targets: ["FoundationToolbox"]
+        )
     ],
     dependencies: [
     ],
@@ -18,11 +26,17 @@ let package = Package(
         .target(
             name: "FrameworkToolbox",
             dependencies: []),
-        .target(name: "SwiftStdlibToolbox", dependencies: ["FrameworkToolbox"]),
-        .target(name: "CoreGraphicsToolbox", dependencies: ["FrameworkToolbox"]),
-        .target(name: "AppKitToolbox", dependencies: ["FrameworkToolbox", "CoreGraphicsToolbox", "SwiftStdlibToolbox"]),
+        .target(
+            name: "SwiftStdlibToolbox",
+            dependencies: ["FrameworkToolbox"]
+        ),
+        .target(
+            name: "FoundationToolbox",
+            dependencies: ["FrameworkToolbox"]
+        ),
         .testTarget(
             name: "FrameworkToolboxTests",
-            dependencies: ["FrameworkToolbox"]),
+            dependencies: ["FrameworkToolbox"]
+        ),
     ]
 )

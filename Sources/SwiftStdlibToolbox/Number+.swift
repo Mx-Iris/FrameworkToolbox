@@ -15,102 +15,102 @@ extension UInt64: FrameworkToolboxCompatible {}
 extension Float: FrameworkToolboxCompatible {}
 extension Double: FrameworkToolboxCompatible {}
 
-public extension FrameworkToolbox where Base: BinaryInteger {
+extension FrameworkToolbox where Base: BinaryInteger {
     @inlinable
-    var string: String { .init(base) }
+    public var string: String { .init(base) }
 
     @inlinable
-    var cgFloat: CGFloat { .init(base) }
+    public var cgFloat: CGFloat { .init(base) }
 
     @inlinable
-    var float: Float { .init(base) }
+    public var float: Float { .init(base) }
 
     @inlinable
-    var double: Double { .init(base) }
+    public var double: Double { .init(base) }
 
     @inlinable
-    var int: Int { .init(base) }
+    public var int: Int { .init(base) }
 
     @inlinable
-    var uint: UInt { .init(base) }
+    public var uint: UInt { .init(base) }
 
     @inlinable
-    var int8: Int8 { .init(base) }
+    public var int8: Int8 { .init(base) }
 
     @inlinable
-    var int16: Int16 { .init(base) }
+    public var int16: Int16 { .init(base) }
 
     @inlinable
-    var int32: Int32 { .init(base) }
+    public var int32: Int32 { .init(base) }
 
     @inlinable
-    var int64: Int64 { .init(base) }
+    public var int64: Int64 { .init(base) }
 
     @inlinable
-    var uint8: UInt8 { .init(base) }
+    public var uint8: UInt8 { .init(base) }
 
     @inlinable
-    var uint16: UInt16 { .init(base) }
+    public var uint16: UInt16 { .init(base) }
 
     @inlinable
-    var uint32: UInt32 { .init(base) }
+    public var uint32: UInt32 { .init(base) }
 
     @inlinable
-    var uint64: UInt64 { .init(base) }
+    public var uint64: UInt64 { .init(base) }
 
     @inlinable
-    var cfString: CFString { string as CFString }
+    public var cfString: CFString { string as CFString }
 
     @inlinable
-    var nsString: NSString { string as NSString }
+    public var nsString: NSString { string as NSString }
 }
 
-public extension FrameworkToolbox where Base: BinaryFloatingPoint {
+extension FrameworkToolbox where Base: BinaryFloatingPoint {
     @inlinable
-    var string: String { "\(self)" }
+    public var string: String { "\(self)" }
 
     @inlinable
-    var cgFloat: CGFloat { .init(base) }
+    public var cgFloat: CGFloat { .init(base) }
 
     @inlinable
-    var float: Float { .init(base) }
+    public var float: Float { .init(base) }
 
     @inlinable
-    var double: Double { .init(base) }
+    public var double: Double { .init(base) }
 
     @inlinable
-    var int: Int { .init(base) }
+    public var int: Int { .init(base) }
 
     @inlinable
-    var uint: UInt { .init(base) }
+    public var uint: UInt { .init(base) }
 
     @inlinable
-    var int8: Int8 { .init(base) }
+    public var int8: Int8 { .init(base) }
 
     @inlinable
-    var int16: Int16 { .init(base) }
+    public var int16: Int16 { .init(base) }
 
     @inlinable
-    var int32: Int32 { .init(base) }
+    public var int32: Int32 { .init(base) }
 
     @inlinable
-    var int64: Int64 { .init(base) }
+    public var int64: Int64 { .init(base) }
 
     @inlinable
-    var uint8: UInt8 { .init(base) }
+    public var uint8: UInt8 { .init(base) }
 
     @inlinable
-    var uint16: UInt16 { .init(base) }
+    public var uint16: UInt16 { .init(base) }
 
     @inlinable
-    var uint32: UInt32 { .init(base) }
+    public var uint32: UInt32 { .init(base) }
 
     @inlinable
-    var uint64: UInt64 { .init(base) }
+    public var uint64: UInt64 { .init(base) }
 
     @inlinable
-    var cfString: CFString { string as CFString }
+    public var cfString: CFString { string as CFString }
 
     @inlinable
-    var nsString: NSString { string as NSString }
+    public var nsString: NSString { string as NSString }
 }
