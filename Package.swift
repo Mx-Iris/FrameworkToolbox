@@ -47,7 +47,8 @@ let package = Package(
         .target(
             name: "FoundationToolbox",
             dependencies: [
-                "FrameworkToolbox"
+                "FrameworkToolbox",
+                "SwiftStdlibToolbox",
             ]
         ),
         .target(
