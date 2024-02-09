@@ -21,4 +21,7 @@ extension Date: FrameworkToolboxCompatible {}
 extension Sequence {}
 
 @FrameworkToolboxExtension
+extension Collection {}
+
+@FrameworkToolboxExtension
 extension Error {}
