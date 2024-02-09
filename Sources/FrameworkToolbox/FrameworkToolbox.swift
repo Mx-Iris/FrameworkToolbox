@@ -6,11 +6,15 @@ public struct FrameworkToolbox<Base> {
     }
 }
 
-@dynamicMemberLookup
 public protocol FrameworkToolboxCompatible {
     associatedtype Base
     static var box: FrameworkToolbox<Base>.Type { set get }
     var box: FrameworkToolbox<Base> { set get }
+}
+
+@dynamicMemberLookup
+public protocol FrameworkToolboxDynamicMemberLookup {
+    associatedtype Base
     subscript<Member>(dynamicMember keyPath: ReferenceWritableKeyPath<FrameworkToolbox<Base>, Member>) -> Member { set get }
     subscript<Member>(dynamicMember keyPath: WritableKeyPath<FrameworkToolbox<Base>, Member>) -> Member { set get }
     subscript<Member>(dynamicMember keyPath: KeyPath<FrameworkToolbox<Base>, Member>) -> Member { get }
@@ -31,7 +35,9 @@ extension FrameworkToolboxCompatible {
         set {}
         get { FrameworkToolbox(self) }
     }
+}
 
+extension FrameworkToolboxDynamicMemberLookup where Self: FrameworkToolboxCompatible {
     public subscript<Member>(dynamicMember keyPath: ReferenceWritableKeyPath<FrameworkToolbox<Self>, Member>) -> Member {
         set { box[keyPath: keyPath] = newValue }
         get { box[keyPath: keyPath] }
@@ -73,7 +79,9 @@ extension FrameworkToolboxCompatible where Self: AnyObject {
         set {}
         get { FrameworkToolbox(self) }
     }
+}
 
+extension FrameworkToolboxDynamicMemberLookup where Self: AnyObject, Self: FrameworkToolboxCompatible {
     public subscript<Member>(dynamicMember keyPath: ReferenceWritableKeyPath<FrameworkToolbox<Self>, Member>) -> Member {
         set { box[keyPath: keyPath] = newValue }
         get { box[keyPath: keyPath] }
@@ -105,4 +113,4 @@ extension FrameworkToolboxCompatible where Self: AnyObject {
 
 import Foundation
 
-extension NSObject: FrameworkToolboxCompatible {}
+extension NSObject: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemberLookup {}
