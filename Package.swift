@@ -63,6 +63,7 @@ let package = Package(
                 .SwiftSyntax,
                 .SwiftSyntaxMacros,
                 .SwiftCompilerPlugin,
+                .SwiftSyntaxBuilder,
             ]
         ),
         .testTarget(
@@ -86,6 +87,10 @@ extension Target.Dependency {
     )
     static let SwiftSyntaxMacrosTestSupport = Target.Dependency.product(
         name: "SwiftSyntaxMacrosTestSupport",
+        package: "swift-syntax"
+    )
+    static let SwiftSyntaxBuilder = Target.Dependency.product(
+        name: "SwiftSyntaxBuilder",
         package: "swift-syntax"
     )
 }
