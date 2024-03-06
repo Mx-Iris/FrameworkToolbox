@@ -26,6 +26,36 @@ extension FrameworkToolbox where Base == String {
         let firstNLines = lines.prefix(n)
         return firstNLines.joined(separator: "\n")
     }
+    
+    var nsString: NSString { base as NSString }
+
+    var pathComponents: [String] { nsString.pathComponents }
+
+    var isAbsolutePath: Bool { nsString.isAbsolutePath }
+
+    var lastPathComponent: String { nsString.lastPathComponent }
+
+    var deletingLastPathComponent: String { nsString.deletingLastPathComponent }
+
+    var pathExtension: String { nsString.pathExtension }
+
+    var deletingPathExtension: String { nsString.deletingPathExtension }
+
+    var abbreviatingWithTildeInPath: String { nsString.abbreviatingWithTildeInPath }
+
+    var expandingTildeInPath: String { nsString.expandingTildeInPath }
+
+    var standardizingPath: String { nsString.standardizingPath }
+
+    var resolvingSymlinksInPath: String { nsString.resolvingSymlinksInPath }
+
+    func appendingPathComponent(_ str: String) -> String { nsString.appendingPathComponent(str) }
+
+    func appendingPathExtension(_ str: String) -> String? { nsString.appendingPathExtension(str) }
+
+    func strings(byAppendingPaths paths: [String]) -> [String] { nsString.strings(byAppendingPaths: paths) }
+
+    static func path(withComponents components: [String]) -> String { NSString.path(withComponents: components) }
 }
 
 extension FrameworkToolbox where Base == Substring {
