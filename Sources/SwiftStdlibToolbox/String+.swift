@@ -26,36 +26,36 @@ extension FrameworkToolbox where Base == String {
         let firstNLines = lines.prefix(n)
         return firstNLines.joined(separator: "\n")
     }
-    
-    var nsString: NSString { base as NSString }
 
-    var pathComponents: [String] { nsString.pathComponents }
+    public var nsString: NSString { base as NSString }
 
-    var isAbsolutePath: Bool { nsString.isAbsolutePath }
+    public var pathComponents: [String] { nsString.pathComponents }
 
-    var lastPathComponent: String { nsString.lastPathComponent }
+    public var isAbsolutePath: Bool { nsString.isAbsolutePath }
 
-    var deletingLastPathComponent: String { nsString.deletingLastPathComponent }
+    public var lastPathComponent: String { nsString.lastPathComponent }
 
-    var pathExtension: String { nsString.pathExtension }
+    public var deletingLastPathComponent: String { nsString.deletingLastPathComponent }
 
-    var deletingPathExtension: String { nsString.deletingPathExtension }
+    public var pathExtension: String { nsString.pathExtension }
 
-    var abbreviatingWithTildeInPath: String { nsString.abbreviatingWithTildeInPath }
+    public var deletingPathExtension: String { nsString.deletingPathExtension }
 
-    var expandingTildeInPath: String { nsString.expandingTildeInPath }
+    public var abbreviatingWithTildeInPath: String { nsString.abbreviatingWithTildeInPath }
 
-    var standardizingPath: String { nsString.standardizingPath }
+    public var expandingTildeInPath: String { nsString.expandingTildeInPath }
 
-    var resolvingSymlinksInPath: String { nsString.resolvingSymlinksInPath }
+    public var standardizingPath: String { nsString.standardizingPath }
 
-    func appendingPathComponent(_ str: String) -> String { nsString.appendingPathComponent(str) }
+    public var resolvingSymlinksInPath: String { nsString.resolvingSymlinksInPath }
 
-    func appendingPathExtension(_ str: String) -> String? { nsString.appendingPathExtension(str) }
+    public func appendingPathComponent(_ str: String) -> String { nsString.appendingPathComponent(str) }
 
-    func strings(byAppendingPaths paths: [String]) -> [String] { nsString.strings(byAppendingPaths: paths) }
+    public func appendingPathExtension(_ str: String) -> String? { nsString.appendingPathExtension(str) }
 
-    static func path(withComponents components: [String]) -> String { NSString.path(withComponents: components) }
+    public func strings(byAppendingPaths paths: [String]) -> [String] { nsString.strings(byAppendingPaths: paths) }
+
+    public static func path(withComponents components: [String]) -> String { NSString.path(withComponents: components) }
 }
 
 extension FrameworkToolbox where Base == Substring {
