@@ -14,7 +14,7 @@ extension FrameworkToolbox where Base == String {
 
     @inlinable
     public var filePathURL: URL {
-        if #available(macOS 13.0, iOS 16.0, *) {
+        if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
             return .init(filePath: base)
         } else {
             return .init(fileURLWithPath: base)

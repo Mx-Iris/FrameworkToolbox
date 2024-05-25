@@ -6,7 +6,7 @@ import CompilerPluginSupport
 
 let package = Package(
     name: "FrameworkToolbox",
-    platforms: [.iOS(.v13), .macOS(.v10_15), .watchOS(.v6), .tvOS(.v13), .macCatalyst(.v13)],
+    platforms: [.iOS(.v13), .macOS(.v10_15), .watchOS(.v6), .tvOS(.v13), .macCatalyst(.v13), .visionOS(.v1)],
     products: [
         .library(
             name: "FrameworkToolbox",
