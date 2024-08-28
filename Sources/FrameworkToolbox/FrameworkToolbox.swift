@@ -111,6 +111,3 @@ extension FrameworkToolboxDynamicMemberLookup where Self: AnyObject, Self: Frame
     }
 }
 
-import Foundation
-
-extension NSObject: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemberLookup {}

@@ -35,13 +35,14 @@ let package = Package(
         .target(
             name: "FrameworkToolbox",
             dependencies: [
-                "FrameworkToolboxMacro"
+                "FrameworkToolboxMacro",
             ]
         ),
         .target(
             name: "SwiftStdlibToolbox",
             dependencies: [
-                "FrameworkToolbox"
+                "FrameworkToolbox",
+                "FrameworkToolboxMacro",
             ]
         ),
         .target(
@@ -49,6 +50,7 @@ let package = Package(
             dependencies: [
                 "FrameworkToolbox",
                 "SwiftStdlibToolbox",
+                "FrameworkToolboxMacro",
             ]
         ),
         .target(

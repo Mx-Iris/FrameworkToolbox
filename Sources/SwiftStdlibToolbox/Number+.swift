@@ -1,5 +1,3 @@
-import Foundation
-import CoreGraphics
 import FrameworkToolbox
 
 extension FrameworkToolbox where Base: BinaryInteger {
@@ -7,9 +5,6 @@ extension FrameworkToolbox where Base: BinaryInteger {
     public var string: String { .init(base) }
 
     @inlinable
-    public var cgFloat: CGFloat { .init(base) }
-
-    @inlinable
     public var float: Float { .init(base) }
 
     @inlinable
@@ -44,12 +39,6 @@ extension FrameworkToolbox where Base: BinaryInteger {
 
     @inlinable
     public var uint64: UInt64 { .init(base) }
-
-    @inlinable
-    public var cfString: CFString { string as CFString }
-
-    @inlinable
-    public var nsString: NSString { string as NSString }
 }
 
 extension FrameworkToolbox where Base: BinaryFloatingPoint {
@@ -57,9 +46,6 @@ extension FrameworkToolbox where Base: BinaryFloatingPoint {
     public var string: String { "\(self)" }
 
     @inlinable
-    public var cgFloat: CGFloat { .init(base) }
-
-    @inlinable
     public var float: Float { .init(base) }
 
     @inlinable
@@ -94,10 +80,4 @@ extension FrameworkToolbox where Base: BinaryFloatingPoint {
 
     @inlinable
     public var uint64: UInt64 { .init(base) }
-
-    @inlinable
-    public var cfString: CFString { string as CFString }
-
-    @inlinable
-    public var nsString: NSString { string as NSString }
 }

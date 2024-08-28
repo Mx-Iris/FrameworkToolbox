@@ -1,4 +1,3 @@
-import Foundation
 import FrameworkToolbox
 
 extension FrameworkToolbox where Base: AnyKeyPath {
