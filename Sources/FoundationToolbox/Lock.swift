@@ -31,6 +31,29 @@ public final class Lock<Value> {
     }
 }
 
+extension Lock: Equatable where Value: Equatable {
+    public static func == (lhs: Lock, rhs: Lock) -> Bool {
+        lhs.wrappedValue == rhs.wrappedValue
+    }
+}
+
+extension Lock: Hashable where Value: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(wrappedValue)
+    }
+}
+
+extension Lock: Codable where Value: Codable {
+    public convenience init(from decoder: any Decoder) throws {
+        self.init(wrappedValue: try Value(from: decoder))
+    }
+    
+    public func encode(to encoder: any Encoder) throws {
+        try wrappedValue.encode(to: encoder)
+    }
+}
+
+
 @propertyWrapper
 public final class RecursiveLock<Value> {
     private var _wrappedValue: Value
@@ -52,5 +75,27 @@ public final class RecursiveLock<Value> {
 
     public init(wrappedValue: Value) {
         self._wrappedValue = wrappedValue
+    }
+}
+
+extension RecursiveLock: Equatable where Value: Equatable {
+    public static func == (lhs: RecursiveLock, rhs: RecursiveLock) -> Bool {
+        lhs.wrappedValue == rhs.wrappedValue
+    }
+}
+
+extension RecursiveLock: Hashable where Value: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(wrappedValue)
+    }
+}
+
+extension RecursiveLock: Codable where Value: Codable {
+    public convenience init(from decoder: any Decoder) throws {
+        self.init(wrappedValue: try Value(from: decoder))
+    }
+    
+    public func encode(to encoder: any Encoder) throws {
+        try wrappedValue.encode(to: encoder)
     }
 }
