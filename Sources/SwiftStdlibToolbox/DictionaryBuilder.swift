@@ -29,4 +29,12 @@ extension Dictionary {
     public init(@DictionaryBuilder<Key, Value> _ builder: () -> [(Key, Value)]) {
         self.init(uniqueKeysWithValues: builder())
     }
+    
+    public init(@DictionaryBuilder<Key, Value> _ builder: (_ keyType: Key.Type) -> [(Key, Value)]) {
+        self.init(uniqueKeysWithValues: builder(Key.self))
+    }
+    
+    public init(@DictionaryBuilder<Key, Value> _ builder: (_ keyType: Key.Type, _ valueType: Value.Type) -> [(Key, Value)]) {
+        self.init(uniqueKeysWithValues: builder(Key.self, Value.self))
+    }
 }
