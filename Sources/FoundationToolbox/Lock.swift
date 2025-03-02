@@ -8,7 +8,7 @@
 import Foundation
 
 @propertyWrapper
-public final class Lock<Value> {
+public final class Lock<Value>: @unchecked Sendable {
     private var _wrappedValue: Value
 
     private let lock = NSLock()
@@ -55,7 +55,7 @@ extension Lock: Codable where Value: Codable {
 
 
 @propertyWrapper
-public final class RecursiveLock<Value> {
+public final class RecursiveLock<Value>: @unchecked Sendable {
     private var _wrappedValue: Value
 
     private let recursiveLock = NSRecursiveLock()
