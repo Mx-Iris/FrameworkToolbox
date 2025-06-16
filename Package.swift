@@ -27,8 +27,8 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/swift-precompiled/swift-syntax.git",
-            from: "601.0.1"
+            url: "https://github.com/swiftlang/swift-syntax.git",
+            "509.1.0"..<"602.0.0"
         )
     ],
     targets: [
