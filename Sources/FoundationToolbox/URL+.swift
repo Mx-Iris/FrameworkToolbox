@@ -1,10 +1,3 @@
-//
-//  URL+.swift
-//  ClassDumper
-//
-//  Created by JH on 2024/2/24.
-//
-
 import Foundation
 import FrameworkToolbox
 

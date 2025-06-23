@@ -1,10 +1,3 @@
-//
-//  RecursiveLock.swift
-//  ClassDumper
-//
-//  Created by JH on 2024/2/24.
-//
-
 import Foundation
 
 @propertyWrapper
@@ -45,14 +38,13 @@ extension Lock: Hashable where Value: Hashable {
 
 extension Lock: Codable where Value: Codable {
     public convenience init(from decoder: any Decoder) throws {
-        self.init(wrappedValue: try Value(from: decoder))
+        try self.init(wrappedValue: Value(from: decoder))
     }
-    
+
     public func encode(to encoder: any Encoder) throws {
         try wrappedValue.encode(to: encoder)
     }
 }
-
 
 @propertyWrapper
 public final class RecursiveLock<Value>: @unchecked Sendable {
@@ -92,9 +84,9 @@ extension RecursiveLock: Hashable where Value: Hashable {
 
 extension RecursiveLock: Codable where Value: Codable {
     public convenience init(from decoder: any Decoder) throws {
-        self.init(wrappedValue: try Value(from: decoder))
+        try self.init(wrappedValue: Value(from: decoder))
     }
-    
+
     public func encode(to encoder: any Encoder) throws {
         try wrappedValue.encode(to: encoder)
     }

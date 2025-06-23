@@ -1,10 +1,3 @@
-//
-//  File.swift
-//  FrameworkToolbox
-//
-//  Created by JH on 11/30/24.
-//
-
 import FrameworkToolbox
 
 extension FrameworkToolbox where Base: Collection, Base.Index == Int {

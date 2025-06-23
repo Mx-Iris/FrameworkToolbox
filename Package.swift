@@ -1,4 +1,4 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -6,7 +6,7 @@ import CompilerPluginSupport
 
 let package = Package(
     name: "FrameworkToolbox",
-    platforms: [.iOS(.v12), .macOS(.v10_15), .watchOS(.v6), .tvOS(.v13), .macCatalyst(.v13), .visionOS(.v1)],
+    platforms: [.iOS(.v13), .macOS(.v10_15), .watchOS(.v6), .tvOS(.v13), .macCatalyst(.v13), .visionOS(.v1)],
     products: [
         .library(
             name: "FrameworkToolbox",
@@ -23,13 +23,13 @@ let package = Package(
         .library(
             name: "FrameworkToolboxMacro",
             targets: ["FrameworkToolboxMacro"]
-        )
+        ),
     ],
     dependencies: [
         .package(
             url: "https://github.com/swiftlang/swift-syntax.git",
-            "509.1.0"..<"602.0.0"
-        )
+            "509.1.0" ..< "602.0.0"
+        ),
     ],
     targets: [
         .target(
@@ -56,7 +56,7 @@ let package = Package(
         .target(
             name: "FrameworkToolboxMacro",
             dependencies: [
-                "FrameworkToolboxMacroPlugins"
+                "FrameworkToolboxMacroPlugins",
             ]
         ),
         .macro(
@@ -72,8 +72,10 @@ let package = Package(
             name: "FrameworkToolboxTests",
             dependencies: ["FrameworkToolbox"]
         ),
-    ]
+    ],
+    swiftLanguageModes: [.v5]
 )
+
 extension Target.Dependency {
     static let SwiftSyntax = Target.Dependency.product(
         name: "SwiftSyntax",
