@@ -43,6 +43,7 @@ let package = Package(
             dependencies: [
                 "FrameworkToolbox",
                 "FrameworkToolboxMacro",
+                "SwiftStdlibToolboxMacroPlugins",
             ]
         ),
         .target(
@@ -61,6 +62,15 @@ let package = Package(
         ),
         .macro(
             name: "FrameworkToolboxMacroPlugins",
+            dependencies: [
+                .SwiftSyntax,
+                .SwiftSyntaxMacros,
+                .SwiftCompilerPlugin,
+                .SwiftSyntaxBuilder,
+            ]
+        ),
+        .macro(
+            name: "SwiftStdlibToolboxMacroPlugins",
             dependencies: [
                 .SwiftSyntax,
                 .SwiftSyntaxMacros,
