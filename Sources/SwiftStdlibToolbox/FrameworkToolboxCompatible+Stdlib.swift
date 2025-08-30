@@ -1,5 +1,4 @@
 import FrameworkToolbox
-import FrameworkToolboxMacro
 
 extension Bool: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemberLookup {}
 

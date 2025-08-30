@@ -20,10 +20,6 @@ let package = Package(
             name: "FoundationToolbox",
             targets: ["FoundationToolbox"]
         ),
-        .library(
-            name: "FrameworkToolboxMacro",
-            targets: ["FrameworkToolboxMacro"]
-        ),
     ],
     dependencies: [
         .package(
@@ -35,15 +31,14 @@ let package = Package(
         .target(
             name: "FrameworkToolbox",
             dependencies: [
-                "FrameworkToolboxMacro",
+                "FrameworkToolboxMacros",
             ]
         ),
         .target(
             name: "SwiftStdlibToolbox",
             dependencies: [
                 "FrameworkToolbox",
-                "FrameworkToolboxMacro",
-                "SwiftStdlibToolboxMacroPlugins",
+                "SwiftStdlibToolboxMacros",
             ]
         ),
         .target(
@@ -51,17 +46,10 @@ let package = Package(
             dependencies: [
                 "FrameworkToolbox",
                 "SwiftStdlibToolbox",
-                "FrameworkToolboxMacro",
-            ]
-        ),
-        .target(
-            name: "FrameworkToolboxMacro",
-            dependencies: [
-                "FrameworkToolboxMacroPlugins",
             ]
         ),
         .macro(
-            name: "FrameworkToolboxMacroPlugins",
+            name: "FrameworkToolboxMacros",
             dependencies: [
                 .SwiftSyntax,
                 .SwiftSyntaxMacros,
@@ -70,13 +58,17 @@ let package = Package(
             ]
         ),
         .macro(
-            name: "SwiftStdlibToolboxMacroPlugins",
+            name: "SwiftStdlibToolboxMacros",
             dependencies: [
                 .SwiftSyntax,
                 .SwiftSyntaxMacros,
                 .SwiftCompilerPlugin,
                 .SwiftSyntaxBuilder,
             ]
+        ),
+        .executableTarget(
+            name: "SwiftStdlibToolboxClient",
+            dependencies: ["SwiftStdlibToolbox"]
         ),
         .testTarget(
             name: "FrameworkToolboxTests",

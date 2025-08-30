@@ -111,3 +111,6 @@ extension FrameworkToolboxDynamicMemberLookup where Self: AnyObject, Self: Frame
     }
 }
 
+@attached(member, names: arbitrary)
+public macro FrameworkToolboxExtension() =
+    #externalMacro(module: "FrameworkToolboxMacros", type: "FrameworkToolboxCompatibleMacro")

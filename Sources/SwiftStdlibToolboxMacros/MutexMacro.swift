@@ -64,7 +64,7 @@ public struct MutexMacro: PeerMacro, AccessorMacro {
 
             // Generate Mutex storage with WeakBox
             mutexDecl = """
-            \(raw: mutexAccessLevel) let \(raw: mutexName) = Mutex(WeakBox<\(raw: baseType)>(\(initialValue)))
+            \(raw: mutexAccessLevel) let \(raw: mutexName) = Mutex(SwiftStdlibToolbox.WeakBox<\(raw: baseType)>(\(initialValue)))
             """
         } else {
             // For regular properties
