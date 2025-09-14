@@ -53,7 +53,6 @@ public struct MutexMacro: PeerMacro, AccessorMacro {
 
         // Generate the private Mutex property
         let mutexName = "_\(pattern.identifier.text)"
-        let accessLevel = extractAccessLevel(from: varDecl)
         let mutexAccessLevel = "private"
 
         let mutexDecl: DeclSyntax
