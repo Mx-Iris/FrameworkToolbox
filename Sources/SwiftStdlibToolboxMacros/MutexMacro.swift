@@ -35,9 +35,9 @@ public struct MutexMacro: PeerMacro, AccessorMacro {
 
         // Check if it's a weak property
         let isWeak = isWeakProperty(varDecl)
-
+        let isOptional = isOptionalType(type)
         // For weak properties, verify it's optional
-        if isWeak && !isOptionalType(type) {
+        if isWeak && !isOptional {
             throw MutexMacroError.weakRequiresOptional
         }
 
@@ -45,7 +45,7 @@ public struct MutexMacro: PeerMacro, AccessorMacro {
         let initialValue: ExprSyntax
         if let initializer = binding.initializer {
             initialValue = initializer.value
-        } else if isWeak {
+        } else if isWeak || isOptional {
             initialValue = ExprSyntax("nil")
         } else {
             throw MutexMacroError.requiresInitialValue
@@ -66,10 +66,18 @@ public struct MutexMacro: PeerMacro, AccessorMacro {
             \(raw: mutexAccessLevel) let \(raw: mutexName) = Mutex(SwiftStdlibToolbox.WeakBox<\(raw: baseType)>(\(initialValue)))
             """
         } else {
-            // For regular properties
-            mutexDecl = """
-            \(raw: mutexAccessLevel) let \(raw: mutexName) = Mutex<\(type)>(\(initialValue))
-            """
+            if type.is(ImplicitlyUnwrappedOptionalTypeSyntax.self) {
+                let baseType = extractBaseType(from: type)
+                // For regular properties
+                mutexDecl = """
+                \(raw: mutexAccessLevel) let \(raw: mutexName) = Mutex<\(raw: baseType)?>(\(initialValue))
+                """
+            } else {
+                // For regular properties
+                mutexDecl = """
+                \(raw: mutexAccessLevel) let \(raw: mutexName) = Mutex<\(type)>(\(initialValue))
+                """
+            }
         }
 
         return [mutexDecl]
@@ -100,6 +108,7 @@ public struct MutexMacro: PeerMacro, AccessorMacro {
 
         // Check if it's a weak property
         let isWeak = isWeakProperty(varDecl)
+        let isImplicitlyUnwrappedOptional = binding.typeAnnotation.map { isImplicitlyUnwrappedOptionalType($0.type) } ?? false
         let mutexName = "_\(pattern.identifier.text)"
 
         // Generate different accessors based on whether it's weak
@@ -120,11 +129,19 @@ public struct MutexMacro: PeerMacro, AccessorMacro {
             return [getter, setter]
         } else {
             // For regular properties
-            let getter: AccessorDeclSyntax = """
-            get {
-                \(raw: mutexName).withLock { $0 }
+            let getter: AccessorDeclSyntax = if isImplicitlyUnwrappedOptional {
+                """
+                get {
+                    \(raw: mutexName).withLock { $0! }
+                }
+                """
+            } else {
+                """
+                get {
+                    \(raw: mutexName).withLock { $0 }
+                }
+                """
             }
-            """
 
             let setter: AccessorDeclSyntax = """
             set {
@@ -142,6 +159,13 @@ public struct MutexMacro: PeerMacro, AccessorMacro {
         return varDecl.modifiers.contains { modifier in
             modifier.name.tokenKind == .keyword(.weak)
         }
+    }
+
+    private static func isImplicitlyUnwrappedOptionalType(_ type: TypeSyntax) -> Bool {
+        if type.is(ImplicitlyUnwrappedOptionalTypeSyntax.self) {
+            return true
+        }
+        return false
     }
 
     private static func isOptionalType(_ type: TypeSyntax) -> Bool {
@@ -212,7 +236,7 @@ private enum MutexMacroError: Error, CustomStringConvertible, DiagnosticMessage 
         case .requiresVariable:
             return "@Mutex can only be applied to a variable declaration."
         case .requiresInitialValue:
-            return "@Mutex requires the property to have an initial value (except for weak properties)."
+            return "@Mutex requires the property to have an initial value."
         case .requiresExplicitType:
             return "@Mutex requires an explicit type annotation."
         case .invalidPropertyBinding:

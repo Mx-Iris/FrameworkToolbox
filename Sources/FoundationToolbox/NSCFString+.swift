@@ -2,7 +2,6 @@ import Foundation
 import FrameworkToolbox
 
 extension FrameworkToolbox where Base: BinaryFloatingPoint {
-
     @inlinable
     public var cfString: CFString { string as CFString }
 

@@ -15,8 +15,8 @@ extension Decodable where Self: NSObject, Self: NSSecureCoding {
         let container = try decoder.singleValueContainer()
         let data = try container.decode(Data.self)
 
-        if let image = try NSKeyedUnarchiver.unarchivedObject(ofClass: Self.self, from: data) {
-            self = image
+        if let object = try NSKeyedUnarchiver.unarchivedObject(ofClass: Self.self, from: data) {
+            self = object
         } else {
             throw SecureCodingCodableError.decodingFailed
         }

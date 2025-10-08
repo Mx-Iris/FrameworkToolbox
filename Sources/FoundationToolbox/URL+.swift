@@ -2,7 +2,7 @@ import Foundation
 import FrameworkToolbox
 
 extension FrameworkToolbox where Base == URL {
-    public struct DirectorySequence: Sequence {
+    private struct DirectorySequence: Sequence {
         let enumerator: FileManager.DirectoryEnumerator?
 
         init(url: URL, includingPropertiesForKeys keys: [URLResourceKey]?, options mask: FileManager.DirectoryEnumerationOptions = []) {
@@ -10,14 +10,14 @@ extension FrameworkToolbox where Base == URL {
             self.enumerator = enumerator
         }
 
-        public func makeIterator() -> AnyIterator<URL> {
+        func makeIterator() -> AnyIterator<URL> {
             .init {
                 enumerator?.nextObject() as? URL
             }
         }
     }
 
-    public func enumerator(includingPropertiesForKeys keys: [URLResourceKey]? = nil, options mask: FileManager.DirectoryEnumerationOptions = []) -> DirectorySequence {
-        return .init(url: base, includingPropertiesForKeys: keys, options: mask)
+    public func enumerator(includingPropertiesForKeys keys: [URLResourceKey]? = nil, options mask: FileManager.DirectoryEnumerationOptions = []) -> some Sequence<URL> {
+        return DirectorySequence(url: base, includingPropertiesForKeys: keys, options: mask)
     }
 }
