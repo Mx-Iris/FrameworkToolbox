@@ -20,8 +20,15 @@ final class ClassDecl: Sendable {
     
     @Mutex
     private weak var delegate: AnyObject!
+
+    @Mutex
+    private var array: [String?] = []
     
     init(property: String) {
         self.property = property
+        array[safe: 2] = nil
     }
 }
+
+
+_ = ClassDecl(property: "")
