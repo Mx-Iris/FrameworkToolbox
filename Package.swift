@@ -72,7 +72,10 @@ let package = Package(
         ),
         .testTarget(
             name: "FrameworkToolboxTests",
-            dependencies: ["FrameworkToolbox"]
+            dependencies: [
+                "FrameworkToolbox",
+                "FoundationToolbox",
+            ]
         ),
     ],
     swiftLanguageModes: [.v5]

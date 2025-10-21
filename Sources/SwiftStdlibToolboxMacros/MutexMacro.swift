@@ -101,11 +101,18 @@ public struct MutexMacro: PeerMacro, AccessorMacro {
             throw MutexMacroError.invalidPropertyBinding
         }
 
+        guard let type = binding.typeAnnotation?.type else {
+            throw MutexMacroError.requiresExplicitType
+        }
+        
         // Check if it already has accessors
         if binding.accessorBlock != nil {
             throw MutexMacroError.cannotHaveExistingAccessors
         }
 
+        
+        let baseType = extractBaseType(from: type)
+        
         // Check if it's a weak property
         let isWeak = isWeakProperty(varDecl)
         let isImplicitlyUnwrappedOptional = binding.typeAnnotation.map { isImplicitlyUnwrappedOptionalType($0.type) } ?? false
@@ -122,7 +129,9 @@ public struct MutexMacro: PeerMacro, AccessorMacro {
 
             let setter: AccessorDeclSyntax = """
             set {
-                \(raw: mutexName).withLock { $0.value = newValue }
+                \(raw: mutexName).withLock { (weakBox: inout SwiftStdlibToolbox.WeakBox<\(raw: baseType)>) -> Void in
+                    weakBox.value = newValue 
+                }
             }
             """
 
@@ -145,7 +154,9 @@ public struct MutexMacro: PeerMacro, AccessorMacro {
 
             let setter: AccessorDeclSyntax = """
             set {
-                \(raw: mutexName).withLock { $0 = newValue }
+                \(raw: mutexName).withLock { (value: inout \(raw: isImplicitlyUnwrappedOptional ? "\(baseType)?" : "\(type)")) -> Void in
+                    value = newValue 
+                }
             }
             """
 

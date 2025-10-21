@@ -23,7 +23,7 @@ extension Decodable where Self: NSObject, Self: NSSecureCoding {
     }
 }
 
-public enum SecureCodingCodableError: Error {
+private enum SecureCodingCodableError: Error {
     case encodingFailed
     case decodingFailed
 }

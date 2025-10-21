@@ -1,9 +1,5 @@
-import XCTest
-@testable import FrameworkToolbox
+import Testing
+@testable import FoundationToolbox
 
-final class FrameworkToolboxTests: XCTestCase {
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-    }
-}
+@Suite
+struct FrameworkToolboxTests {}
