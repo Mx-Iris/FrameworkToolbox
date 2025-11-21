@@ -1,3 +1,5 @@
+/// Source: https://github.com/ordo-one/equatable
+
 import SwiftDiagnostics
 import SwiftSyntax
 

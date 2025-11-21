@@ -1,5 +1,7 @@
 import SwiftSyntax
 
+/// Source: https://github.com/ordo-one/equatable
+
 extension MemberTypeSyntax {
     var isArray: Bool {
         if self.baseType.isSwift,

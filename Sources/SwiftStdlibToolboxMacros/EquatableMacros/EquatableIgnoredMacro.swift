@@ -4,6 +4,8 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
+/// Source: https://github.com/ordo-one/equatable
+/// 
 /// A peer macro that marks properties to be ignored in `Equatable` conformance generation.
 ///
 /// This macro allows developers to explicitly exclude specific properties from the equality comparison

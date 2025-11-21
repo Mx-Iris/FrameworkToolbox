@@ -4,6 +4,8 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
+/// Source: https://github.com/ordo-one/equatable
+
 /// A macro that automatically generates an `Equatable` conformance for structs.
 ///
 /// This macro creates a standard equality implementation by comparing all stored properties
@@ -106,7 +108,7 @@ public struct EquatableMacro: ExtensionMacro {
         "StateObject",
         "UIApplicationDelegateAdaptor",
         "WKApplicationDelegateAdaptor",
-        "WKExtensionDelegateAdaptor"
+        "WKExtensionDelegateAdaptor",
     ]
 
     // swiftlint:disable:next function_body_length
@@ -118,9 +120,9 @@ public struct EquatableMacro: ExtensionMacro {
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
         // Ensure we're attached to a struct
-        
+
         let typeDecl: TypeDeclSyntax
-        
+
         if let structDecl = declaration.as(StructDeclSyntax.self) {
             typeDecl = structDecl
         } else if let classDecl = declaration.as(ClassDeclSyntax.self) {
@@ -155,7 +157,7 @@ public struct EquatableMacro: ExtensionMacro {
 
             // Check if it's a closure that should trigger diagnostic
             let isClosureProperty = (binding.typeAnnotation?.type).map(isClosure) == true ||
-            (binding.initializer?.value.is(ClosureExprSyntax.self) ?? false)
+                (binding.initializer?.value.is(ClosureExprSyntax.self) ?? false)
 
             if isClosureProperty {
                 let diagnostic = Self.makeClosureDiagnostic(for: varDecl)
@@ -198,7 +200,7 @@ extension EquatableMacro {
     private static func shouldSkip(_ varDecl: VariableDeclSyntax) -> Bool {
         varDecl.attributes.contains { attribute in
             if let atribute = attribute.as(AttributeSyntax.self),
-               Self.shouldSkip(atribute: atribute) {
+               shouldSkip(atribute: atribute) {
                 return true
             }
             return false
@@ -207,7 +209,7 @@ extension EquatableMacro {
 
     private static func shouldSkip(atribute node: AttributeSyntax) -> Bool {
         if let identifierType = node.attributeName.as(IdentifierTypeSyntax.self),
-           Self.shouldSkip(identifierType: identifierType) {
+           shouldSkip(identifierType: identifierType) {
             return true
         }
         if let memberType = node.attributeName.as(MemberTypeSyntax.self),
@@ -221,7 +223,7 @@ extension EquatableMacro {
         if node.name.text == "EquatableIgnored" {
             return true
         }
-        if Self.skippablePropertyWrappers.contains(node.name.text) {
+        if skippablePropertyWrappers.contains(node.name.text) {
             return true
         }
         return false
@@ -229,7 +231,7 @@ extension EquatableMacro {
 
     private static func shouldSkip(memberType node: MemberTypeSyntax) -> Bool {
         if node.baseType.as(IdentifierTypeSyntax.self)?.name.text == "SwiftUI",
-           Self.skippablePropertyWrappers.contains(node.name.text) {
+           skippablePropertyWrappers.contains(node.name.text) {
             return true
         }
         return false
@@ -266,9 +268,18 @@ extension EquatableMacro {
 
         switch typeString {
         case "Bool": return 1
-        case "Int", "Int8", "Int16", "Int32", "Int64": return 2
-        case "UInt", "UInt8", "UInt16", "UInt32", "UInt64": return 3
-        case "Float", "Double": return 4
+        case "Int",
+             "Int8",
+             "Int16",
+             "Int32",
+             "Int64": return 2
+        case "UInt",
+             "UInt8",
+             "UInt16",
+             "UInt32",
+             "UInt64": return 3
+        case "Float",
+             "Double": return 4
         case "String": return 5
         case "Character": return 6
         case "Date": return 7
@@ -376,7 +387,7 @@ extension EquatableMacro {
         let hashableImplementation = sortedProperties.map { property in
             "hasher.combine(\(property.name))"
         }
-            .joined(separator: "\n")
+        .joined(separator: "\n")
 
         let hashableExtensionDecl: DeclSyntax = """
         extension \(raw: type) {

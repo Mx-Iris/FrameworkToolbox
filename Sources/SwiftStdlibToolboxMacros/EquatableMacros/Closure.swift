@@ -1,5 +1,7 @@
 import SwiftSyntax
 
+/// Source: https://github.com/ordo-one/equatable
+
 func isClosure(type: TypeSyntax) -> Bool {
     if type.is(FunctionTypeSyntax.self) {
         return true

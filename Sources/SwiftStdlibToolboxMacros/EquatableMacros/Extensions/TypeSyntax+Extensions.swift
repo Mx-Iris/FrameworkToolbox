@@ -1,5 +1,7 @@
 import SwiftSyntax
 
+/// Source: https://github.com/ordo-one/equatable
+
 extension TypeSyntax {
     var isSwift: Bool {
         if self.as(IdentifierTypeSyntax.self)?.isSwift ?? false {

@@ -4,6 +4,8 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
+/// Source: https://github.com/ordo-one/equatable
+///
 /// A macro that makes closure properties safely participate in `Equatable` conformance.
 ///
 /// ## Overview

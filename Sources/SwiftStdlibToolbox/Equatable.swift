@@ -1,3 +1,5 @@
+/// Source: https://github.com/ordo-one/equatable
+
 /// A macro that automatically generates an `Equatable` conformance for structs.
 ///
 /// This macro creates a standard equality implementation by comparing all stored properties

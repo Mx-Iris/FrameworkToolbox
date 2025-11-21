@@ -1,7 +1,7 @@
 import Foundation
 import FrameworkToolbox
 
-extension FrameworkToolbox where Base == String {
+extension FrameworkToolbox<String> {
     @inlinable
     public var url: URL? {
         .init(string: base)
@@ -58,7 +58,14 @@ extension FrameworkToolbox where Base == String {
     public static func path(withComponents components: [String]) -> String { NSString.path(withComponents: components) }
 }
 
-extension FrameworkToolbox where Base == Substring {
+extension FrameworkToolbox where Base: StringProtocol {
+    @inlinable
+    public var string: String {
+        .init(base)
+    }
+}
+
+extension FrameworkToolbox where Base: NSString {
     @inlinable
     public var string: String {
         .init(base)

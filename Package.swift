@@ -22,10 +22,8 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(
-            url: "https://github.com/swiftlang/swift-syntax.git",
-            "509.1.0" ..< "602.0.0"
-        ),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", "509.1.0" ..< "602.0.0"),
+        .package(url: "https://github.com/stackotter/swift-macro-toolkit", from: "0.7.2"),
     ],
     targets: [
         .target(
@@ -46,6 +44,7 @@ let package = Package(
             dependencies: [
                 "FrameworkToolbox",
                 "SwiftStdlibToolbox",
+                "FoundationToolboxMacros",
             ]
         ),
         .macro(
@@ -55,6 +54,7 @@ let package = Package(
                 .SwiftSyntaxMacros,
                 .SwiftCompilerPlugin,
                 .SwiftSyntaxBuilder,
+                .MacroToolkit,
             ]
         ),
         .macro(
@@ -64,6 +64,17 @@ let package = Package(
                 .SwiftSyntaxMacros,
                 .SwiftCompilerPlugin,
                 .SwiftSyntaxBuilder,
+                .MacroToolkit,
+            ]
+        ),
+        .macro(
+            name: "FoundationToolboxMacros",
+            dependencies: [
+                .SwiftSyntax,
+                .SwiftSyntaxMacros,
+                .SwiftCompilerPlugin,
+                .SwiftSyntaxBuilder,
+                .MacroToolkit,
             ]
         ),
         .executableTarget(
@@ -101,5 +112,9 @@ extension Target.Dependency {
     static let SwiftSyntaxBuilder = Target.Dependency.product(
         name: "SwiftSyntaxBuilder",
         package: "swift-syntax"
+    )
+    static let MacroToolkit = Target.Dependency.product(
+        name: "MacroToolkit",
+        package: "swift-macro-toolkit"
     )
 }

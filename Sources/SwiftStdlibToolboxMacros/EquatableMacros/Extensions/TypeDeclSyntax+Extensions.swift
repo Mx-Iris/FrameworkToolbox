@@ -1,5 +1,7 @@
 import SwiftSyntax
 
+/// Source: https://github.com/ordo-one/equatable
+
 extension TypeDeclSyntax {
     var isHashable: Bool {
         let existingConformances = self.inheritanceClause?.inheritedTypes
