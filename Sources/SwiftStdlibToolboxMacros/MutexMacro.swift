@@ -3,7 +3,6 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import SwiftDiagnostics
-import MacroToolkit
 
 public struct MutexMacro: PeerMacro, AccessorMacro {
     // MARK: - PeerMacro
