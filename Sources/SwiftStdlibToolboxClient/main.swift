@@ -30,5 +30,7 @@ final class ClassDecl: Sendable {
     }
 }
 
-
+let uint = 8.bitPattern.uint
 _ = ClassDecl(property: "")
+
+
