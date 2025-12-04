@@ -14,27 +14,29 @@ public protocol BitPatternCompatible<Base> {
     static var bitPattern: BitPattern<Base>.Type { set get }
 }
 
-extension BitPatternCompatible {
-    public var bitPattern: BitPattern<Self> {
-        set {}
-        get { BitPattern(self) }
-    }
-
-    public static var bitPattern: BitPattern<Self>.Type {
-        set {}
-        get { BitPattern<Self>.self }
-    }
-}
-
 extension FrameworkToolbox: BitPatternCompatible {
+    @inlinable
     public var bitPattern: BitPattern<Base> {
         set {}
         get { BitPattern(base) }
     }
 
+    @inlinable
     public static var bitPattern: BitPattern<Base>.Type {
         set {}
         get { BitPattern<Base>.self }
+    }
+}
+
+extension BitPattern<UnsafeRawPointer> {
+    @inlinable
+    public var int: Int {
+        .init(bitPattern: base)
+    }
+
+    @inlinable
+    public var uint: UInt {
+        .init(bitPattern: base)
     }
 }
 
@@ -194,23 +196,23 @@ extension BitPattern<Double> {
     }
 }
 
-extension String: BitPatternCompatible {}
-
-extension Float: BitPatternCompatible {}
-extension Double: BitPatternCompatible {}
-#if arch(arm64)
-@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-extension Float16: BitPatternCompatible {}
-#endif
-
-extension UInt: BitPatternCompatible {}
-extension UInt64: BitPatternCompatible {}
-extension UInt32: BitPatternCompatible {}
-extension UInt16: BitPatternCompatible {}
-extension UInt8: BitPatternCompatible {}
-
-extension Int: BitPatternCompatible {}
-extension Int64: BitPatternCompatible {}
-extension Int32: BitPatternCompatible {}
-extension Int16: BitPatternCompatible {}
-extension Int8: BitPatternCompatible {}
+// extension String: BitPatternCompatible {}
+//
+// extension Float: BitPatternCompatible {}
+// extension Double: BitPatternCompatible {}
+// #if arch(arm64)
+// @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+// extension Float16: BitPatternCompatible {}
+// #endif
+//
+// extension UInt: BitPatternCompatible {}
+// extension UInt64: BitPatternCompatible {}
+// extension UInt32: BitPatternCompatible {}
+// extension UInt16: BitPatternCompatible {}
+// extension UInt8: BitPatternCompatible {}
+//
+// extension Int: BitPatternCompatible {}
+// extension Int64: BitPatternCompatible {}
+// extension Int32: BitPatternCompatible {}
+// extension Int16: BitPatternCompatible {}
+// extension Int8: BitPatternCompatible {}
