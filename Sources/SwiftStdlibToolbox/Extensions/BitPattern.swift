@@ -139,14 +139,14 @@ extension BitPattern<String> {
     }
 
     #if arch(arm64)
-    @available(macOS 11.0, *)
+    @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
     @inlinable
     public var binaryStringAsFloat16: Float16? {
         guard let bitPattern = UInt16(base, radix: 2) else { return nil }
         return Float16(bitPattern: bitPattern)
     }
 
-    @available(macOS 11.0, *)
+    @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
     @inlinable
     public var hexStringAsFloat16: Float16? {
         guard let bitPattern = UInt16(base, radix: 16) else { return nil }
@@ -156,7 +156,7 @@ extension BitPattern<String> {
 }
 
 #if arch(arm64)
-@available(macOS 11.0, *)
+@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 extension BitPattern<Float16> {
     @inlinable
     public var binaryString: String {
@@ -199,7 +199,7 @@ extension String: BitPatternCompatible {}
 extension Float: BitPatternCompatible {}
 extension Double: BitPatternCompatible {}
 #if arch(arm64)
-@available(macOS 11.0, *)
+@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 extension Float16: BitPatternCompatible {}
 #endif
 
