@@ -1,0 +1,10 @@
+import FrameworkToolbox
+
+extension UnsafeRawPointer: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemberLookup {}
+extension UnsafeMutableRawPointer: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemberLookup {}
+extension UnsafePointer: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemberLookup {}
+extension UnsafeMutablePointer: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemberLookup {}
+extension AutoreleasingUnsafeMutablePointer: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemberLookup {}
+extension OpaquePointer: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemberLookup {}
+
+

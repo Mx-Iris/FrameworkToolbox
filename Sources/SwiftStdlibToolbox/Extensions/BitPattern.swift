@@ -195,24 +195,3 @@ extension BitPattern<Double> {
         .init(base.bitPattern, radix: 16)
     }
 }
-
-// extension String: BitPatternCompatible {}
-//
-// extension Float: BitPatternCompatible {}
-// extension Double: BitPatternCompatible {}
-// #if arch(arm64)
-// @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-// extension Float16: BitPatternCompatible {}
-// #endif
-//
-// extension UInt: BitPatternCompatible {}
-// extension UInt64: BitPatternCompatible {}
-// extension UInt32: BitPatternCompatible {}
-// extension UInt16: BitPatternCompatible {}
-// extension UInt8: BitPatternCompatible {}
-//
-// extension Int: BitPatternCompatible {}
-// extension Int64: BitPatternCompatible {}
-// extension Int32: BitPatternCompatible {}
-// extension Int16: BitPatternCompatible {}
-// extension Int8: BitPatternCompatible {}
