@@ -14,14 +14,12 @@ public enum FrameworkToolboxCompatibleMacro: MemberMacro {
         let accessLevel = try parseArguments(from: node, in: context) ?? "public"
         return [
             """
-            @inlinable
             \(raw: accessLevel) static var box: FrameworkToolbox<Self>.Type {
                 set {}
                 get { FrameworkToolbox<Self>.self }
             }
             """,
             """
-            @inlinable
             \(raw: accessLevel) var box: FrameworkToolbox<Self> {
                 set {}
                 get { FrameworkToolbox(self) }
