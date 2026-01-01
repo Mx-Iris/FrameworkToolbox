@@ -6,5 +6,3 @@ extension UnsafePointer: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemb
 extension UnsafeMutablePointer: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemberLookup {}
 extension AutoreleasingUnsafeMutablePointer: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemberLookup {}
 extension OpaquePointer: FrameworkToolboxCompatible, FrameworkToolboxDynamicMemberLookup {}
-
-

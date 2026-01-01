@@ -34,3 +34,10 @@ let uint = 8.bitPattern.uint
 _ = ClassDecl(property: "")
 
 
+
+
+protocol TestProtocol {}
+import FrameworkToolbox
+
+@FrameworkToolboxExtension(.internal)
+extension TestProtocol {}
