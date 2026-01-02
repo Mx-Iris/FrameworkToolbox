@@ -41,3 +41,9 @@ import FrameworkToolbox
 
 @FrameworkToolboxExtension(.internal)
 extension TestProtocol {}
+
+
+@AssociatedValue(.public)
+enum EnumAssociatedValue {
+    case optional(String?)
+}

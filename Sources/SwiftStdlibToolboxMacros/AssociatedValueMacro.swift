@@ -46,10 +46,17 @@ public struct AssociatedValueMacro: MemberMacro {
                     suffix: suffix
                 )
                 
+                let returnTypeString: String
+                if associatedValueType.is(OptionalTypeSyntax.self) {
+                    returnTypeString = "\(associatedValueType)"
+                } else {
+                    returnTypeString = "\(associatedValueType)?"
+                }
+                
                 let newProperty = try VariableDeclSyntax(
                     """
                     /// Returns the associated value of the `\(caseName)` case if `self` is `.\(caseName)`, otherwise returns `nil`.
-                    \(raw: accessModifier)var \(raw: propertyName): \(associatedValueType)? {
+                    \(raw: accessModifier)var \(raw: propertyName): \(raw: returnTypeString) {
                         switch self {
                         case .\(caseName)(let \(bindingName)):
                             return \(bindingName)
