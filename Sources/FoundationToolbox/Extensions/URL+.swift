@@ -1,7 +1,7 @@
 import Foundation
 import FrameworkToolbox
 
-extension FrameworkToolbox where Base == URL {
+extension FrameworkToolbox<URL> {
     private struct DirectorySequence: Sequence {
         let enumerator: FileManager.DirectoryEnumerator?
 

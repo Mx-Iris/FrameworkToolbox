@@ -12,17 +12,6 @@ public protocol FrameworkToolboxCompatible {
     var box: FrameworkToolbox<Base> { set get }
 }
 
-@dynamicMemberLookup
-public protocol FrameworkToolboxDynamicMemberLookup {
-    associatedtype Base
-    subscript<Member>(dynamicMember keyPath: ReferenceWritableKeyPath<FrameworkToolbox<Base>, Member>) -> Member { set get }
-    subscript<Member>(dynamicMember keyPath: WritableKeyPath<FrameworkToolbox<Base>, Member>) -> Member { set get }
-    subscript<Member>(dynamicMember keyPath: KeyPath<FrameworkToolbox<Base>, Member>) -> Member { get }
-    static subscript<Member>(dynamicMember keyPath: ReferenceWritableKeyPath<FrameworkToolbox<Base>.Type, Member>) -> Member { set get }
-    static subscript<Member>(dynamicMember keyPath: WritableKeyPath<FrameworkToolbox<Base>.Type, Member>) -> Member { set get }
-    static subscript<Member>(dynamicMember keyPath: KeyPath<FrameworkToolbox<Base>.Type, Member>) -> Member { get }
-}
-
 extension FrameworkToolboxCompatible {
     @inlinable
     public static var box: FrameworkToolbox<Self>.Type {
@@ -35,6 +24,17 @@ extension FrameworkToolboxCompatible {
         set {}
         get { FrameworkToolbox(self) }
     }
+}
+
+@dynamicMemberLookup
+public protocol FrameworkToolboxDynamicMemberLookup {
+    associatedtype Base
+    subscript<Member>(dynamicMember keyPath: ReferenceWritableKeyPath<FrameworkToolbox<Base>, Member>) -> Member { set get }
+    subscript<Member>(dynamicMember keyPath: WritableKeyPath<FrameworkToolbox<Base>, Member>) -> Member { set get }
+    subscript<Member>(dynamicMember keyPath: KeyPath<FrameworkToolbox<Base>, Member>) -> Member { get }
+    static subscript<Member>(dynamicMember keyPath: ReferenceWritableKeyPath<FrameworkToolbox<Base>.Type, Member>) -> Member { set get }
+    static subscript<Member>(dynamicMember keyPath: WritableKeyPath<FrameworkToolbox<Base>.Type, Member>) -> Member { set get }
+    static subscript<Member>(dynamicMember keyPath: KeyPath<FrameworkToolbox<Base>.Type, Member>) -> Member { get }
 }
 
 extension FrameworkToolboxDynamicMemberLookup where Self: FrameworkToolboxCompatible {
