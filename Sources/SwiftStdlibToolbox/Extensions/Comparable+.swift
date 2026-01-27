@@ -6,7 +6,7 @@ extension FrameworkToolbox where Base: Comparable {
     /// - Parameter range: The closed range to clamp the value to.
     /// - Returns: The clamped value.
     public func clamped(to range: ClosedRange<Base>) -> Base {
-        max(range.lowerBound, min(base, range.upperBound))
+        Swift.max(range.lowerBound, Swift.min(base, range.upperBound))
     }
 
     /// Clamps the value to the specified range.
@@ -15,7 +15,7 @@ extension FrameworkToolbox where Base: Comparable {
     /// - Returns: The clamped value.
 
     public func clamped(to range: Range<Base>) -> Base where Base: BinaryInteger {
-        max(range.lowerBound, min(base, range.upperBound - 1))
+        Swift.max(range.lowerBound, Swift.min(base, range.upperBound - 1))
     }
 
     /// Clamps the value to the specified partial range.
@@ -23,7 +23,7 @@ extension FrameworkToolbox where Base: Comparable {
     /// - Parameter range: The partial range to clamp the value to.
     /// - Returns: The clamped value.
     public func clamped(to range: PartialRangeFrom<Base>) -> Base {
-        max(range.lowerBound, base)
+        Swift.max(range.lowerBound, base)
     }
 
     /// Clamps the value to the specified partial range.
@@ -31,7 +31,7 @@ extension FrameworkToolbox where Base: Comparable {
     /// - Parameter range: The partial range to clamp the value to.
     /// - Returns: The clamped value.
     public func clamped(to range: PartialRangeUpTo<Base>) -> Base {
-        min(range.upperBound, base)
+        Swift.min(range.upperBound, base)
     }
 
     /// Clamps the value to the specified minimum value.
@@ -39,7 +39,7 @@ extension FrameworkToolbox where Base: Comparable {
     /// - Parameter minValue: The minimum value to clamp the value to.
     /// - Returns: The clamped value.
     public func clamped(min minValue: Base) -> Base {
-        max(minValue, base)
+        Swift.max(minValue, base)
     }
 
     /// Clamps the value to the specified maximum value.
@@ -47,7 +47,7 @@ extension FrameworkToolbox where Base: Comparable {
     /// - Parameter maxValue: The maximum value to clamp the value to.
     /// - Returns: The clamped value.
     public func clamped(max maxValue: Base) -> Base {
-        min(maxValue, base)
+        Swift.min(maxValue, base)
     }
 
     /// Clamps the value to the specified closed range.

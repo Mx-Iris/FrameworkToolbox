@@ -47,3 +47,22 @@ extension TestProtocol {}
 enum EnumAssociatedValue {
     case optional(String?)
 }
+
+// MARK: - Loggable & #log macro verification
+
+import FoundationToolbox
+
+@Loggable
+struct LoggableStruct {
+    func doWork() {
+        let value = 42
+        #log(.debug, "Processing value: \(value, privacy: .public)")
+    }
+}
+
+@Loggable
+class LoggableClass {
+    func handle() {
+        #log(.info, "Handling request")
+    }
+}

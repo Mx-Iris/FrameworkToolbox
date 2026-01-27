@@ -4,6 +4,8 @@ import SwiftSyntaxMacros
 @main
 struct MainPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
-        URLMacro.self
+        URLMacro.self,
+        LoggableMacro.self,
+        LogMacro.self,
     ]
 }
