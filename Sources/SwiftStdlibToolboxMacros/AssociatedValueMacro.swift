@@ -25,48 +25,66 @@ public struct AssociatedValueMacro: MemberMacro {
         let members = enumDecl.memberBlock.members
         let caseDecls = members.compactMap { $0.decl.as(EnumCaseDeclSyntax.self) }
         
+        let allElements = caseDecls.flatMap(\.elements)
+        let totalCaseCount = allElements.count
+
         var newProperties: [DeclSyntax] = []
-        
+
         for caseDecl in caseDecls {
             for element in caseDecl.elements {
-                
+
                 guard let parameterClause = element.parameterClause,
                       let firstParameter = parameterClause.parameters.first,
                       parameterClause.parameters.count == 1 else {
                     continue
                 }
-                
+
                 let caseName = element.name
                 let associatedValueType = firstParameter.type
                 let bindingName = firstParameter.firstName ?? caseName
-                
+
                 let propertyName = makePropertyName(
                     for: caseName.text,
                     prefix: prefix,
                     suffix: suffix
                 )
-                
+
                 let returnTypeString: String
                 if associatedValueType.is(OptionalTypeSyntax.self) {
                     returnTypeString = "\(associatedValueType)"
                 } else {
                     returnTypeString = "\(associatedValueType)?"
                 }
-                
-                let newProperty = try VariableDeclSyntax(
-                    """
-                    /// Returns the associated value of the `\(caseName)` case if `self` is `.\(caseName)`, otherwise returns `nil`.
-                    \(raw: accessModifier)var \(raw: propertyName): \(raw: returnTypeString) {
-                        switch self {
-                        case .\(caseName)(let \(bindingName)):
-                            return \(bindingName)
-                        default:
-                            return nil
+
+                let newProperty: VariableDeclSyntax
+                if totalCaseCount == 1 {
+                    newProperty = try VariableDeclSyntax(
+                        """
+                        /// Returns the associated value of the `\(caseName)` case if `self` is `.\(caseName)`, otherwise returns `nil`.
+                        \(raw: accessModifier)var \(raw: propertyName): \(raw: returnTypeString) {
+                            switch self {
+                            case .\(caseName)(let \(bindingName)):
+                                return \(bindingName)
+                            }
                         }
-                    }
-                    """
-                )
-                
+                        """
+                    )
+                } else {
+                    newProperty = try VariableDeclSyntax(
+                        """
+                        /// Returns the associated value of the `\(caseName)` case if `self` is `.\(caseName)`, otherwise returns `nil`.
+                        \(raw: accessModifier)var \(raw: propertyName): \(raw: returnTypeString) {
+                            switch self {
+                            case .\(caseName)(let \(bindingName)):
+                                return \(bindingName)
+                            default:
+                                return nil
+                            }
+                        }
+                        """
+                    )
+                }
+
                 newProperties.append(DeclSyntax(newProperty))
             }
         }

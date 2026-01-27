@@ -7,5 +7,6 @@ struct MainPlugin: CompilerPlugin {
         URLMacro.self,
         LoggableMacro.self,
         LogMacro.self,
+        OSAllocatedUnfairLockMacro.self,
     ]
 }

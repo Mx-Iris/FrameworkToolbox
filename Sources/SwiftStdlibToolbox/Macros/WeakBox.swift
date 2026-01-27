@@ -6,3 +6,5 @@ public struct WeakBox<T: AnyObject> {
         self.value = value
     }
 }
+
+extension WeakBox: Sendable where T: Sendable {}

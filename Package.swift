@@ -48,6 +48,14 @@ let package = Package(
                 .product(name: "Logging", package: "swift-log"),
             ]
         ),
+        .target(
+            name: "MacroToolbox",
+            dependencies: [
+                .SwiftSyntax,
+                .SwiftSyntaxMacros,
+                .SwiftDiagnostics,
+            ]
+        ),
         .macro(
             name: "FrameworkToolboxMacros",
             dependencies: [
@@ -61,6 +69,7 @@ let package = Package(
         .macro(
             name: "SwiftStdlibToolboxMacros",
             dependencies: [
+                "MacroToolbox",
                 .SwiftSyntax,
                 .SwiftSyntaxMacros,
                 .SwiftCompilerPlugin,
@@ -71,6 +80,7 @@ let package = Package(
         .macro(
             name: "FoundationToolboxMacros",
             dependencies: [
+                "MacroToolbox",
                 .SwiftSyntax,
                 .SwiftSyntaxMacros,
                 .SwiftCompilerPlugin,
@@ -80,8 +90,16 @@ let package = Package(
             ]
         ),
         .executableTarget(
+            name: "FrameworkToolboxClient",
+            dependencies: ["FrameworkToolbox"]
+        ),
+        .executableTarget(
             name: "SwiftStdlibToolboxClient",
-            dependencies: ["SwiftStdlibToolbox", "FoundationToolbox"]
+            dependencies: ["SwiftStdlibToolbox"]
+        ),
+        .executableTarget(
+            name: "FoundationToolboxClient",
+            dependencies: ["FoundationToolbox"]
         ),
         .testTarget(
             name: "FrameworkToolboxTests",

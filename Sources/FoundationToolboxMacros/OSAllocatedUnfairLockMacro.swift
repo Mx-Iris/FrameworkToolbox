@@ -3,21 +3,21 @@ import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import MacroToolbox
 
-public struct MutexMacro: LockMacroProtocol {
-    public static let macroName = "Mutex"
+public struct OSAllocatedUnfairLockMacro: LockMacroProtocol {
+    public static let macroName = "OSAllocatedUnfairLock"
 
     public static func makeStorageDecl(for info: LockPropertyInfo) -> DeclSyntax {
         if info.isWeak {
             return """
-            private let \(raw: info.storageName) = Mutex(SwiftStdlibToolbox.WeakBox<\(raw: info.baseType)>(\(info.initialValue)))
+            private let \(raw: info.storageName) = OSAllocatedUnfairLock(initialState: SwiftStdlibToolbox.WeakBox<\(raw: info.baseType)>(\(info.initialValue)))
             """
         } else if info.isImplicitlyUnwrappedOptional {
             return """
-            private let \(raw: info.storageName) = Mutex<\(raw: info.baseType)?>(\(info.initialValue))
+            private let \(raw: info.storageName) = OSAllocatedUnfairLock<\(raw: info.baseType)?>(initialState: \(info.initialValue))
             """
         } else {
             return """
-            private let \(raw: info.storageName) = Mutex<\(raw: info.type)>(\(info.initialValue))
+            private let \(raw: info.storageName) = OSAllocatedUnfairLock<\(raw: info.type)>(initialState: \(info.initialValue))
             """
         }
     }
