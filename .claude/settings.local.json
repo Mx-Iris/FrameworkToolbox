@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(wc:*)",
+      "Bash(swift build:*)",
+      "Bash(xcsift:*)",
+      "Bash(swift run:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:thegoodalright.dev)",
+      "WebFetch(domain:www.carrione.cz)",
+      "WebFetch(domain:paigeshin1991.medium.com)",
+      "WebFetch(domain:www.avanderlee.com)",
+      "WebFetch(domain:fossies.org)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd @Loggable and #log macros with swift-log fallback\n\n- @Loggable member macro generates all logging properties \\(os.Logger,\n  swift-log Logger, category, subsystem\\) without protocol conformance\n- #log freestanding expression macro generates version-checked logging\n  calls: os.Logger on macOS 11+, swift-log on older versions\n- Add LogMessage/LogPrivacy/LogLevel types for IDE autocomplete support\n- Add swift-log dependency for pre-macOS 11 fallback\n- Disambiguate os.Logger vs Logging.Logger in Loggable protocol\n- Fix unqualified min/max calls in Comparable+.swift\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push)",
+      "Bash(git -C /Volumes/Repositories/Private/Personal/Library/Multi/FrameworkToolbox log --oneline -15)"
+    ]
+  }
+}
