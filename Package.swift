@@ -23,7 +23,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "509.1.0" ..< "602.0.0"),
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
+        .package(url: "https://github.com/pointfreeco/swift-macro-testing.git", from: "0.5.0"),
     ],
     targets: [
         .target(
@@ -45,7 +45,6 @@ let package = Package(
                 "FrameworkToolbox",
                 "SwiftStdlibToolbox",
                 "FoundationToolboxMacros",
-                .product(name: "Logging", package: "swift-log"),
             ]
         ),
         .target(
@@ -105,7 +104,29 @@ let package = Package(
             name: "FrameworkToolboxTests",
             dependencies: [
                 "FrameworkToolbox",
-                "FoundationToolbox",
+            ]
+        ),
+        .testTarget(
+            name: "FrameworkToolboxMacroTests",
+            dependencies: [
+                "FrameworkToolboxMacros",
+                .product(name: "MacroTesting", package: "swift-macro-testing"),
+            ]
+        ),
+        .testTarget(
+            name: "SwiftStdlibToolboxMacroTests",
+            dependencies: [
+                "SwiftStdlibToolboxMacros",
+                "MacroToolbox",
+                .product(name: "MacroTesting", package: "swift-macro-testing"),
+            ]
+        ),
+        .testTarget(
+            name: "FoundationToolboxMacroTests",
+            dependencies: [
+                "FoundationToolboxMacros",
+                "MacroToolbox",
+                .product(name: "MacroTesting", package: "swift-macro-testing"),
             ]
         ),
     ],

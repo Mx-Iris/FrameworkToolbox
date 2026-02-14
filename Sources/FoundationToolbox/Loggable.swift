@@ -34,7 +34,7 @@ extension Loggable {
     public static var category: String {
         .init(describing: self)
     }
-    
+
     public static var subsystem: String {
         Bundle(for: BundleClass.self).bundleIdentifier ?? .init(describing: self)
     }

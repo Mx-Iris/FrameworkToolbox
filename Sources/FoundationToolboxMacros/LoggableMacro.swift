@@ -13,22 +13,26 @@ public struct LoggableMacro: MemberMacro {
     ) throws -> [DeclSyntax] {
         let typeName = extractTypeName(from: declaration)
         let isClass = declaration.is(ClassDeclSyntax.self)
+        let accessLevel = extractAccessLevel(from: node)
+        
+        // Build access modifier prefix (empty for internal)
+        let accessPrefix = accessLevel == "internal" ? "" : "\(accessLevel) "
 
         let subsystemBody: String = isClass
             ? "Bundle(for: self).bundleIdentifier ?? \(quoteString(typeName))"
             : "Bundle.main.bundleIdentifier ?? \(quoteString(typeName))"
 
         return [
-            "static let _loggableSwiftLogger = Logging.Logger(label: \(literal: typeName))",
-            "static var category: String { \(literal: typeName) }",
-            "static var subsystem: String { \(raw: subsystemBody) }",
+            "\(raw: accessPrefix)static var category: String { \(literal: typeName) }",
+            "\(raw: accessPrefix)static var subsystem: String { \(raw: subsystemBody) }",
+            "\(raw: accessPrefix)static let _osLog = OSLog(subsystem: subsystem, category: category)",
             """
             @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-            static let logger = os.Logger(subsystem: subsystem, category: category)
+            \(raw: accessPrefix)static let logger = os.Logger(subsystem: subsystem, category: category)
             """,
             """
             @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-            var logger: os.Logger { Self.logger }
+            \(raw: accessPrefix)var logger: os.Logger { Self.logger }
             """,
         ]
     }
@@ -49,4 +53,21 @@ private func extractTypeName(from declaration: some DeclGroupSyntax) -> String {
 
 private func quoteString(_ value: String) -> String {
     "\"\(value)\""
+}
+
+/// Extracts access level from the macro attribute, defaulting to "internal".
+private func extractAccessLevel(from node: AttributeSyntax) -> String {
+    // Check if there are arguments
+    guard let arguments = node.arguments,
+          case let .argumentList(argList) = arguments,
+          let firstArg = argList.first else {
+        return "internal"
+    }
+
+    // Parse the member access expression (e.g., `.private`, `.public`)
+    if let memberAccess = firstArg.expression.as(MemberAccessExprSyntax.self) {
+        return memberAccess.declName.baseName.text
+    }
+
+    return "internal"
 }

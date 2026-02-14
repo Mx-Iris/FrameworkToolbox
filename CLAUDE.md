@@ -49,7 +49,7 @@ Executable client targets (`*Client`) exist for manual macro expansion testing.
 
 - **Box pattern:** `FrameworkToolboxCompatible` conformance gives any type a `.box` accessor returning `FrameworkToolbox<Self>`, enabling namespaced extensions without polluting the type's API surface.
 - **Lock macros:** `@Mutex`, `@OSAllocatedUnfairLock` share logic via `LockMacroProtocol` in `MacroToolbox`. They generate a backing stored property and computed accessors with lock/unlock around access.
-- **Logging:** `@Loggable` generates `logger`/`logCategory`/`logSubsystem` properties. `#log` emits version-checked code that uses `os.Logger` on macOS 11+ or falls back to `swift-log`.
+- **Logging:** `@Loggable` generates `category`/`subsystem`/`_osLog`/`logger` properties. `#log` emits version-checked code that uses `os.Logger` on macOS 11+ or falls back to the legacy `os_log` API with per-segment privacy support.
 
 ### Platforms
 
@@ -58,4 +58,3 @@ iOS 13+, macOS 10.15+, watchOS 6+, tvOS 13+, macCatalyst 13+, visionOS 1+
 ### Dependencies
 
 - `swift-syntax` — macro implementation
-- `swift-log` — logging fallback for older OS versions

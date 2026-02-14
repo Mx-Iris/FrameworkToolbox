@@ -16,7 +16,12 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd @Loggable and #log macros with swift-log fallback\n\n- @Loggable member macro generates all logging properties \\(os.Logger,\n  swift-log Logger, category, subsystem\\) without protocol conformance\n- #log freestanding expression macro generates version-checked logging\n  calls: os.Logger on macOS 11+, swift-log on older versions\n- Add LogMessage/LogPrivacy/LogLevel types for IDE autocomplete support\n- Add swift-log dependency for pre-macOS 11 fallback\n- Disambiguate os.Logger vs Logging.Logger in Loggable protocol\n- Fix unqualified min/max calls in Comparable+.swift\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push)",
-      "Bash(git -C /Volumes/Repositories/Private/Personal/Library/Multi/FrameworkToolbox log --oneline -15)"
+      "Bash(git -C /Volumes/Repositories/Private/Personal/Library/Multi/FrameworkToolbox log --oneline -15)",
+      "Bash(swift test:*)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(swift package resolve:*)",
+      "Bash(monocle symbol:*)"
     ]
   }
 }
