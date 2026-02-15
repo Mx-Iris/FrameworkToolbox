@@ -13,4 +13,4 @@ import Foundation
 ///
 ///     URL(string: "https://www.apple.com")!
 @freestanding(expression)
-public macro URL(_ str: String) -> URL = #externalMacro(module: "FoundationToolboxMacros", type: "URLMacro")
+public macro URL(_ str: StaticString) -> URL = #externalMacro(module: "FoundationToolboxMacros", type: "URLMacro")
