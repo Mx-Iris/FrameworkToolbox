@@ -104,6 +104,8 @@ let package = Package(
             name: "FrameworkToolboxTests",
             dependencies: [
                 "FrameworkToolbox",
+                "SwiftStdlibToolbox",
+                "FoundationToolbox",
             ]
         ),
         .testTarget(

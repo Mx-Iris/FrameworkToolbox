@@ -66,9 +66,59 @@ extension FrameworkToolbox<String> {
     public static func path(withComponents components: [String]) -> String { NSString.path(withComponents: components) }
 }
 
+// MARK: - Case Transformation
+
 extension FrameworkToolbox where Base: StringProtocol {
     @inlinable
     public var string: String { .init(base) }
+
+    /// Returns a string with the first character lowercased.
+    @inlinable
+    public func lowercasedFirst() -> String {
+        guard !base.isEmpty else { return String(base) }
+        return base.prefix(1).lowercased() + base.dropFirst()
+    }
+
+    /// Returns a string with the first character uppercased.
+    @inlinable
+    public func uppercasedFirst() -> String {
+        guard !base.isEmpty else { return String(base) }
+        return base.prefix(1).uppercased() + base.dropFirst()
+    }
+}
+
+// MARK: - Prefix / Suffix
+
+extension FrameworkToolbox<String> {
+    /// Returns the string with the specified prefix removed, if present.
+    ///
+    /// - Parameter prefix: The prefix to remove.
+    @inlinable
+    public func removingPrefix(_ prefix: String) -> String {
+        guard base.hasPrefix(prefix) else { return base }
+        return String(base.dropFirst(prefix.count))
+    }
+
+    /// Returns the string with the specified suffix removed, if present.
+    ///
+    /// - Parameter suffix: The suffix to remove.
+    @inlinable
+    public func removingSuffix(_ suffix: String) -> String {
+        guard base.hasSuffix(suffix) else { return base }
+        return String(base.dropLast(suffix.count))
+    }
+
+    /// Returns the individual words in the string.
+    @inlinable
+    public var words: [String] {
+        base.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+    }
+
+    /// Returns the lines of the string.
+    @inlinable
+    public var lines: [String] {
+        base.components(separatedBy: .newlines)
+    }
 }
 
 extension FrameworkToolbox where Base: NSString {
