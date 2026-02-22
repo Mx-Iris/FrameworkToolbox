@@ -34,41 +34,43 @@ public struct Mutex<Value: ~Copyable>: ~Copyable {
         defer { storage.unlock() }
         return try body(&storage.value)
     }
+    
+    @usableFromInline
+    final class Storage<_Value: ~Copyable> {
+        private let _lock: os_unfair_lock_t
+
+        @usableFromInline
+        var value: _Value
+
+        @usableFromInline
+        init(_ initialValue: consuming _Value) {
+            self._lock = .allocate(capacity: 1)
+            _lock.initialize(to: os_unfair_lock())
+            self.value = initialValue
+        }
+
+        @usableFromInline
+        func lock() {
+            os_unfair_lock_lock(_lock)
+        }
+
+        @usableFromInline
+        func unlock() {
+            os_unfair_lock_unlock(_lock)
+        }
+
+        @usableFromInline
+        func tryLock() -> Bool {
+            os_unfair_lock_trylock(_lock)
+        }
+
+        deinit {
+            self._lock.deinitialize(count: 1)
+            self._lock.deallocate()
+        }
+    }
 }
 
 extension Mutex: @unchecked Sendable where Value: ~Copyable {}
 
-@usableFromInline
-final class Storage<Value: ~Copyable> {
-    private let _lock: os_unfair_lock_t
 
-    @usableFromInline
-    var value: Value
-
-    @usableFromInline
-    init(_ initialValue: consuming Value) {
-        self._lock = .allocate(capacity: 1)
-        _lock.initialize(to: os_unfair_lock())
-        self.value = initialValue
-    }
-
-    @usableFromInline
-    func lock() {
-        os_unfair_lock_lock(_lock)
-    }
-
-    @usableFromInline
-    func unlock() {
-        os_unfair_lock_unlock(_lock)
-    }
-
-    @usableFromInline
-    func tryLock() -> Bool {
-        os_unfair_lock_trylock(_lock)
-    }
-
-    deinit {
-        self._lock.deinitialize(count: 1)
-        self._lock.deallocate()
-    }
-}
