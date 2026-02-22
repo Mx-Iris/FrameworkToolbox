@@ -1,76 +1,98 @@
-import struct os.os_unfair_lock_t
-import struct os.os_unfair_lock
-import func os.os_unfair_lock_lock
-import func os.os_unfair_lock_unlock
-import func os.os_unfair_lock_trylock
+import os
 
 @frozen
-public struct Mutex<Value: ~Copyable>: ~Copyable {
+public struct Mutex<Value: ~Copyable>: ~Copyable, @unchecked Sendable {
     @usableFromInline
-    let storage: Storage<Value>
+    internal let _buffer: UnsafeMutableRawPointer
 
-    @_alwaysEmitIntoClient
-    @_transparent
-    public init(_ initialValue: consuming sending Value) {
-        self.storage = Storage(initialValue)
+    // MARK: - Memory Layout
+
+    /// Byte offset from buffer start to the Value storage.
+    /// Layout: [os_unfair_lock | padding | Value]
+    @usableFromInline
+    internal static var _valueOffset: Int {
+        let lockSize = MemoryLayout<os_unfair_lock>.size
+        let valueAlignment = max(MemoryLayout<Value>.alignment, 1)
+        // Round up lockSize to the nearest multiple of valueAlignment
+        return (lockSize + valueAlignment - 1) & ~(valueAlignment - 1)
     }
 
-    @_alwaysEmitIntoClient
-    @_transparent
-    public borrowing func withLock<Result, E: Error>(
+    @usableFromInline
+    internal var _lockPtr: UnsafeMutablePointer<os_unfair_lock> {
+        _buffer.assumingMemoryBound(to: os_unfair_lock.self)
+    }
+
+    @usableFromInline
+    internal var _valuePtr: UnsafeMutablePointer<Value> {
+        _buffer.advanced(by: Self._valueOffset)
+              .assumingMemoryBound(to: Value.self)
+    }
+
+    // MARK: - Lifecycle
+
+    @inlinable
+    public init(_ initialValue: consuming sending Value) {
+        let valueOffset = Self._valueOffset
+        let totalSize = valueOffset + MemoryLayout<Value>.size
+        let alignment = max(
+            MemoryLayout<os_unfair_lock>.alignment,
+            MemoryLayout<Value>.alignment
+        )
+
+        // Single allocation for both lock and value
+        _buffer = .allocate(
+            byteCount: max(totalSize, 1),
+            alignment: max(alignment, 1)
+        )
+
+        // Initialize lock region
+        _buffer
+            .bindMemory(to: os_unfair_lock.self, capacity: 1)
+            .initialize(to: os_unfair_lock())
+
+        // Initialize value region (non-overlapping, different type binding is valid)
+        _buffer
+            .advanced(by: valueOffset)
+            .bindMemory(to: Value.self, capacity: 1)
+            .initialize(to: initialValue)
+    }
+
+    @inlinable
+    deinit {
+        // Deinitialize value (runs destructors / releases references)
+        // Lock is trivial (UInt32), no deinit needed
+        _valuePtr.deinitialize(count: 1)
+        _buffer.deallocate()
+    }
+
+    // MARK: - Locking API
+
+    @inlinable
+    public borrowing func withLock<Result: ~Copyable, E: Error>(
         _ body: (inout sending Value) throws(E) -> sending Result
     ) throws(E) -> sending Result {
-        storage.lock()
-        defer { storage.unlock() }
-        return try body(&storage.value)
+        os_unfair_lock_lock(_lockPtr)
+        defer { os_unfair_lock_unlock(_lockPtr) }
+        return try body(&_valuePtr.pointee)
     }
 
-    @_alwaysEmitIntoClient
-    @_transparent
-    public borrowing func withLockIfAvailable<Result, E: Error>(
+    @inlinable
+    public borrowing func withLockIfAvailable<Result: ~Copyable, E: Error>(
         _ body: (inout sending Value) throws(E) -> sending Result
     ) throws(E) -> sending Result? {
-        guard storage.tryLock() else { return nil }
-        defer { storage.unlock() }
-        return try body(&storage.value)
+        guard os_unfair_lock_trylock(_lockPtr) else { return nil }
+        defer { os_unfair_lock_unlock(_lockPtr) }
+        return try body(&_valuePtr.pointee)
     }
-    
-    @usableFromInline
-    final class Storage<_Value: ~Copyable> {
-        private let _lock: os_unfair_lock_t
 
-        @usableFromInline
-        var value: _Value
-
-        @usableFromInline
-        init(_ initialValue: consuming _Value) {
-            self._lock = .allocate(capacity: 1)
-            _lock.initialize(to: os_unfair_lock())
-            self.value = initialValue
-        }
-
-        @usableFromInline
-        func lock() {
-            os_unfair_lock_lock(_lock)
-        }
-
-        @usableFromInline
-        func unlock() {
-            os_unfair_lock_unlock(_lock)
-        }
-
-        @usableFromInline
-        func tryLock() -> Bool {
-            os_unfair_lock_trylock(_lock)
-        }
-
-        deinit {
-            self._lock.deinitialize(count: 1)
-            self._lock.deallocate()
-        }
+    /// Variant without `sending` constraint on the closure parameter.
+    /// Use when you already know you're in the correct isolation domain.
+    @inlinable
+    public borrowing func withLockUnchecked<Result: ~Copyable, E: Error>(
+        _ body: (inout Value) throws(E) -> Result
+    ) throws(E) -> Result {
+        os_unfair_lock_lock(_lockPtr)
+        defer { os_unfair_lock_unlock(_lockPtr) }
+        return try body(&_valuePtr.pointee)
     }
 }
-
-extension Mutex: @unchecked Sendable where Value: ~Copyable {}
-
-

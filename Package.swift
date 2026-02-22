@@ -100,14 +100,28 @@ let package = Package(
             name: "FoundationToolboxClient",
             dependencies: ["FoundationToolbox"]
         ),
+        
         .testTarget(
             name: "FrameworkToolboxTests",
             dependencies: [
                 "FrameworkToolbox",
-                "SwiftStdlibToolbox",
-                "FoundationToolbox",
             ]
         ),
+        .testTarget(
+            name: "SwiftStdlibToolboxTests",
+            dependencies: [
+                "SwiftStdlibToolbox",
+                "MacroToolbox",
+            ]
+        ),
+        .testTarget(
+            name: "FoundationToolboxTests",
+            dependencies: [
+                "FoundationToolbox",
+                "MacroToolbox",
+            ]
+        ),
+
         .testTarget(
             name: "FrameworkToolboxMacroTests",
             dependencies: [
