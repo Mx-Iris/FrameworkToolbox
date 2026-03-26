@@ -8,7 +8,7 @@ import Foundation
 /// Applying `@Loggable` generates all logging properties directly as members,
 /// without requiring conformance to any protocol.
 ///
-/// - Parameter accessLevel: The access level for generated properties. Defaults to `.internal`.
+/// - Parameter accessLevel: The access level for generated properties. Defaults to `.private`.
 ///
 /// Example:
 ///
@@ -31,6 +31,6 @@ import Foundation
 ///     @Loggable(.public)
 ///     class MyPublicService { }
 @attached(member, names: named(_osLog), named(category), named(subsystem), named(logger))
-public macro Loggable(_ accessLevel: AccessLevel = .internal) = #externalMacro(module: "FoundationToolboxMacros", type: "LoggableMacro")
+public macro Loggable(_ accessLevel: AccessLevel = .private) = #externalMacro(module: "FoundationToolboxMacros", type: "LoggableMacro")
 
 #endif

@@ -18,23 +18,23 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService { 
+            struct MyService {
 
-                static var category: String {
+                private nonisolated static var category: String {
                     "MyService"
                 }
 
-                static var subsystem: String {
+                private nonisolated static var subsystem: String {
                     Bundle.main.bundleIdentifier ?? "MyService"
                 }
 
-                static let _osLog = OSLog(subsystem: subsystem, category: category)
+                private nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                var logger: os.Logger {
+                private nonisolated var logger: os.Logger {
                     Self.logger
                 }
             }
@@ -50,23 +50,23 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService { 
+            struct MyService {
 
-                private static var category: String {
+                private nonisolated static var category: String {
                     "MyService"
                 }
 
-                private static var subsystem: String {
+                private nonisolated static var subsystem: String {
                     Bundle.main.bundleIdentifier ?? "MyService"
                 }
 
-                private static let _osLog = OSLog(subsystem: subsystem, category: category)
+                private nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private var logger: os.Logger {
+                private nonisolated var logger: os.Logger {
                     Self.logger
                 }
             }
@@ -82,23 +82,23 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService { 
+            struct MyService {
 
-                public static var category: String {
+                public nonisolated static var category: String {
                     "MyService"
                 }
 
-                public static var subsystem: String {
+                public nonisolated static var subsystem: String {
                     Bundle.main.bundleIdentifier ?? "MyService"
                 }
 
-                public static let _osLog = OSLog(subsystem: subsystem, category: category)
+                public nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public static let logger = os.Logger(subsystem: subsystem, category: category)
+                public nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public var logger: os.Logger {
+                public nonisolated var logger: os.Logger {
                     Self.logger
                 }
             }
@@ -114,23 +114,23 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService { 
+            struct MyService {
 
-                static var category: String {
+                nonisolated static var category: String {
                     "MyService"
                 }
 
-                static var subsystem: String {
+                nonisolated static var subsystem: String {
                     Bundle.main.bundleIdentifier ?? "MyService"
                 }
 
-                static let _osLog = OSLog(subsystem: subsystem, category: category)
+                nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                static let logger = os.Logger(subsystem: subsystem, category: category)
+                nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                var logger: os.Logger {
+                nonisolated var logger: os.Logger {
                     Self.logger
                 }
             }
@@ -148,23 +148,23 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            class MyService { 
+            class MyService {
 
-                private static var category: String {
+                private nonisolated static var category: String {
                     "MyService"
                 }
 
-                private static var subsystem: String {
+                private nonisolated static var subsystem: String {
                     Bundle(for: self).bundleIdentifier ?? "MyService"
                 }
 
-                private static let _osLog = OSLog(subsystem: subsystem, category: category)
+                private nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private var logger: os.Logger {
+                private nonisolated var logger: os.Logger {
                     Self.logger
                 }
             }
@@ -180,23 +180,23 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            enum MyEvent { 
+            enum MyEvent {
 
-                static var category: String {
+                private nonisolated static var category: String {
                     "MyEvent"
                 }
 
-                static var subsystem: String {
+                private nonisolated static var subsystem: String {
                     Bundle.main.bundleIdentifier ?? "MyEvent"
                 }
 
-                static let _osLog = OSLog(subsystem: subsystem, category: category)
+                private nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                var logger: os.Logger {
+                private nonisolated var logger: os.Logger {
                     Self.logger
                 }
             }
@@ -214,21 +214,21 @@ struct LoggableMacroTests {
             """
             actor MyActor {\u{0020}
 
-                static var category: String {
+                private nonisolated static var category: String {
                     "MyActor"
                 }
 
-                static var subsystem: String {
+                private nonisolated static var subsystem: String {
                     Bundle.main.bundleIdentifier ?? "MyActor"
                 }
 
-                static let _osLog = OSLog(subsystem: subsystem, category: category)
+                private nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                var logger: os.Logger {
+                private nonisolated var logger: os.Logger {
                     Self.logger
                 }
             }
@@ -244,23 +244,23 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService { 
+            struct MyService {
 
-                fileprivate static var category: String {
+                fileprivate nonisolated static var category: String {
                     "MyService"
                 }
 
-                fileprivate static var subsystem: String {
+                fileprivate nonisolated static var subsystem: String {
                     Bundle.main.bundleIdentifier ?? "MyService"
                 }
 
-                fileprivate static let _osLog = OSLog(subsystem: subsystem, category: category)
+                fileprivate nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                fileprivate static let logger = os.Logger(subsystem: subsystem, category: category)
+                fileprivate nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                fileprivate var logger: os.Logger {
+                fileprivate nonisolated var logger: os.Logger {
                     Self.logger
                 }
             }
@@ -276,23 +276,23 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService { 
+            struct MyService {
 
-                package static var category: String {
+                package nonisolated static var category: String {
                     "MyService"
                 }
 
-                package static var subsystem: String {
+                package nonisolated static var subsystem: String {
                     Bundle.main.bundleIdentifier ?? "MyService"
                 }
 
-                package static let _osLog = OSLog(subsystem: subsystem, category: category)
+                package nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                package static let logger = os.Logger(subsystem: subsystem, category: category)
+                package nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                package var logger: os.Logger {
+                package nonisolated var logger: os.Logger {
                     Self.logger
                 }
             }

@@ -23,16 +23,16 @@ public struct LoggableMacro: MemberMacro {
             : "Bundle.main.bundleIdentifier ?? \(quoteString(typeName))"
 
         return [
-            "\(raw: accessPrefix)static var category: String { \(literal: typeName) }",
-            "\(raw: accessPrefix)static var subsystem: String { \(raw: subsystemBody) }",
-            "\(raw: accessPrefix)static let _osLog = OSLog(subsystem: subsystem, category: category)",
+            "\(raw: accessPrefix)nonisolated static var category: String { \(literal: typeName) }",
+            "\(raw: accessPrefix)nonisolated static var subsystem: String { \(raw: subsystemBody) }",
+            "\(raw: accessPrefix)nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)",
             """
             @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-            \(raw: accessPrefix)static let logger = os.Logger(subsystem: subsystem, category: category)
+            \(raw: accessPrefix)nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
             """,
             """
             @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-            \(raw: accessPrefix)var logger: os.Logger { Self.logger }
+            \(raw: accessPrefix)nonisolated var logger: os.Logger { Self.logger }
             """,
         ]
     }
@@ -55,13 +55,13 @@ private func quoteString(_ value: String) -> String {
     "\"\(value)\""
 }
 
-/// Extracts access level from the macro attribute, defaulting to "internal".
+/// Extracts access level from the macro attribute, defaulting to "private".
 private func extractAccessLevel(from node: AttributeSyntax) -> String {
     // Check if there are arguments
     guard let arguments = node.arguments,
           case let .argumentList(argList) = arguments,
           let firstArg = argList.first else {
-        return "internal"
+        return "private"
     }
 
     // Parse the member access expression (e.g., `.private`, `.public`)
@@ -69,5 +69,5 @@ private func extractAccessLevel(from node: AttributeSyntax) -> String {
         return memberAccess.declName.baseName.text
     }
 
-    return "internal"
+    return "private"
 }
