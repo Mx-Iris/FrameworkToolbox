@@ -25,10 +25,10 @@ public struct LoggableMacro: MemberMacro {
         return [
             "\(raw: accessPrefix)nonisolated static var category: String { \(literal: typeName) }",
             "\(raw: accessPrefix)nonisolated static var subsystem: String { \(raw: subsystemBody) }",
-            "\(raw: accessPrefix)nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)",
+            "\(raw: accessPrefix)nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)",
             """
             @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-            \(raw: accessPrefix)nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
+            \(raw: accessPrefix)nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
             """,
             """
             @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)

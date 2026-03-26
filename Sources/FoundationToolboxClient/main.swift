@@ -60,3 +60,16 @@ struct InternalLoggableStruct {
         #log(.info, "Internal logging")
     }
 }
+
+// MainActor-isolated type — verifies nonisolated properties work correctly
+@MainActor
+@Loggable(.internal)
+class MainActorService {
+    func performTask() {
+        #log(.info, "MainActor task started")
+    }
+
+    nonisolated func backgroundLog() {
+        #log(.debug, "Background log from MainActor type")
+    }
+}

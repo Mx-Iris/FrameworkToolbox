@@ -28,10 +28,10 @@ struct LoggableMacroTests {
                     Bundle.main.bundleIdentifier ?? "MyService"
                 }
 
-                private nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -60,10 +60,10 @@ struct LoggableMacroTests {
                     Bundle.main.bundleIdentifier ?? "MyService"
                 }
 
-                private nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -92,10 +92,10 @@ struct LoggableMacroTests {
                     Bundle.main.bundleIdentifier ?? "MyService"
                 }
 
-                public nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
+                public nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
+                public nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated var logger: os.Logger {
@@ -124,10 +124,10 @@ struct LoggableMacroTests {
                     Bundle.main.bundleIdentifier ?? "MyService"
                 }
 
-                nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
+                nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
+                nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 nonisolated var logger: os.Logger {
@@ -158,10 +158,10 @@ struct LoggableMacroTests {
                     Bundle(for: self).bundleIdentifier ?? "MyService"
                 }
 
-                private nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -190,10 +190,10 @@ struct LoggableMacroTests {
                     Bundle.main.bundleIdentifier ?? "MyEvent"
                 }
 
-                private nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -222,10 +222,10 @@ struct LoggableMacroTests {
                     Bundle.main.bundleIdentifier ?? "MyActor"
                 }
 
-                private nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -254,10 +254,10 @@ struct LoggableMacroTests {
                     Bundle.main.bundleIdentifier ?? "MyService"
                 }
 
-                fileprivate nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
+                fileprivate nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                fileprivate nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
+                fileprivate nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 fileprivate nonisolated var logger: os.Logger {
@@ -286,10 +286,10 @@ struct LoggableMacroTests {
                     Bundle.main.bundleIdentifier ?? "MyService"
                 }
 
-                package nonisolated(unsafe) static let _osLog = OSLog(subsystem: subsystem, category: category)
+                package nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                package nonisolated(unsafe) static let logger = os.Logger(subsystem: subsystem, category: category)
+                package nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 package nonisolated var logger: os.Logger {
