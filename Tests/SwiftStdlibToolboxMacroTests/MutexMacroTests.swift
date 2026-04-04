@@ -25,6 +25,13 @@ struct MutexMacroTests {
                         value = newValue
                     }
                 }
+                _modify {
+                    let valuePointer = _counter._unsafeLock()
+                    defer {
+                        _counter._unsafeUnlock()
+                    }
+                    yield &valuePointer.pointee
+                }
             }
 
             private let _counter = Mutex<Int >(0)
@@ -51,6 +58,13 @@ struct MutexMacroTests {
                         value = newValue
                     }
                 }
+                _modify {
+                    let valuePointer = _name._unsafeLock()
+                    defer {
+                        _name._unsafeUnlock()
+                    }
+                    yield &valuePointer.pointee
+                }
             }
 
             private let _name = Mutex<String >("")
@@ -76,6 +90,13 @@ struct MutexMacroTests {
                     _value.withLock { (value: inout String? ) -> Void in
                         value = newValue
                     }
+                }
+                _modify {
+                    let valuePointer = _value._unsafeLock()
+                    defer {
+                        _value._unsafeUnlock()
+                    }
+                    yield &valuePointer.pointee
                 }
             }
 
@@ -128,6 +149,13 @@ struct MutexMacroTests {
                     _items.withLock { (value: inout [String] ) -> Void in
                         value = newValue
                     }
+                }
+                _modify {
+                    let valuePointer = _items._unsafeLock()
+                    defer {
+                        _items._unsafeUnlock()
+                    }
+                    yield &valuePointer.pointee
                 }
             }
 

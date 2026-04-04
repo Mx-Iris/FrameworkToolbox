@@ -65,6 +65,22 @@ public struct Mutex<Value: ~Copyable>: ~Copyable, @unchecked Sendable {
         _buffer.deallocate()
     }
 
+    // MARK: - Unsafe Lock API (for macro-generated _modify accessors)
+
+    /// Acquires the lock and returns a pointer to the protected value.
+    /// Caller MUST call `_unsafeUnlock()` exactly once when done.
+    @inlinable
+    public borrowing func _unsafeLock() -> UnsafeMutablePointer<Value> {
+        os_unfair_lock_lock(_lockPtr)
+        return _valuePtr
+    }
+
+    /// Releases the lock previously acquired by `_unsafeLock()`.
+    @inlinable
+    public borrowing func _unsafeUnlock() {
+        os_unfair_lock_unlock(_lockPtr)
+    }
+
     // MARK: - Locking API
 
     @inlinable
