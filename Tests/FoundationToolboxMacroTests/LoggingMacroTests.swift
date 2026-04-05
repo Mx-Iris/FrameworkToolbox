@@ -18,7 +18,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {
+            struct MyService {\u{0020}
 
                 private nonisolated static var category: String {
                     "MyService"
@@ -50,7 +50,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {
+            struct MyService {\u{0020}
 
                 private nonisolated static var category: String {
                     "MyService"
@@ -82,7 +82,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {
+            struct MyService {\u{0020}
 
                 public nonisolated static var category: String {
                     "MyService"
@@ -114,7 +114,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {
+            struct MyService {\u{0020}
 
                 nonisolated static var category: String {
                     "MyService"
@@ -148,7 +148,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            class MyService {
+            class MyService {\u{0020}
 
                 private nonisolated static var category: String {
                     "MyService"
@@ -180,7 +180,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            enum MyEvent {
+            enum MyEvent {\u{0020}
 
                 private nonisolated static var category: String {
                     "MyEvent"
@@ -244,7 +244,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {
+            struct MyService {\u{0020}
 
                 fileprivate nonisolated static var category: String {
                     "MyService"
@@ -276,7 +276,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {
+            struct MyService {\u{0020}
 
                 package nonisolated static var category: String {
                     "MyService"

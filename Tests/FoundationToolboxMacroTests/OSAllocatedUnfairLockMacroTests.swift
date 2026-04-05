@@ -109,4 +109,30 @@ struct OSAllocatedUnfairLockMacroTests {
             """
         }
     }
+
+    @Test func staticProperty() {
+        assertMacro {
+            """
+            @OSAllocatedUnfairLock
+            static var counter: Int = 0
+            """
+        } expansion: {
+            """
+            static var counter: Int {
+                get {
+                    _counter.withLock {
+                        $0
+                    }
+                }
+                set {
+                    _counter.withLock { (value: inout Int ) -> Void in
+                        value = newValue
+                    }
+                }
+            }
+
+            private static let _counter = OSAllocatedUnfairLock<Int >(initialState: 0)
+            """
+        }
+    }
 }

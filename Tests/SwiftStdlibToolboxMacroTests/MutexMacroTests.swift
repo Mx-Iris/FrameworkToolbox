@@ -163,4 +163,37 @@ struct MutexMacroTests {
             """
         }
     }
+
+    @Test func staticProperty() {
+        assertMacro {
+            """
+            @Mutex
+            static var counter: Int = 0
+            """
+        } expansion: {
+            """
+            static var counter: Int {
+                get {
+                    _counter.withLock {
+                        $0
+                    }
+                }
+                set {
+                    _counter.withLock { (value: inout Int ) -> Void in
+                        value = newValue
+                    }
+                }
+                _modify {
+                    let valuePointer = _counter._unsafeLock()
+                    defer {
+                        _counter._unsafeUnlock()
+                    }
+                    yield &valuePointer.pointee
+                }
+            }
+
+            private static let _counter = Mutex<Int >(0)
+            """
+        }
+    }
 }

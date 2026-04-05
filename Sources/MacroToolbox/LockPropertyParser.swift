@@ -13,6 +13,7 @@ public struct LockPropertyInfo {
     public let isWeak: Bool
     public let isOptional: Bool
     public let isImplicitlyUnwrappedOptional: Bool
+    public let isStatic: Bool
 }
 
 // MARK: - Parser
@@ -40,6 +41,9 @@ public enum LockPropertyParser {
         }
 
         let isWeak = varDecl.modifiers.contains { $0.name.tokenKind == .keyword(.weak) }
+        let isStatic = varDecl.modifiers.contains {
+            $0.name.tokenKind == .keyword(.static) || $0.name.tokenKind == .keyword(.class)
+        }
         let isOptional = Self.isOptionalType(type)
         let isIUO = type.is(ImplicitlyUnwrappedOptionalTypeSyntax.self)
 
@@ -66,7 +70,8 @@ public enum LockPropertyParser {
             initialValue: initialValue,
             isWeak: isWeak,
             isOptional: isOptional,
-            isImplicitlyUnwrappedOptional: isIUO
+            isImplicitlyUnwrappedOptional: isIUO,
+            isStatic: isStatic
         )
     }
 
