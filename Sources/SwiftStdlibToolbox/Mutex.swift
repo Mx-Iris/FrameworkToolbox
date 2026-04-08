@@ -9,9 +9,13 @@ public struct Mutex<Value: ~Copyable>: ~Copyable, @unchecked Sendable {
 
     /// Byte offset from buffer start to the Value storage.
     /// Layout: [os_unfair_lock | padding | Value]
-//    @usableFromInline
+    #if compiler(>=6.3)
     @inline(always)
     @export(implementation)
+    #else
+    @inline(__always)
+    @_alwaysEmitIntoClient
+    #endif
     internal static var _valueOffset: Int {
         let lockSize = MemoryLayout<os_unfair_lock>.size
         let valueAlignment = max(MemoryLayout<Value>.alignment, 1)
@@ -19,14 +23,24 @@ public struct Mutex<Value: ~Copyable>: ~Copyable, @unchecked Sendable {
         return (lockSize + valueAlignment - 1) & ~(valueAlignment - 1)
     }
 
+    #if compiler(>=6.3)
     @inline(always)
     @export(implementation)
+    #else
+    @inline(__always)
+    @_alwaysEmitIntoClient
+    #endif
     internal var _lockPtr: UnsafeMutablePointer<os_unfair_lock> {
         _buffer.assumingMemoryBound(to: os_unfair_lock.self)
     }
 
+    #if compiler(>=6.3)
     @inline(always)
     @export(implementation)
+    #else
+    @inline(__always)
+    @_alwaysEmitIntoClient
+    #endif
     internal var _valuePtr: UnsafeMutablePointer<Value> {
         _buffer.advanced(by: Self._valueOffset)
               .assumingMemoryBound(to: Value.self)
@@ -34,8 +48,13 @@ public struct Mutex<Value: ~Copyable>: ~Copyable, @unchecked Sendable {
 
     // MARK: - Lifecycle
 
+    #if compiler(>=6.3)
     @inline(always)
     @export(implementation)
+    #else
+    @inline(__always)
+    @_alwaysEmitIntoClient
+    #endif
     public init(_ initialValue: consuming sending Value) {
         let valueOffset = Self._valueOffset
         let totalSize = valueOffset + MemoryLayout<Value>.size
@@ -62,8 +81,13 @@ public struct Mutex<Value: ~Copyable>: ~Copyable, @unchecked Sendable {
             .initialize(to: initialValue)
     }
 
+    #if compiler(>=6.3)
     @inline(always)
     @export(implementation)
+    #else
+    @inline(__always)
+    @_alwaysEmitIntoClient
+    #endif
     deinit {
         // Deinitialize value (runs destructors / releases references)
         // Lock is trivial (UInt32), no deinit needed
@@ -75,24 +99,39 @@ public struct Mutex<Value: ~Copyable>: ~Copyable, @unchecked Sendable {
 
     /// Acquires the lock and returns a pointer to the protected value.
     /// Caller MUST call `_unsafeUnlock()` exactly once when done.
+    #if compiler(>=6.3)
     @inline(always)
     @export(implementation)
+    #else
+    @inline(__always)
+    @_alwaysEmitIntoClient
+    #endif
     public borrowing func _unsafeLock() -> UnsafeMutablePointer<Value> {
         os_unfair_lock_lock(_lockPtr)
         return _valuePtr
     }
 
     /// Releases the lock previously acquired by `_unsafeLock()`.
+    #if compiler(>=6.3)
     @inline(always)
     @export(implementation)
+    #else
+    @inline(__always)
+    @_alwaysEmitIntoClient
+    #endif
     public borrowing func _unsafeUnlock() {
         os_unfair_lock_unlock(_lockPtr)
     }
 
     // MARK: - Locking API
 
+    #if compiler(>=6.3)
     @inline(always)
     @export(implementation)
+    #else
+    @inline(__always)
+    @_alwaysEmitIntoClient
+    #endif
     public borrowing func withLock<Result: ~Copyable, E: Error>(
         _ body: (inout sending Value) throws(E) -> sending Result
     ) throws(E) -> sending Result {
@@ -101,8 +140,13 @@ public struct Mutex<Value: ~Copyable>: ~Copyable, @unchecked Sendable {
         return try body(&_valuePtr.pointee)
     }
 
+    #if compiler(>=6.3)
     @inline(always)
     @export(implementation)
+    #else
+    @inline(__always)
+    @_alwaysEmitIntoClient
+    #endif
     public borrowing func withLockIfAvailable<Result: ~Copyable, E: Error>(
         _ body: (inout sending Value) throws(E) -> sending Result
     ) throws(E) -> sending Result? {
@@ -113,8 +157,13 @@ public struct Mutex<Value: ~Copyable>: ~Copyable, @unchecked Sendable {
 
     /// Variant without `sending` constraint on the closure parameter.
     /// Use when you already know you're in the correct isolation domain.
+    #if compiler(>=6.3)
     @inline(always)
     @export(implementation)
+    #else
+    @inline(__always)
+    @_alwaysEmitIntoClient
+    #endif
     public borrowing func withLockUnchecked<Result: ~Copyable, E: Error>(
         _ body: (inout Value) throws(E) -> Result
     ) throws(E) -> Result {
