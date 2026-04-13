@@ -10,5 +10,7 @@ struct MainPlugin: CompilerPlugin {
         EquatableIgnoredUnsafeClosureMacro.self,
         AssociatedValueMacro.self,
         CaseCheckableMacro.self,
+        AvailableNonMutatingMacro.self,
+        AvailableMutatingMacro.self,
     ]
 }
