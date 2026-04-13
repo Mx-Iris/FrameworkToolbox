@@ -65,4 +65,21 @@ public struct OSAllocatedUnfairLockMacro: LockMacroProtocol {
             """
         }
     }
+
+    public static func makeModify(for info: LockPropertyInfo) -> AccessorDeclSyntax? {
+        #if OSAllocatedUnfairLockUnsafeModify
+        if info.isWeak || info.isImplicitlyUnwrappedOptional {
+            return nil
+        }
+        return """
+        _modify {
+            let valuePointer = \(raw: info.storageName)._unsafeLock()
+            defer { \(raw: info.storageName)._unsafeUnlock() }
+            yield &valuePointer.pointee
+        }
+        """
+        #else
+        return nil
+        #endif
+    }
 }

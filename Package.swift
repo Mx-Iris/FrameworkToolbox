@@ -21,6 +21,24 @@ let package = Package(
             targets: ["FoundationToolbox"]
         ),
     ],
+    traits: [
+        .default(enabledTraits: []),
+        Trait(
+            name: "OSAllocatedUnfairLockUnsafeModify",
+            description: """
+                Enable the `_modify` accessor for the `@OSAllocatedUnfairLock` macro.
+
+                When enabled, `@OSAllocatedUnfairLock` emits a `_modify` accessor that \
+                acquires the lock once and yields a pointer to the protected state, \
+                avoiding the double-lock incurred by the default get/set pair. The \
+                implementation relies on unsafeBitCast-ing `OSAllocatedUnfairLock<State>` \
+                to its internal `ManagedBuffer<State, os_unfair_lock>` representation, \
+                which is sound only as long as Apple keeps the struct's `@frozen` layout \
+                (one stored property: the ManagedBuffer reference). Disabled by default \
+                because it depends on private implementation details of Apple's `os` framework.
+                """
+        ),
+    ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "509.1.0" ..< "602.0.0"),
         .package(url: "https://github.com/pointfreeco/swift-macro-testing.git", from: "0.5.0"),
