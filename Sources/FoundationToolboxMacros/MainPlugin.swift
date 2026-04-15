@@ -8,5 +8,6 @@ struct MainPlugin: CompilerPlugin {
         LoggableMacro.self,
         LogMacro.self,
         OSAllocatedUnfairLockMacro.self,
+        SelectorMacro.self,
     ]
 }
