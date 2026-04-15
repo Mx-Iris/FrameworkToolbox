@@ -9,7 +9,26 @@ public struct SelectorMacro: ExpressionMacro {
         of node: some FreestandingMacroExpansionSyntax,
         in context: some MacroExpansionContext
     ) throws -> ExprSyntax {
-        return #"NSSelectorFromString("")"#
+        guard let argument = node.arguments.first else {
+            throw SelectorMacroError.noArguments
+        }
+
+        guard let stringLiteralExpr = argument.expression.as(StringLiteralExprSyntax.self),
+              stringLiteralExpr.segments.count == 1,
+              let segment = stringLiteralExpr.segments.first?.as(StringSegmentSyntax.self)
+        else {
+            throw SelectorMacroError.mustBeValidStringLiteral
+        }
+
+        let text = segment.content.text
+
+        guard !text.isEmpty,
+              text.rangeOfCharacter(from: .whitespacesAndNewlines) == nil
+        else {
+            throw SelectorMacroError.containsWhitespaceOrEmpty
+        }
+
+        return #"NSSelectorFromString("\#(raw: text)")"#
     }
 }
 
