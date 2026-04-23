@@ -299,6 +299,168 @@ struct LoggableMacroTests {
             """
         }
     }
+
+    // MARK: Custom subsystem / category
+
+    @Test func customSubsystemOnly() {
+        assertMacro {
+            """
+            @Loggable(subsystem: "com.example.app")
+            struct MyService { }
+            """
+        } expansion: {
+            """
+            struct MyService {\u{0020}
+
+                private nonisolated static var category: String {
+                    "MyService"
+                }
+
+                private nonisolated static var subsystem: String {
+                    "com.example.app"
+                }
+
+                private nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+            }
+            """
+        }
+    }
+
+    @Test func customCategoryOnly() {
+        assertMacro {
+            """
+            @Loggable(category: "Network")
+            struct MyService { }
+            """
+        } expansion: {
+            """
+            struct MyService {\u{0020}
+
+                private nonisolated static var category: String {
+                    "Network"
+                }
+
+                private nonisolated static var subsystem: String {
+                    Bundle.main.bundleIdentifier ?? "MyService"
+                }
+
+                private nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+            }
+            """
+        }
+    }
+
+    @Test func customSubsystemAndCategory() {
+        assertMacro {
+            """
+            @Loggable(subsystem: "com.example.app", category: "Network")
+            struct MyService { }
+            """
+        } expansion: {
+            """
+            struct MyService {\u{0020}
+
+                private nonisolated static var category: String {
+                    "Network"
+                }
+
+                private nonisolated static var subsystem: String {
+                    "com.example.app"
+                }
+
+                private nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+            }
+            """
+        }
+    }
+
+    @Test func accessLevelWithCustomSubsystemAndCategory() {
+        assertMacro {
+            """
+            @Loggable(.public, subsystem: "com.example.app", category: "Network")
+            struct MyService { }
+            """
+        } expansion: {
+            """
+            struct MyService {\u{0020}
+
+                public nonisolated static var category: String {
+                    "Network"
+                }
+
+                public nonisolated static var subsystem: String {
+                    "com.example.app"
+                }
+
+                public nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+            }
+            """
+        }
+    }
+
+    @Test func classWithCustomSubsystem() {
+        assertMacro {
+            """
+            @Loggable(.internal, subsystem: "com.example.app")
+            class MyService { }
+            """
+        } expansion: {
+            """
+            class MyService {\u{0020}
+
+                nonisolated static var category: String {
+                    "MyService"
+                }
+
+                nonisolated static var subsystem: String {
+                    "com.example.app"
+                }
+
+                nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+            }
+            """
+        }
+    }
 }
 
 // MARK: - #log

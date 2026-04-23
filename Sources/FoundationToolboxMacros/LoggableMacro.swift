@@ -14,16 +14,25 @@ public struct LoggableMacro: MemberMacro {
         let typeName = extractTypeName(from: declaration)
         let isClass = declaration.is(ClassDeclSyntax.self)
         let accessLevel = extractAccessLevel(from: node)
-        
+        let customSubsystem = extractStringLiteral(labeled: "subsystem", from: node)
+        let customCategory = extractStringLiteral(labeled: "category", from: node)
+
         // Build access modifier prefix (empty for internal)
         let accessPrefix = accessLevel == "internal" ? "" : "\(accessLevel) "
 
-        let subsystemBody: String = isClass
-            ? "Bundle(for: self).bundleIdentifier ?? \(quoteString(typeName))"
-            : "Bundle.main.bundleIdentifier ?? \(quoteString(typeName))"
+        let categoryBody: String = customCategory ?? quoteString(typeName)
+
+        let subsystemBody: String
+        if let customSubsystem {
+            subsystemBody = customSubsystem
+        } else if isClass {
+            subsystemBody = "Bundle(for: self).bundleIdentifier ?? \(quoteString(typeName))"
+        } else {
+            subsystemBody = "Bundle.main.bundleIdentifier ?? \(quoteString(typeName))"
+        }
 
         return [
-            "\(raw: accessPrefix)nonisolated static var category: String { \(literal: typeName) }",
+            "\(raw: accessPrefix)nonisolated static var category: String { \(raw: categoryBody) }",
             "\(raw: accessPrefix)nonisolated static var subsystem: String { \(raw: subsystemBody) }",
             "\(raw: accessPrefix)nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)",
             """
@@ -56,18 +65,30 @@ private func quoteString(_ value: String) -> String {
 }
 
 /// Extracts access level from the macro attribute, defaulting to "private".
+/// Only considers the first positional (unlabeled) argument.
 private func extractAccessLevel(from node: AttributeSyntax) -> String {
-    // Check if there are arguments
     guard let arguments = node.arguments,
           case let .argumentList(argList) = arguments,
-          let firstArg = argList.first else {
+          let firstArg = argList.first,
+          firstArg.label == nil,
+          let memberAccess = firstArg.expression.as(MemberAccessExprSyntax.self) else {
         return "private"
     }
+    return memberAccess.declName.baseName.text
+}
 
-    // Parse the member access expression (e.g., `.private`, `.public`)
-    if let memberAccess = firstArg.expression.as(MemberAccessExprSyntax.self) {
-        return memberAccess.declName.baseName.text
+/// Extracts a string literal argument by its label, returning the raw source form (including quotes).
+/// Returns `nil` when the label is missing or the argument is not a string literal.
+private func extractStringLiteral(labeled label: String, from node: AttributeSyntax) -> String? {
+    guard let arguments = node.arguments,
+          case let .argumentList(argList) = arguments else {
+        return nil
     }
-
-    return "private"
+    for argument in argList {
+        if argument.label?.text == label,
+           let stringLiteral = argument.expression.as(StringLiteralExprSyntax.self) {
+            return stringLiteral.trimmedDescription
+        }
+    }
+    return nil
 }

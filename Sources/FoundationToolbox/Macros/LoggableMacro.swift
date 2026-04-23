@@ -8,7 +8,13 @@ import Foundation
 /// Applying `@Loggable` generates all logging properties directly as members,
 /// without requiring conformance to any protocol.
 ///
-/// - Parameter accessLevel: The access level for generated properties. Defaults to `.private`.
+/// - Parameters:
+///   - accessLevel: The access level for generated properties. Defaults to `.private`.
+///   - subsystem: Override the auto-generated subsystem with a string literal.
+///     Defaults to `nil`, which generates `Bundle.main.bundleIdentifier ?? "<TypeName>"`
+///     (or `Bundle(for: self).bundleIdentifier ?? "<TypeName>"` for classes).
+///   - category: Override the auto-generated category with a string literal.
+///     Defaults to `nil`, which generates `"<TypeName>"`.
 ///
 /// Example:
 ///
@@ -26,11 +32,18 @@ import Foundation
 ///     //     var logger: os.Logger { Self.logger }
 ///     // }
 ///
-/// You can also specify a different access level:
+/// You can also specify a different access level or override subsystem/category:
 ///
 ///     @Loggable(.public)
 ///     class MyPublicService { }
+///
+///     @Loggable(.internal, subsystem: "com.example.app", category: "Network")
+///     struct NetworkService { }
 @attached(member, names: named(_osLog), named(category), named(subsystem), named(logger))
-public macro Loggable(_ accessLevel: AccessLevel = .private) = #externalMacro(module: "FoundationToolboxMacros", type: "LoggableMacro")
+public macro Loggable(
+    _ accessLevel: AccessLevel = .private,
+    subsystem: StaticString? = nil,
+    category: StaticString? = nil
+) = #externalMacro(module: "FoundationToolboxMacros", type: "LoggableMacro")
 
 #endif
