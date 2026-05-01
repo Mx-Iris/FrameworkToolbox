@@ -40,7 +40,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", "509.1.0" ..< "602.0.0"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", "509.1.0" ..< "604.0.0"),
         .package(url: "https://github.com/pointfreeco/swift-macro-testing.git", from: "0.5.0"),
     ],
     targets: [
@@ -80,7 +80,6 @@ let package = Package(
                 .SwiftSyntaxMacros,
                 .SwiftCompilerPlugin,
                 .SwiftSyntaxBuilder,
-//                .MacroToolkit,
             ]
         ),
         .macro(
@@ -91,7 +90,6 @@ let package = Package(
                 .SwiftSyntaxMacros,
                 .SwiftCompilerPlugin,
                 .SwiftSyntaxBuilder,
-//                .MacroToolkit,
             ]
         ),
         .macro(
@@ -103,7 +101,6 @@ let package = Package(
                 .SwiftCompilerPlugin,
                 .SwiftSyntaxBuilder,
                 .SwiftDiagnostics,
-//                .MacroToolkit,
             ]
         ),
         .executableTarget(
@@ -192,8 +189,4 @@ extension Target.Dependency {
         name: "SwiftDiagnostics",
         package: "swift-syntax"
     )
-//    static let MacroToolkit = Target.Dependency.product(
-//        name: "MacroToolkit",
-//        package: "swift-macro-toolkit"
-//    )
 }
