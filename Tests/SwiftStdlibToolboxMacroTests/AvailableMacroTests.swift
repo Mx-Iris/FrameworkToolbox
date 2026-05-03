@@ -24,7 +24,7 @@ struct AvailableMacroTests {
                     if let existingValue = windowControllerStorage as? WindowController {
                         return existingValue
                     }
-                    let defaultValue = WindowController()
+                    let defaultValue: WindowController = WindowController()
                     windowControllerStorage = defaultValue
                     return defaultValue
                 }
@@ -50,7 +50,7 @@ struct AvailableMacroTests {
                     if let existingValue = windowControllerStorage as? WindowController {
                         return existingValue
                     }
-                    let defaultValue = WindowController()
+                    let defaultValue: WindowController = WindowController()
                     windowControllerStorage = defaultValue
                     return defaultValue
                 }
@@ -79,7 +79,7 @@ struct AvailableMacroTests {
                     if let existingValue = windowControllerStorage as? WindowController {
                         return existingValue
                     }
-                    let defaultValue = WindowController()
+                    let defaultValue: WindowController = WindowController()
                     windowControllerStorage = defaultValue
                     return defaultValue
                 }
@@ -103,8 +103,79 @@ struct AvailableMacroTests {
             """
             @AvailableMutating
             ┬─────────────────
-            ╰─ 🛑 @AvailableMutating requires exactly one default value argument.
+            ╰─ 🛑 @AvailableMutating requires a default value, either as a macro argument or as a property initializer.
             private var windowController: WindowController
+            """
+        }
+    }
+
+    @Test func mutatingPropertyWithInitializer() {
+        assertMacro {
+            """
+            @AvailableMutating
+            @available(macOS 12, *)
+            private var attributedString: AttributedString = ""
+            """
+        } expansion: {
+            """
+            @available(macOS 12, *)
+            private var attributedString: AttributedString {
+                get {
+                    if let existingValue = attributedStringStorage as? AttributedString {
+                        return existingValue
+                    }
+                    let defaultValue: AttributedString = ""
+                    attributedStringStorage = defaultValue
+                    return defaultValue
+                }
+                set {
+                    attributedStringStorage = newValue
+                }
+            }
+
+            private var attributedStringStorage: Any?
+            """
+        }
+    }
+
+    @Test func nonMutatingPropertyWithInitializer() {
+        assertMacro {
+            """
+            @AvailableNonMutating
+            @available(macOS 15, *)
+            private var windowController: WindowController = WindowController()
+            """
+        } expansion: {
+            """
+            @available(macOS 15, *)
+            private var windowController: WindowController {
+                get {
+                    if let existingValue = windowControllerStorage as? WindowController {
+                        return existingValue
+                    }
+                    let defaultValue: WindowController = WindowController()
+                    windowControllerStorage = defaultValue
+                    return defaultValue
+                }
+            }
+
+            private var windowControllerStorage: Any?
+            """
+        }
+    }
+
+    @Test func conflictingArgumentAndInitializer() {
+        assertMacro {
+            """
+            @AvailableMutating(WindowController())
+            private var windowController: WindowController = WindowController()
+            """
+        } diagnostics: {
+            """
+            @AvailableMutating(WindowController())
+            ┬─────────────────────────────────────
+            ╰─ 🛑 @AvailableMutating cannot specify both a macro argument and a property initializer.
+            private var windowController: WindowController = WindowController()
             """
         }
     }

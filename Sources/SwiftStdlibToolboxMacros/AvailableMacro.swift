@@ -42,19 +42,24 @@ extension AvailableStorageMacroProtocol {
         providingAccessorsOf declaration: some DeclSyntaxProtocol,
         in context: some MacroExpansionContext
     ) throws -> [AccessorDeclSyntax] {
-        let propertyInfo = try AvailableStoragePropertyParser.parse(
+        guard let propertyInfo = try? AvailableStoragePropertyParser.parse(
             declaration,
             attribute: node,
             macroName: macroName
-        )
+        ) else {
+            return []
+        }
+
+        let typeDescription = propertyInfo.type.trimmedDescription
+        let defaultValueDescription = propertyInfo.defaultValue.trimmedDescription
 
         var accessors: [AccessorDeclSyntax] = [
             """
             get {
-                if let existingValue = \(raw: propertyInfo.storageName) as? \(propertyInfo.type) {
+                if let existingValue = \(raw: propertyInfo.storageName) as? \(raw: typeDescription) {
                     return existingValue
                 }
-                let defaultValue = \(propertyInfo.defaultValue)
+                let defaultValue: \(raw: typeDescription) = \(raw: defaultValueDescription)
                 \(raw: propertyInfo.storageName) = defaultValue
                 return defaultValue
             }
@@ -108,9 +113,21 @@ enum AvailableStoragePropertyParser {
             throw AvailableStorageMacroError.requiresExplicitType(macroName)
         }
 
-        guard let arguments = attribute.arguments?.as(LabeledExprListSyntax.self),
-              arguments.count == 1,
-              let defaultValue = arguments.first?.expression else {
+        let argumentDefaultValue = (attribute.arguments?.as(LabeledExprListSyntax.self))
+            .flatMap { $0.first?.expression }
+            .flatMap { $0.is(NilLiteralExprSyntax.self) ? nil : $0 }
+
+        let initializerDefaultValue = propertyBinding.initializer?.value
+
+        let defaultValue: ExprSyntax
+        switch (argumentDefaultValue, initializerDefaultValue) {
+        case (let argument?, nil):
+            defaultValue = argument
+        case (nil, let initializer?):
+            defaultValue = initializer
+        case (_?, _?):
+            throw AvailableStorageMacroError.conflictingDefaultValue(macroName)
+        case (nil, nil):
             throw AvailableStorageMacroError.requiresDefaultValue(macroName)
         }
 
@@ -135,6 +152,7 @@ enum AvailableStorageMacroError: Error, CustomStringConvertible, DiagnosticMessa
     case cannotHaveExistingAccessors(String)
     case requiresExplicitType(String)
     case requiresDefaultValue(String)
+    case conflictingDefaultValue(String)
 
     var description: String {
         switch self {
@@ -147,7 +165,9 @@ enum AvailableStorageMacroError: Error, CustomStringConvertible, DiagnosticMessa
         case .requiresExplicitType(let macroName):
             return "@\(macroName) requires an explicit type annotation."
         case .requiresDefaultValue(let macroName):
-            return "@\(macroName) requires exactly one default value argument."
+            return "@\(macroName) requires a default value, either as a macro argument or as a property initializer."
+        case .conflictingDefaultValue(let macroName):
+            return "@\(macroName) cannot specify both a macro argument and a property initializer."
         }
     }
 
@@ -166,6 +186,8 @@ enum AvailableStorageMacroError: Error, CustomStringConvertible, DiagnosticMessa
             diagnosticName = "requiresExplicitType"
         case .requiresDefaultValue:
             diagnosticName = "requiresDefaultValue"
+        case .conflictingDefaultValue:
+            diagnosticName = "conflictingDefaultValue"
         }
         return MessageID(domain: "AvailableStorageMacroError", id: diagnosticName)
     }
