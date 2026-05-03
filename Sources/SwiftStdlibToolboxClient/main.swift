@@ -23,6 +23,11 @@ final class ClassDecl: Sendable {
     @Mutex
     private var array: [String?] = []
 
+    @available(macOS 12, *)
+    @AvailableMutating
+    private var attributedString: AttributedString = ""
+    
+    
     init(property: String) {
         self.property = property
         array[safe: 2] = nil
@@ -36,3 +41,5 @@ _ = ClassDecl(property: "")
 enum EnumAssociatedValue {
     case optional(String?)
 }
+
+
