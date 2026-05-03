@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "framework-toolbox",
+  "description": "Claude Code plugins for the FrameworkToolbox Swift package — skills covering its macros and utility patterns.",
+  "owner": {
+    "name": "Mx-Iris",
+    "email": "mxiris@icloud.com"
+  },
+  "metadata": {
+    "description": "Plugins distributed alongside the FrameworkToolbox Swift package, providing Claude Code skills for its macros and utilities.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "framework-toolbox",
+      "source": "./plugins/framework-toolbox",
+      "description": "Skills for using the FrameworkToolbox Swift package, including the @Loggable and #log macros.",
+      "homepage": "https://github.com/Mx-Iris/FrameworkToolbox",
+      "keywords": ["swift", "macro", "logging", "os.log", "frameworktoolbox"]
+    }
+  ]
+}

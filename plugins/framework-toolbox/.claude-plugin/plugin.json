@@ -1,0 +1,12 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "framework-toolbox",
+  "description": "Skills for using the FrameworkToolbox Swift package — guidance for its macros (@Loggable, #log, and more) and box-pattern utilities.",
+  "author": {
+    "name": "Mx-Iris",
+    "email": "mxiris@icloud.com"
+  },
+  "homepage": "https://github.com/Mx-Iris/FrameworkToolbox",
+  "repository": "https://github.com/Mx-Iris/FrameworkToolbox",
+  "license": "MIT"
+}
