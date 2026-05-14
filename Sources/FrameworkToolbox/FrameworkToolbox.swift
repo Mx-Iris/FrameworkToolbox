@@ -7,7 +7,7 @@ public struct FrameworkToolbox<Base> {
 }
 
 public protocol FrameworkToolboxCompatible {
-    associatedtype Base
+    associatedtype Base = Self
     static var box: FrameworkToolbox<Base>.Type { set get }
     var box: FrameworkToolbox<Base> { set get }
 }
@@ -28,7 +28,7 @@ extension FrameworkToolboxCompatible {
 
 @dynamicMemberLookup
 public protocol FrameworkToolboxDynamicMemberLookup {
-    associatedtype Base
+    associatedtype Base = Self
     subscript<Member>(dynamicMember keyPath: ReferenceWritableKeyPath<FrameworkToolbox<Base>, Member>) -> Member { set get }
     subscript<Member>(dynamicMember keyPath: WritableKeyPath<FrameworkToolbox<Base>, Member>) -> Member { set get }
     subscript<Member>(dynamicMember keyPath: KeyPath<FrameworkToolbox<Base>, Member>) -> Member { get }
