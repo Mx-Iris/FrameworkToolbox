@@ -1,5 +1,3 @@
-#if OSAllocatedUnfairLockUnsafeModify
-
 import Testing
 import os
 @testable import FoundationToolbox
@@ -62,5 +60,3 @@ struct OSAllocatedUnfairLockUnsafeModifyTests {
         #expect(lock.withLock { $0 } == ["a", "b"])
     }
 }
-
-#endif
