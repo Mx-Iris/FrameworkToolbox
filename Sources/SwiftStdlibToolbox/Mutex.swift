@@ -1,3 +1,5 @@
+#if canImport(os)
+
 import os.lock
 
 @frozen
@@ -172,3 +174,6 @@ public struct Mutex<Value: ~Copyable>: ~Copyable, @unchecked Sendable {
         return try body(&_valuePtr.pointee)
     }
 }
+
+
+#endif

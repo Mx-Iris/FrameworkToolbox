@@ -1,3 +1,5 @@
+#if canImport(os)
+
 /// A macro that provides thread-safe access using Swift's Mutex.
 ///
 /// When applied to a property:
@@ -22,4 +24,4 @@ public macro Mutex() = #externalMacro(
     type: "MutexMacro"
 )
 
-
+#endif

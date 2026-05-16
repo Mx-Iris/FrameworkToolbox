@@ -1,3 +1,4 @@
+#if canImport(os)
 /// A macro that provides thread-safe access using `OSAllocatedUnfairLock`.
 ///
 /// When applied to a property:
@@ -16,3 +17,5 @@ public macro OSAllocatedUnfairLock() = #externalMacro(
     module: "FoundationToolboxMacros",
     type: "OSAllocatedUnfairLockMacro"
 )
+
+#endif
