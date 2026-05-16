@@ -24,7 +24,7 @@ final class ClassDecl: Sendable {
     private var array: [String?] = []
 
     @available(macOS 12, *)
-    @AvailableMutating
+    @AvailableMutating(isSendable: true)
     private var attributedString: AttributedString = ""
     
     

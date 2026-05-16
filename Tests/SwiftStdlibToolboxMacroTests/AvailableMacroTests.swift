@@ -30,7 +30,7 @@ struct AvailableMacroTests {
                 }
             }
 
-            private var windowControllerStorage: Any?
+            private nonisolated(unsafe) var windowControllerStorage: Any?
             """
         }
     }
@@ -59,7 +59,7 @@ struct AvailableMacroTests {
                 }
             }
 
-            private var windowControllerStorage: Any?
+            private nonisolated(unsafe) var windowControllerStorage: Any?
             """
         }
     }
@@ -88,7 +88,80 @@ struct AvailableMacroTests {
                 }
             }
 
-            private static var windowControllerStorage: Any?
+            private nonisolated(unsafe) static var windowControllerStorage: Any?
+            """
+        }
+    }
+
+    @Test func sendableMutatingProperty() {
+        assertMacro {
+            """
+            @AvailableMutating(isSendable: true)
+            @available(macOS 12, *)
+            private var attributedString: AttributedString = ""
+            """
+        } expansion: {
+            """
+            @available(macOS 12, *)
+            private var attributedString: AttributedString {
+                get {
+                    if let existingValue = attributedStringStorage as? AttributedString {
+                        return existingValue
+                    }
+                    let defaultValue: AttributedString = ""
+                    attributedStringStorage = defaultValue
+                    return defaultValue
+                }
+                set {
+                    attributedStringStorage = newValue
+                }
+            }
+
+            private nonisolated(unsafe) var attributedStringStorage: (any Sendable)?
+            """
+        }
+    }
+
+    @Test func sendableNonMutatingProperty() {
+        assertMacro {
+            """
+            @AvailableNonMutating(isSendable: true)
+            @available(macOS 12, *)
+            private var attributedString: AttributedString = ""
+            """
+        } expansion: {
+            """
+            @available(macOS 12, *)
+            private var attributedString: AttributedString {
+                get {
+                    if let existingValue = attributedStringStorage as? AttributedString {
+                        return existingValue
+                    }
+                    let defaultValue: AttributedString = ""
+                    attributedStringStorage = defaultValue
+                    return defaultValue
+                }
+            }
+
+            private nonisolated(unsafe) var attributedStringStorage: (any Sendable)?
+            """
+        }
+    }
+
+    @Test func invalidIsSendableArgument() {
+        assertMacro {
+            """
+            @AvailableMutating(isSendable: someValue)
+            @available(macOS 12, *)
+            private var attributedString: AttributedString = ""
+            """
+        } diagnostics: {
+            """
+            @AvailableMutating(isSendable: someValue)
+            ┬────────────────────────────────────────
+            ╰─ 🛑 @AvailableMutating requires `isSendable` to be a boolean literal (true or false).
+            @available(macOS 12, *)
+            private var attributedString: AttributedString = ""
             """
         }
     }
@@ -133,7 +206,7 @@ struct AvailableMacroTests {
                 }
             }
 
-            private var attributedStringStorage: Any?
+            private nonisolated(unsafe) var attributedStringStorage: Any?
             """
         }
     }
@@ -159,7 +232,7 @@ struct AvailableMacroTests {
                 }
             }
 
-            private var windowControllerStorage: Any?
+            private nonisolated(unsafe) var windowControllerStorage: Any?
             """
         }
     }

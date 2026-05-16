@@ -30,9 +30,10 @@ extension AvailableStorageMacroProtocol {
             macroName: macroName
         )
         let staticKeyword = propertyInfo.isStatic ? "static " : ""
+        let storageType = propertyInfo.isSendable ? "(any Sendable)?" : "Any?"
         return [
             """
-            private \(raw: staticKeyword)var \(raw: propertyInfo.storageName): Any?
+            private nonisolated(unsafe) \(raw: staticKeyword)var \(raw: propertyInfo.storageName): \(raw: storageType)
             """
         ]
     }
@@ -86,6 +87,7 @@ struct AvailableStoragePropertyInfo {
     let type: TypeSyntax
     let defaultValue: ExprSyntax
     let isStatic: Bool
+    let isSendable: Bool
 }
 
 enum AvailableStoragePropertyParser {
@@ -113,9 +115,23 @@ enum AvailableStoragePropertyParser {
             throw AvailableStorageMacroError.requiresExplicitType(macroName)
         }
 
-        let argumentDefaultValue = (attribute.arguments?.as(LabeledExprListSyntax.self))
-            .flatMap { $0.first?.expression }
+        let argumentList = attribute.arguments?.as(LabeledExprListSyntax.self)
+
+        let argumentDefaultValue = argumentList
+            .flatMap { arguments in
+                arguments.first { $0.label == nil }?.expression
+            }
             .flatMap { $0.is(NilLiteralExprSyntax.self) ? nil : $0 }
+
+        var isSendable = false
+        if let argumentList {
+            for argument in argumentList where argument.label?.text == "isSendable" {
+                guard let boolLiteral = argument.expression.as(BooleanLiteralExprSyntax.self) else {
+                    throw AvailableStorageMacroError.invalidIsSendableArgument(macroName)
+                }
+                isSendable = boolLiteral.literal.tokenKind == .keyword(.true)
+            }
+        }
 
         let initializerDefaultValue = propertyBinding.initializer?.value
 
@@ -141,7 +157,8 @@ enum AvailableStoragePropertyParser {
             storageName: "\(propertyName)Storage",
             type: type,
             defaultValue: defaultValue,
-            isStatic: isStatic
+            isStatic: isStatic,
+            isSendable: isSendable
         )
     }
 }
@@ -153,6 +170,7 @@ enum AvailableStorageMacroError: Error, CustomStringConvertible, DiagnosticMessa
     case requiresExplicitType(String)
     case requiresDefaultValue(String)
     case conflictingDefaultValue(String)
+    case invalidIsSendableArgument(String)
 
     var description: String {
         switch self {
@@ -168,6 +186,8 @@ enum AvailableStorageMacroError: Error, CustomStringConvertible, DiagnosticMessa
             return "@\(macroName) requires a default value, either as a macro argument or as a property initializer."
         case .conflictingDefaultValue(let macroName):
             return "@\(macroName) cannot specify both a macro argument and a property initializer."
+        case .invalidIsSendableArgument(let macroName):
+            return "@\(macroName) requires `isSendable` to be a boolean literal (true or false)."
         }
     }
 
@@ -188,6 +208,8 @@ enum AvailableStorageMacroError: Error, CustomStringConvertible, DiagnosticMessa
             diagnosticName = "requiresDefaultValue"
         case .conflictingDefaultValue:
             diagnosticName = "conflictingDefaultValue"
+        case .invalidIsSendableArgument:
+            diagnosticName = "invalidIsSendableArgument"
         }
         return MessageID(domain: "AvailableStorageMacroError", id: diagnosticName)
     }
