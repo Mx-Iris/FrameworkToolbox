@@ -20,6 +20,10 @@ let package = Package(
             name: "FoundationToolbox",
             targets: ["FoundationToolbox"]
         ),
+        .library(
+            name: "CoreFoundationToolbox",
+            targets: ["CoreFoundationToolbox"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "509.1.0" ..< "604.0.0"),
@@ -45,6 +49,12 @@ let package = Package(
                 "FrameworkToolbox",
                 "SwiftStdlibToolbox",
                 "FoundationToolboxMacros",
+            ]
+        ),
+        .target(
+            name: "CoreFoundationToolbox",
+            dependencies: [
+                "FrameworkToolbox",
             ]
         ),
         .target(
@@ -97,7 +107,11 @@ let package = Package(
             name: "FoundationToolboxClient",
             dependencies: ["FoundationToolbox"]
         ),
-        
+        .executableTarget(
+            name: "CoreFoundationToolboxClient",
+            dependencies: ["CoreFoundationToolbox"]
+        ),
+
         .testTarget(
             name: "FrameworkToolboxTests",
             dependencies: [
@@ -116,6 +130,12 @@ let package = Package(
             dependencies: [
                 "FoundationToolbox",
                 "MacroToolbox",
+            ]
+        ),
+        .testTarget(
+            name: "CoreFoundationToolboxTests",
+            dependencies: [
+                "CoreFoundationToolbox",
             ]
         ),
 
