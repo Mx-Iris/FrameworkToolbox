@@ -461,6 +461,156 @@ struct LoggableMacroTests {
             """
         }
     }
+
+    // MARK: Protocol declarations
+
+    @Test func protocolDefault() {
+        assertMacro {
+            """
+            @Loggable
+            protocol Networking { }
+            """
+        } expansion: {
+            """
+            protocol Networking { }
+
+            extension Networking {
+                private nonisolated static var category: String {
+                    String(describing: self)
+                }
+
+                private nonisolated static var subsystem: String {
+                    Bundle.main.bundleIdentifier ?? String(describing: self)
+                }
+
+                private nonisolated static var _osLog: OSLog {
+                    LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static var logger: os.Logger {
+                    LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+            }
+            """
+        }
+    }
+
+    @Test func protocolPublic() {
+        assertMacro {
+            """
+            @Loggable(.public)
+            protocol Networking { }
+            """
+        } expansion: {
+            """
+            protocol Networking { }
+
+            extension Networking {
+                public nonisolated static var category: String {
+                    String(describing: self)
+                }
+
+                public nonisolated static var subsystem: String {
+                    Bundle.main.bundleIdentifier ?? String(describing: self)
+                }
+
+                public nonisolated static var _osLog: OSLog {
+                    LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static var logger: os.Logger {
+                    LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+            }
+            """
+        }
+    }
+
+    @Test func protocolInternal() {
+        assertMacro {
+            """
+            @Loggable(.internal)
+            protocol Networking { }
+            """
+        } expansion: {
+            """
+            protocol Networking { }
+
+            extension Networking {
+                nonisolated static var category: String {
+                    String(describing: self)
+                }
+
+                nonisolated static var subsystem: String {
+                    Bundle.main.bundleIdentifier ?? String(describing: self)
+                }
+
+                nonisolated static var _osLog: OSLog {
+                    LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated static var logger: os.Logger {
+                    LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+            }
+            """
+        }
+    }
+
+    @Test func protocolWithCustomSubsystemAndCategory() {
+        assertMacro {
+            """
+            @Loggable(.public, subsystem: "com.example.networking", category: "Networking")
+            protocol NetworkingChannel { }
+            """
+        } expansion: {
+            """
+            protocol NetworkingChannel { }
+
+            extension NetworkingChannel {
+                public nonisolated static var category: String {
+                    "Networking"
+                }
+
+                public nonisolated static var subsystem: String {
+                    "com.example.networking"
+                }
+
+                public nonisolated static var _osLog: OSLog {
+                    LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static var logger: os.Logger {
+                    LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+            }
+            """
+        }
+    }
 }
 
 // MARK: - #log

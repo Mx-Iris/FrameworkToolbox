@@ -73,3 +73,26 @@ class MainActorService {
         #log(.debug, "Background log from MainActor type")
     }
 }
+
+// MARK: - Protocol verification
+
+// Applied to a protocol — generates a sibling extension with default impls
+// keyed by each conforming type's metatype identity at runtime.
+@Loggable(.internal)
+protocol LoggableProtocol { }
+
+struct ConformingService: LoggableProtocol {
+    func work() {
+        #log(.info, "Conforming service running")
+    }
+}
+
+// Custom subsystem / category on a protocol.
+@Loggable(.internal, subsystem: "com.example.networking", category: "Networking")
+protocol NetworkingChannel { }
+
+final class HTTPClient: NetworkingChannel {
+    func fetch() {
+        #log(.debug, "HTTP request issued")
+    }
+}
