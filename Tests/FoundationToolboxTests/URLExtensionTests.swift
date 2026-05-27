@@ -94,16 +94,16 @@ struct URLExtensionTests {
 
     // MARK: - File System Checks
 
-    @Test("exists returns true for existing path")
+    @Test("isExists returns true for existing path")
     func existsTrue() {
         let url = URL(fileURLWithPath: "/")
-        #expect(url.box.exists)
+        #expect(url.box.isExists)
     }
 
-    @Test("exists returns false for non-existing path")
+    @Test("isExists returns false for non-existing path")
     func existsFalse() {
         let url = URL(fileURLWithPath: "/this/path/does/not/exist_\(UUID().uuidString)")
-        #expect(!url.box.exists)
+        #expect(!url.box.isExists)
     }
 
     @Test("isDirectory returns true for directory")
