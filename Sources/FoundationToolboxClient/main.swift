@@ -96,3 +96,14 @@ final class HTTPClient: NetworkingChannel {
         #log(.debug, "HTTP request issued")
     }
 }
+
+print(URL(fileURLWithPath: "/Users/JH/Desktop").isWritable as Any)
+
+let desktopURL = URL(fileURLWithPath: "/Users/JH/Desktop")
+let (size, created, modified, isDir) = desktopURL.box.resourceValues(
+    \.fileSize,
+    \.creationDate,
+    \.contentModificationDate,
+    \.isDirectory
+)
+print("fileSize=\(size as Any), created=\(created as Any), modified=\(modified as Any), isDir=\(isDir as Any)")
