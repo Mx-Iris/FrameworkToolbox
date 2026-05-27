@@ -12,5 +12,6 @@ struct MainPlugin: CompilerPlugin {
         CaseCheckableMacro.self,
         AvailableNonMutatingMacro.self,
         AvailableMutatingMacro.self,
+        DyldInterposeMacro.self,
     ]
 }
