@@ -1,8 +1,13 @@
+@dynamicMemberLookup
 public struct FrameworkToolbox<Base> {
     public var base: Base
 
     public init(_ base: Base) {
         self.base = base
+    }
+    
+    public subscript<Member>(dynamicMember keyPath: KeyPath<Self, Member>) -> Member {
+        self[keyPath: keyPath]
     }
 }
 
