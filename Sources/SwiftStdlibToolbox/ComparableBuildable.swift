@@ -10,7 +10,7 @@
 /// own type to the type system, allowing the builder to fold a chain of
 /// `compare(\.x)` calls into a nested generic struct that the optimizer
 /// can fully inline.
-public protocol ComparisonStepProtocol<T> {
+public protocol ComparisonStep<T> {
     associatedtype T
     func compare(_ lhs: T, _ rhs: T) -> ComparisonResult
 }
@@ -18,7 +18,7 @@ public protocol ComparisonStepProtocol<T> {
 // MARK: - Leaf step types
 
 @frozen
-public struct EmptyComparisonStep<T>: ComparisonStepProtocol {
+public struct EmptyComparisonStep<T>: ComparisonStep {
     @inlinable
     @inline(__always)
     public init() {}
@@ -31,7 +31,7 @@ public struct EmptyComparisonStep<T>: ComparisonStepProtocol {
 }
 
 @frozen
-public struct KeyPathComparisonStep<T, V: Comparable>: ComparisonStepProtocol {
+public struct KeyPathComparisonStep<T, V: Comparable>: ComparisonStep {
     @usableFromInline
     let keyPath: KeyPath<T, V>
 
@@ -57,7 +57,7 @@ public struct KeyPathComparisonStep<T, V: Comparable>: ComparisonStepProtocol {
 }
 
 @frozen
-public struct OptionalKeyPathComparisonStep<T, V: Comparable>: ComparisonStepProtocol {
+public struct OptionalKeyPathComparisonStep<T, V: Comparable>: ComparisonStep {
     @usableFromInline
     let keyPath: KeyPath<T, V?>
 
@@ -90,7 +90,7 @@ public struct OptionalKeyPathComparisonStep<T, V: Comparable>: ComparisonStepPro
 }
 
 @frozen
-public struct DescendingKeyPathComparisonStep<T, V: Comparable>: ComparisonStepProtocol {
+public struct DescendingKeyPathComparisonStep<T, V: Comparable>: ComparisonStep {
     @usableFromInline
     let keyPath: KeyPath<T, V>
 
@@ -116,7 +116,7 @@ public struct DescendingKeyPathComparisonStep<T, V: Comparable>: ComparisonStepP
 }
 
 @frozen
-public struct CustomKeyPathComparisonStep<T, V>: ComparisonStepProtocol {
+public struct CustomKeyPathComparisonStep<T, V>: ComparisonStep {
     @usableFromInline
     let keyPath: KeyPath<T, V>
     @usableFromInline
@@ -140,7 +140,7 @@ public struct CustomKeyPathComparisonStep<T, V>: ComparisonStepProtocol {
 
 /// Two steps in sequence; short-circuits on first non-equal result.
 @frozen
-public struct CompositeComparisonStep<T, First: ComparisonStepProtocol, Second: ComparisonStepProtocol>: ComparisonStepProtocol
+public struct CompositeComparisonStep<T, First: ComparisonStep, Second: ComparisonStep>: ComparisonStep
 where First.T == T, Second.T == T {
     @usableFromInline
     let first: First
@@ -167,7 +167,7 @@ where First.T == T, Second.T == T {
 
 /// Produced by `if/else` inside a builder.
 @frozen
-public enum EitherComparisonStep<T, First: ComparisonStepProtocol, Second: ComparisonStepProtocol>: ComparisonStepProtocol
+public enum EitherComparisonStep<T, First: ComparisonStep, Second: ComparisonStep>: ComparisonStep
 where First.T == T, Second.T == T {
     case first(First)
     case second(Second)
@@ -186,7 +186,7 @@ where First.T == T, Second.T == T {
 
 /// Produced by `if` (without `else`) inside a builder.
 @frozen
-public struct OptionalComparisonStep<T, Wrapped: ComparisonStepProtocol>: ComparisonStepProtocol
+public struct OptionalComparisonStep<T, Wrapped: ComparisonStep>: ComparisonStep
 where Wrapped.T == T {
     @usableFromInline
     let wrapped: Wrapped?
@@ -210,7 +210,7 @@ where Wrapped.T == T {
 /// Produced by `for` loops inside a builder. All elements must be the same
 /// step type, which is the natural restriction of homogeneous loops.
 @frozen
-public struct ArrayComparisonStep<T, Element: ComparisonStepProtocol>: ComparisonStepProtocol
+public struct ArrayComparisonStep<T, Element: ComparisonStep>: ComparisonStep
 where Element.T == T {
     @usableFromInline
     let steps: ContiguousArray<Element>
@@ -244,14 +244,14 @@ public struct ComparableBuilder<T> {
 
     @inlinable
     @inline(__always)
-    public static func buildPartialBlock<S: ComparisonStepProtocol>(first: S) -> S
+    public static func buildPartialBlock<S: ComparisonStep>(first: S) -> S
     where S.T == T {
         return first
     }
 
     @inlinable
     @inline(__always)
-    public static func buildPartialBlock<Accumulated: ComparisonStepProtocol, Next: ComparisonStepProtocol>(
+    public static func buildPartialBlock<Accumulated: ComparisonStep, Next: ComparisonStep>(
         accumulated: Accumulated,
         next: Next
     ) -> CompositeComparisonStep<T, Accumulated, Next>
@@ -261,7 +261,7 @@ public struct ComparableBuilder<T> {
 
     @inlinable
     @inline(__always)
-    public static func buildEither<First: ComparisonStepProtocol, Second: ComparisonStepProtocol>(
+    public static func buildEither<First: ComparisonStep, Second: ComparisonStep>(
         first: First
     ) -> EitherComparisonStep<T, First, Second>
     where First.T == T, Second.T == T {
@@ -270,7 +270,7 @@ public struct ComparableBuilder<T> {
 
     @inlinable
     @inline(__always)
-    public static func buildEither<First: ComparisonStepProtocol, Second: ComparisonStepProtocol>(
+    public static func buildEither<First: ComparisonStep, Second: ComparisonStep>(
         second: Second
     ) -> EitherComparisonStep<T, First, Second>
     where First.T == T, Second.T == T {
@@ -279,7 +279,7 @@ public struct ComparableBuilder<T> {
 
     @inlinable
     @inline(__always)
-    public static func buildOptional<Wrapped: ComparisonStepProtocol>(
+    public static func buildOptional<Wrapped: ComparisonStep>(
         _ step: Wrapped?
     ) -> OptionalComparisonStep<T, Wrapped>
     where Wrapped.T == T {
@@ -287,7 +287,7 @@ public struct ComparableBuilder<T> {
     }
 
     @inlinable
-    public static func buildArray<Element: ComparisonStepProtocol>(
+    public static func buildArray<Element: ComparisonStep>(
         _ components: [Element]
     ) -> ArrayComparisonStep<T, Element>
     where Element.T == T {
@@ -298,43 +298,52 @@ public struct ComparableBuilder<T> {
 // MARK: - ComparableBuildable protocol
 
 /// Conforming types describe how to order themselves by combining
-/// `ComparisonStepProtocol` instances through a result-builder DSL.
+/// `ComparisonStep` instances through a result-builder DSL.
 ///
-/// ## Performance: prefer `static var`, not `static let`
-///
-/// Counter-intuitively, the computed-property form is faster than a
-/// stored constant:
+/// The requirement is annotated with `@ComparableBuilder<Self>`, so
+/// step expressions are written directly inside the property's
+/// braces:
 ///
 /// ```swift
 /// struct Foo: ComparableBuildable {
 ///     var a: Int
 ///     var b: Int
 ///
-///     static var comparableDefinition: some ComparisonStepProtocol<Self> {
-///         makeComparable {
-///             compare(\.a)
-///             compare(\.b)
-///         }
+///     static var comparableDefinition: some ComparisonStep<Self> {
+///         compare(\.a)
+///         compare(\.b)
 ///     }
 /// }
 /// ```
 ///
-/// Every step type is `@frozen` with `@inlinable @inline(__always)`
-/// methods, so when the step tree is constructed inside a computed
-/// property the optimizer inlines `makeComparable`, every step
-/// initializer, and every nested `compare(_:_:)` into the `<` / `==`
-/// call site. The literal `\.a` / `\.b` `KeyPath` expressions are still
-/// in view at that point, so Swift's `KeyPath` optimization pass
-/// rewrites `lhs[keyPath: \.a]` into a direct member access — making
-/// the final SIL equivalent to a hand-written comparator.
+/// The `<Self>` on the opaque return type cannot be omitted: the
+/// result-builder body has no explicit `return`, so the compiler
+/// cannot recover `Definition.T` from the builder alone — the
+/// primary associated type has to be stated on the return type to
+/// satisfy `Definition.T == Self`.
 ///
-/// With `static let` the tree is built once and stored as a global.
-/// The optimizer cannot constant-propagate the stored `KeyPath` fields
-/// back to the use site, so every comparison goes through the generic
-/// `KeyPath` subscript and pays roughly 5–10× over a hand-written
-/// `Comparable` conformance.
+/// ## Use `static var`, not `static let`
+///
+/// `comparableDefinition` must be a computed property. Every step
+/// type is `@frozen` with `@inlinable @inline(__always)` methods, so
+/// when the step tree is constructed inside a computed property the
+/// optimizer inlines every builder call, step initializer, and
+/// nested `compare(_:_:)` into the `<` / `==` call site. The literal
+/// `\.a` / `\.b` `KeyPath` expressions are still in view at that
+/// point, so Swift's `KeyPath` optimization pass rewrites
+/// `lhs[keyPath: \.a]` into a direct member access — making the
+/// final SIL equivalent to a hand-written comparator.
+///
+/// A stored `static let` builds the tree once into a global. The
+/// optimizer cannot constant-propagate the stored `KeyPath` fields
+/// back to the use site, so every comparison goes through the
+/// generic `KeyPath` subscript and pays roughly 5–10× over a
+/// hand-written `Comparable` conformance. The legacy
+/// `makeComparable { ... }` factory that enabled this form is
+/// deprecated for the same reason.
 public protocol ComparableBuildable: Comparable {
-    associatedtype Definition: ComparisonStepProtocol where Definition.T == Self
+    associatedtype Definition: ComparisonStep<Self>
+    @ComparableBuilder<Self>
     static var comparableDefinition: Definition { get }
 }
 
@@ -368,9 +377,10 @@ extension ComparableBuildable {
         return CustomKeyPathComparisonStep(keyPath, comparator)
     }
 
+    @available(*, deprecated, message: "Write step expressions directly inside `comparableDefinition`'s braces — the requirement carries `@ComparableBuilder<Self>`, so this wrapper is no longer needed.")
     @inlinable
     @inline(__always)
-    public static func makeComparable<S: ComparisonStepProtocol>(
+    public static func makeComparable<S: ComparisonStep>(
         @ComparableBuilder<Self> builder: () -> S
     ) -> S where S.T == Self {
         return builder()

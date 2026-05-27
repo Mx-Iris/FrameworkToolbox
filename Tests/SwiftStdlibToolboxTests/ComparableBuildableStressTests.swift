@@ -9,13 +9,11 @@ private struct Twenty20Buildable: ComparableBuildable {
     let f10: Int, f11: Int, f12: Int, f13: Int, f14: Int
     let f15: Int, f16: Int, f17: Int, f18: Int, f19: Int
 
-    static var comparableDefinition: some ComparisonStepProtocol<Twenty20Buildable> {
-        makeComparable {
-            compare(\.f00); compare(\.f01); compare(\.f02); compare(\.f03); compare(\.f04)
-            compare(\.f05); compare(\.f06); compare(\.f07); compare(\.f08); compare(\.f09)
-            compare(\.f10); compare(\.f11); compare(\.f12); compare(\.f13); compare(\.f14)
-            compare(\.f15); compare(\.f16); compare(\.f17); compare(\.f18); compare(\.f19)
-        }
+    static var comparableDefinition: some ComparisonStep<Twenty20Buildable> {
+        compare(\.f00); compare(\.f01); compare(\.f02); compare(\.f03); compare(\.f04)
+        compare(\.f05); compare(\.f06); compare(\.f07); compare(\.f08); compare(\.f09)
+        compare(\.f10); compare(\.f11); compare(\.f12); compare(\.f13); compare(\.f14)
+        compare(\.f15); compare(\.f16); compare(\.f17); compare(\.f18); compare(\.f19)
     }
 
     static func make(seed: Int) -> Twenty20Buildable {
@@ -45,27 +43,25 @@ private struct AllBuilderFeatures: ComparableBuildable {
     static let includeC = true
     static let extraKeyPaths: [KeyPath<AllBuilderFeatures, Int>] = [\.d]
 
-    static var comparableDefinition: some ComparisonStepProtocol<AllBuilderFeatures> {
-        makeComparable {
-            // basic
-            compare(\.a)
-            // buildEither (if/else)
-            if Self.useDescendingB {
-                compareDescending(\.b)
-            } else {
-                compare(\.b)
-            }
-            // buildOptional (if without else)
-            if Self.includeC {
-                compare(\.c)
-            }
-            // buildArray (for loop)
-            for keyPath in Self.extraKeyPaths {
-                compare(keyPath)
-            }
-            // tail
-            compare(\.e)
+    static var comparableDefinition: some ComparisonStep<AllBuilderFeatures> {
+        // basic
+        compare(\.a)
+        // buildEither (if/else)
+        if Self.useDescendingB {
+            compareDescending(\.b)
+        } else {
+            compare(\.b)
         }
+        // buildOptional (if without else)
+        if Self.includeC {
+            compare(\.c)
+        }
+        // buildArray (for loop)
+        for keyPath in Self.extraKeyPaths {
+            compare(keyPath)
+        }
+        // tail
+        compare(\.e)
     }
 
     static func make(seed: Int) -> AllBuilderFeatures {
@@ -85,17 +81,15 @@ private struct AllStepTypes: ComparableBuildable {
     let score: Double
     let flag: Bool
 
-    static var comparableDefinition: some ComparisonStepProtocol<AllStepTypes> {
-        makeComparable {
-            compare(\.id)
-            compare(\.optionalText)
-            compareDescending(\.score)
-            compareCustom(\.flag) { lhs, rhs in
-                switch (lhs, rhs) {
-                case (false, true): return .ascending
-                case (true, false): return .descending
-                default: return .equal
-                }
+    static var comparableDefinition: some ComparisonStep<AllStepTypes> {
+        compare(\.id)
+        compare(\.optionalText)
+        compareDescending(\.score)
+        compareCustom(\.flag) { lhs, rhs in
+            switch (lhs, rhs) {
+            case (false, true): return .ascending
+            case (true, false): return .descending
+            default: return .equal
             }
         }
     }

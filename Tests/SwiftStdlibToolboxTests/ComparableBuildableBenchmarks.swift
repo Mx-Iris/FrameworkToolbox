@@ -21,36 +21,18 @@ private struct BenchTripleManual: Comparable {
     }
 }
 
-/// Stored-let form: terser to write but blocks `KeyPath` literal
-/// propagation, so each comparison goes through the generic `KeyPath`
-/// subscript.
-private struct BenchTripleBuildable: ComparableBuildable {
-    let a: Int
-    let b: Int
-    let c: Int
-
-    static let comparableDefinition = makeComparable {
-        compare(\.a)
-        compare(\.b)
-        compare(\.c)
-    }
-}
-
-/// Recommended form: a computed property lets the optimizer inline the
-/// whole step tree into the `<` / `==` call site, with literal
-/// `KeyPath`s in view — final SIL is equivalent to a hand-written
-/// comparator.
+/// A computed property lets the optimizer inline the whole step tree
+/// into the `<` / `==` call site, with literal `KeyPath`s in view —
+/// final SIL is equivalent to a hand-written comparator.
 private struct BenchTripleBuildableVar: ComparableBuildable {
     let a: Int
     let b: Int
     let c: Int
 
-    static var comparableDefinition: some ComparisonStepProtocol<BenchTripleBuildableVar> {
-        makeComparable {
-            compare(\.a)
-            compare(\.b)
-            compare(\.c)
-        }
+    static var comparableDefinition: some ComparisonStep<BenchTripleBuildableVar> {
+        compare(\.a)
+        compare(\.b)
+        compare(\.c)
     }
 }
 
@@ -72,31 +54,16 @@ private struct BenchPersonManual: Comparable {
     }
 }
 
-/// Stored-let form: see `BenchTripleBuildable` for the cost.
-private struct BenchPersonBuildable: ComparableBuildable {
-    let age: Int
-    let name: String
-    let score: Double
-
-    static let comparableDefinition = makeComparable {
-        compare(\.age)
-        compare(\.name)
-        compare(\.score)
-    }
-}
-
-/// Recommended form: see `BenchTripleBuildableVar`.
+/// See `BenchTripleBuildableVar`.
 private struct BenchPersonBuildableVar: ComparableBuildable {
     let age: Int
     let name: String
     let score: Double
 
-    static var comparableDefinition: some ComparisonStepProtocol<BenchPersonBuildableVar> {
-        makeComparable {
-            compare(\.age)
-            compare(\.name)
-            compare(\.score)
-        }
+    static var comparableDefinition: some ComparisonStep<BenchPersonBuildableVar> {
+        compare(\.age)
+        compare(\.name)
+        compare(\.score)
     }
 }
 
@@ -192,13 +159,9 @@ struct ComparableBuildableBenchmarks {
     func sortOrderingMatches() {
         let raw = makeTriples(count: 200)
         let manualSorted = raw.map { BenchTripleManual(a: $0.0, b: $0.1, c: $0.2) }.sorted()
-        let buildableSorted = raw.map { BenchTripleBuildable(a: $0.0, b: $0.1, c: $0.2) }.sorted()
         let buildableVarSorted = raw.map { BenchTripleBuildableVar(a: $0.0, b: $0.1, c: $0.2) }.sorted()
 
         for index in manualSorted.indices {
-            #expect(manualSorted[index].a == buildableSorted[index].a)
-            #expect(manualSorted[index].b == buildableSorted[index].b)
-            #expect(manualSorted[index].c == buildableSorted[index].c)
             #expect(manualSorted[index].a == buildableVarSorted[index].a)
             #expect(manualSorted[index].b == buildableVarSorted[index].b)
             #expect(manualSorted[index].c == buildableVarSorted[index].c)
@@ -211,22 +174,18 @@ struct ComparableBuildableBenchmarks {
     func sortTriples10k() {
         let raw = makeTriples(count: 10_000)
         let manual = raw.map { BenchTripleManual(a: $0.0, b: $0.1, c: $0.2) }
-        let buildable = raw.map { BenchTripleBuildable(a: $0.0, b: $0.1, c: $0.2) }
         let buildableVar = raw.map { BenchTripleBuildableVar(a: $0.0, b: $0.1, c: $0.2) }
 
         _ = manual.sorted()
-        _ = buildable.sorted()
         _ = buildableVar.sorted()
 
         let runs = 5
         let manualTime = bestOf(runs) { var copy = manual; copy.sort(); blackhole(copy) }
-        let buildableLetTime = bestOf(runs) { var copy = buildable; copy.sort(); blackhole(copy) }
         let buildableVarTime = bestOf(runs) { var copy = buildableVar; copy.sort(); blackhole(copy) }
 
         print("")
         print("=== sort 10k Int-triples (best of \(runs) runs) ===")
         printRow("manual",          time: manualTime,       baseline: manualTime)
-        printRow("buildable (let)", time: buildableLetTime, baseline: manualTime)
         printRow("buildable (var)", time: buildableVarTime, baseline: manualTime)
     }
 
@@ -234,22 +193,18 @@ struct ComparableBuildableBenchmarks {
     func sortTriples100k() {
         let raw = makeTriples(count: 100_000)
         let manual = raw.map { BenchTripleManual(a: $0.0, b: $0.1, c: $0.2) }
-        let buildable = raw.map { BenchTripleBuildable(a: $0.0, b: $0.1, c: $0.2) }
         let buildableVar = raw.map { BenchTripleBuildableVar(a: $0.0, b: $0.1, c: $0.2) }
 
         _ = manual.sorted()
-        _ = buildable.sorted()
         _ = buildableVar.sorted()
 
         let runs = 3
         let manualTime = bestOf(runs) { var copy = manual; copy.sort(); blackhole(copy) }
-        let buildableLetTime = bestOf(runs) { var copy = buildable; copy.sort(); blackhole(copy) }
         let buildableVarTime = bestOf(runs) { var copy = buildableVar; copy.sort(); blackhole(copy) }
 
         print("")
         print("=== sort 100k Int-triples (best of \(runs) runs) ===")
         printRow("manual",          time: manualTime,       baseline: manualTime)
-        printRow("buildable (let)", time: buildableLetTime, baseline: manualTime)
         printRow("buildable (var)", time: buildableVarTime, baseline: manualTime)
     }
 
@@ -257,22 +212,18 @@ struct ComparableBuildableBenchmarks {
     func sortPersons10k() {
         let raw = makePersons(count: 10_000)
         let manual = raw.map { BenchPersonManual(age: $0.0, name: $0.1, score: $0.2) }
-        let buildable = raw.map { BenchPersonBuildable(age: $0.0, name: $0.1, score: $0.2) }
         let buildableVar = raw.map { BenchPersonBuildableVar(age: $0.0, name: $0.1, score: $0.2) }
 
         _ = manual.sorted()
-        _ = buildable.sorted()
         _ = buildableVar.sorted()
 
         let runs = 5
         let manualTime = bestOf(runs) { var copy = manual; copy.sort(); blackhole(copy) }
-        let buildableLetTime = bestOf(runs) { var copy = buildable; copy.sort(); blackhole(copy) }
         let buildableVarTime = bestOf(runs) { var copy = buildableVar; copy.sort(); blackhole(copy) }
 
         print("")
         print("=== sort 10k Persons (best of \(runs) runs) ===")
         printRow("manual",          time: manualTime,       baseline: manualTime)
-        printRow("buildable (let)", time: buildableLetTime, baseline: manualTime)
         printRow("buildable (var)", time: buildableVarTime, baseline: manualTime)
     }
 
@@ -282,22 +233,17 @@ struct ComparableBuildableBenchmarks {
     func rawComparisons() {
         let raw = makeTriples(count: 1024)
         let manual = raw.map { BenchTripleManual(a: $0.0, b: $0.1, c: $0.2) }
-        let buildable = raw.map { BenchTripleBuildable(a: $0.0, b: $0.1, c: $0.2) }
         let buildableVar = raw.map { BenchTripleBuildableVar(a: $0.0, b: $0.1, c: $0.2) }
 
         let iterations = 1_000_000
 
         // warm up
         _ = runManualComparisons(manual, iterations: 1000)
-        _ = runBuildableComparisons(buildable, iterations: 1000)
         _ = runBuildableVarComparisons(buildableVar, iterations: 1000)
 
         let runs = 5
         let manualTime = bestOf(runs) {
             blackhole(runManualComparisons(manual, iterations: iterations))
-        }
-        let buildableLetTime = bestOf(runs) {
-            blackhole(runBuildableComparisons(buildable, iterations: iterations))
         }
         let buildableVarTime = bestOf(runs) {
             blackhole(runBuildableVarComparisons(buildableVar, iterations: iterations))
@@ -306,7 +252,6 @@ struct ComparableBuildableBenchmarks {
         print("")
         print("=== \(iterations) raw '<' comparisons (best of \(runs) runs) ===")
         printRow("manual",          time: manualTime,       baseline: manualTime)
-        printRow("buildable (let)", time: buildableLetTime, baseline: manualTime)
         printRow("buildable (var)", time: buildableVarTime, baseline: manualTime)
     }
 }
@@ -315,18 +260,6 @@ struct ComparableBuildableBenchmarks {
 
 @inline(never)
 private func runManualComparisons(_ items: [BenchTripleManual], iterations: Int) -> Int {
-    var accumulator = 0
-    let mask = items.count - 1
-    for index in 0..<iterations {
-        let left = items[index & mask]
-        let right = items[(index &+ 1) & mask]
-        if left < right { accumulator &+= 1 }
-    }
-    return accumulator
-}
-
-@inline(never)
-private func runBuildableComparisons(_ items: [BenchTripleBuildable], iterations: Int) -> Int {
     var accumulator = 0
     let mask = items.count - 1
     for index in 0..<iterations {
