@@ -11,6 +11,7 @@
 /// and accessor methods that use `withLock` for thread-safe reads and writes.
 ///
 /// - Note: Available on macOS 13.0+, iOS 16.0+, tvOS 16.0+, watchOS 9.0+.
+@available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
 @attached(peer, names: prefixed(_))
 @attached(accessor)
 public macro OSAllocatedUnfairLock() = #externalMacro(
