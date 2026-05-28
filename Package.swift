@@ -101,10 +101,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "SwiftStdlibToolboxClient",
-            dependencies: ["SwiftStdlibToolbox"],
-            swiftSettings: [
-                .enableExperimentalFeature("Extern"),
-            ]
+            dependencies: ["SwiftStdlibToolbox"]
         ),
         .executableTarget(
             name: "FoundationToolboxClient",
