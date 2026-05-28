@@ -97,6 +97,17 @@ final class HTTPClient: NetworkingChannel {
     }
 }
 
+// Frozen variant — conforming types cannot override and protocol-extension call
+// sites resolve statically to the default implementation.
+@Loggable(asProtocolRequirement: false)
+protocol FrozenLog { }
+
+struct FixedReporter: FrozenLog {
+    func report() {
+        #log(.info, "FixedReporter using frozen default logger")
+    }
+}
+
 print(URL(fileURLWithPath: "/Users/JH/Desktop").isWritable as Any)
 
 let desktopURL = URL(fileURLWithPath: "/Users/JH/Desktop")

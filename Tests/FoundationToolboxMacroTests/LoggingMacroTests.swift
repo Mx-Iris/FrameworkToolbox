@@ -472,28 +472,51 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            protocol Networking { }
+            protocol Networking {\u{0020}
+
+                static var category: String {
+                    get
+                }
+
+                static var subsystem: String {
+                    get
+                }
+
+                static var _osLog: OSLog {
+                    get
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                static var logger: os.Logger {
+                    get
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                var logger: os.Logger {
+                    get
+                }
+            }
 
             extension Networking {
-                private nonisolated static var category: String {
+                nonisolated static var category: String {
                     String(describing: self)
                 }
 
-                private nonisolated static var subsystem: String {
+                nonisolated static var subsystem: String {
                     Bundle.main.bundleIdentifier ?? String(describing: self)
                 }
 
-                private nonisolated static var _osLog: OSLog {
+                nonisolated static var _osLog: OSLog {
                     LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static var logger: os.Logger {
+                nonisolated static var logger: os.Logger {
                     LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated var logger: os.Logger {
+                nonisolated var logger: os.Logger {
                     Self.logger
                 }
             }
@@ -504,12 +527,35 @@ struct LoggableMacroTests {
     @Test func protocolPublic() {
         assertMacro {
             """
-            @Loggable(.public)
-            protocol Networking { }
+            @Loggable
+            public protocol Networking { }
             """
         } expansion: {
             """
-            protocol Networking { }
+            public protocol Networking {\u{0020}
+
+                static var category: String {
+                    get
+                }
+
+                static var subsystem: String {
+                    get
+                }
+
+                static var _osLog: OSLog {
+                    get
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                static var logger: os.Logger {
+                    get
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                var logger: os.Logger {
+                    get
+                }
+            }
 
             extension Networking {
                 public nonisolated static var category: String {
@@ -538,10 +584,10 @@ struct LoggableMacroTests {
         }
     }
 
-    @Test func protocolInternal() {
+    @Test func protocolFrozenSkipsRequirements() {
         assertMacro {
             """
-            @Loggable(.internal)
+            @Loggable(asProtocolRequirement: false)
             protocol Networking { }
             """
         } expansion: {
@@ -575,15 +621,75 @@ struct LoggableMacroTests {
         }
     }
 
-    @Test func protocolWithCustomSubsystemAndCategory() {
+    @Test func protocolFrozenWithAccessLevel() {
         assertMacro {
             """
-            @Loggable(.public, subsystem: "com.example.networking", category: "Networking")
-            protocol NetworkingChannel { }
+            @Loggable(.public, asProtocolRequirement: false)
+            public protocol Networking { }
             """
         } expansion: {
             """
-            protocol NetworkingChannel { }
+            public protocol Networking { }
+
+            extension Networking {
+                public nonisolated static var category: String {
+                    String(describing: self)
+                }
+
+                public nonisolated static var subsystem: String {
+                    Bundle.main.bundleIdentifier ?? String(describing: self)
+                }
+
+                public nonisolated static var _osLog: OSLog {
+                    LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static var logger: os.Logger {
+                    LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+            }
+            """
+        }
+    }
+
+    @Test func protocolWithCustomSubsystemAndCategory() {
+        assertMacro {
+            """
+            @Loggable(subsystem: "com.example.networking", category: "Networking")
+            public protocol NetworkingChannel { }
+            """
+        } expansion: {
+            """
+            public protocol NetworkingChannel {\u{0020}
+
+                static var category: String {
+                    get
+                }
+
+                static var subsystem: String {
+                    get
+                }
+
+                static var _osLog: OSLog {
+                    get
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                static var logger: os.Logger {
+                    get
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                var logger: os.Logger {
+                    get
+                }
+            }
 
             extension NetworkingChannel {
                 public nonisolated static var category: String {
