@@ -10,3 +10,4 @@ DerivedData/
 .swiftpm
 .claude/settings.local.json
 .omc/
+.build
