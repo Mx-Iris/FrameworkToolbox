@@ -20,3 +20,13 @@ puts("line B")
 print("--- demo: printf ---")
 _ = printfRef("line C\n")
 _ = printfRef("line D\n")
+
+#if canImport(CoreFoundation)
+
+import CoreFoundation
+
+let cfArray = CFArrayCreate(nil, nil, 0, nil)
+
+print(CFArrayGetCount(cfArray))
+
+#endif

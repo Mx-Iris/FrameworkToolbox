@@ -30,3 +30,14 @@ func interposedPrintf(_ format: UnsafePointer<CChar>) -> Int32 {
         vprintf(format, args)
     }
 }
+
+#if canImport(CoreFoundation)
+
+import CoreFoundation
+
+@DyldInterpose(CFArrayGetCount)
+func interpoesdCFArrayGetCount(_ array: CFArray) -> CFIndex {
+    return 5
+}
+
+#endif
