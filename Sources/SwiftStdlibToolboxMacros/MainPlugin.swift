@@ -13,5 +13,8 @@ struct MainPlugin: CompilerPlugin {
         AvailableNonMutatingMacro.self,
         AvailableMutatingMacro.self,
         DyldInterposeMacro.self,
+        AddAsyncMacro.self,
+        AddAsyncAllMembersMacro.self,
+        AddCompletionHandlerMacro.self,
     ]
 }

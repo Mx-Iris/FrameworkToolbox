@@ -32,7 +32,7 @@ FrameworkToolbox is a Swift Package (Swift 6.1, language mode Swift 5) providing
 | Library | Purpose |
 |---------|---------|
 | `FrameworkToolbox` | Core "box" pattern (`FrameworkToolbox<Base>`) with `@dynamicMemberLookup` for namespaced extensions via `FrameworkToolboxCompatible` protocol |
-| `SwiftStdlibToolbox` | Swift stdlib extensions + macros (`@Equatable`, `@AssociatedValue`, `@CaseCheckable`, `@Mutex`, `@AvailableNonMutating`, `@AvailableMutating`) |
+| `SwiftStdlibToolbox` | Swift stdlib extensions + macros (`@Equatable`, `@AssociatedValue`, `@CaseCheckable`, `@Mutex`, `@AvailableNonMutating`, `@AvailableMutating`, `@DyldInterpose`, `@AddAsync`, `@AddAsyncAllMembers`, `@AddCompletionHandler`) |
 | `FoundationToolbox` | Foundation extensions + macros (`@Loggable`, `#log`, `#url`, `@OSAllocatedUnfairLock`), lock wrappers, logging |
 
 ## Architecture
@@ -51,6 +51,7 @@ Executable client targets (`*Client`) exist for manual macro expansion testing.
 - **Lock macros:** `@Mutex`, `@OSAllocatedUnfairLock` share logic via `LockMacroProtocol` in `MacroToolbox`. They generate a backing stored property and computed accessors with lock/unlock around access.
 - **Available storage macros:** `@AvailableNonMutating` and `@AvailableMutating` generate `Any?` backing storage plus lazy accessors for `@available`-gated properties whose storage cannot mention the gated type directly. The mutating variant also emits a setter.
 - **Logging:** `@Loggable` generates `category`/`subsystem`/`_osLog`/`logger` properties. `#log` emits version-checked code that uses `os.Logger` on macOS 11+ or falls back to the legacy `os_log` API with per-segment privacy support.
+- **Async bridging macros:** `@AddAsync` generates an `async` overload of a completion-handler function; `@AddCompletionHandler` generates the reverse; `@AddAsyncAllMembers` applies `@AddAsync` to every member of a type. These are implemented in `SwiftStdlibToolboxMacros` using the `swift-macro-toolkit` (`MacroToolkit`) helpers rather than raw `swift-syntax`.
 
 ### Platforms
 
@@ -59,3 +60,4 @@ iOS 13+, macOS 10.15+, watchOS 6+, tvOS 13+, macCatalyst 13+, visionOS 1+
 ### Dependencies
 
 - `swift-syntax` — macro implementation
+- `swift-macro-toolkit` (stackotter) — higher-level macro helpers used by `SwiftStdlibToolboxMacros` for the async bridging macros (`@AddAsync`, `@AddAsyncAllMembers`, `@AddCompletionHandler`)
