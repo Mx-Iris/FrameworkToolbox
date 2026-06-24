@@ -33,7 +33,7 @@ FrameworkToolbox is a Swift Package (Swift 6.1, language mode Swift 5) providing
 |---------|---------|
 | `FrameworkToolbox` | Core "box" pattern (`FrameworkToolbox<Base>`) with `@dynamicMemberLookup` for namespaced extensions via `FrameworkToolboxCompatible` protocol |
 | `SwiftStdlibToolbox` | Swift stdlib extensions + macros (`@Equatable`, `@AssociatedValue`, `@CaseCheckable`, `@Mutex`, `@AvailableNonMutating`, `@AvailableMutating`, `@DyldInterpose`, `@AddAsync`, `@AddAsyncAllMembers`, `@AddCompletionHandler`) |
-| `FoundationToolbox` | Foundation extensions + macros (`@Loggable`, `#log`, `#url`, `@OSAllocatedUnfairLock`), lock wrappers, logging |
+| `FoundationToolbox` | Foundation extensions + macros (`@Loggable`, `#log`, `#url`, `@OSAllocatedUnfairLock`, `@Keychain`), lock wrappers, logging, Keychain storage |
 
 ## Architecture
 
@@ -52,6 +52,7 @@ Executable client targets (`*Client`) exist for manual macro expansion testing.
 - **Available storage macros:** `@AvailableNonMutating` and `@AvailableMutating` generate `Any?` backing storage plus lazy accessors for `@available`-gated properties whose storage cannot mention the gated type directly. The mutating variant also emits a setter.
 - **Logging:** `@Loggable` generates `category`/`subsystem`/`_osLog`/`logger` properties. `#log` emits version-checked code that uses `os.Logger` on macOS 11+ or falls back to the legacy `os_log` API with per-segment privacy support.
 - **Async bridging macros:** `@AddAsync` generates an `async` overload of a completion-handler function; `@AddCompletionHandler` generates the reverse; `@AddAsyncAllMembers` applies `@AddAsync` to every member of a type. These are implemented in `SwiftStdlibToolboxMacros` using the `swift-macro-toolkit` (`MacroToolkit`) helpers rather than raw `swift-syntax`.
+- **Keychain macro:** `@Keychain(key:service:synchronizable:accessible:)` is an accessor + peer macro that turns a stored property into a Keychain-backed one. The generated peers are `private let _<name> = KeychainStorage<Value>(...)` and `var $<name>: AnyPublisher<Value, Never>`. The `KeychainStorage` runtime (in `FoundationToolbox/Keychain/`) wraps `SecItem*` directly — no third-party Keychain dependency. The `KeychainStorable` protocol provides hand-written, JSON-free encodings for `String`, `Data`, `Bool`, the integer/floating-point families (little-endian fixed-width for sync stability), `Date`, `URL`, and `Optional<Wrapped>`. User-defined `Codable` types opt in via the `KeychainCodableStorable` marker for JSON fallback.
 
 ### Platforms
 

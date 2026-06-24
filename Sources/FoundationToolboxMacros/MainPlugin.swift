@@ -9,5 +9,6 @@ struct MainPlugin: CompilerPlugin {
         LogMacro.self,
         OSAllocatedUnfairLockMacro.self,
         SelectorMacro.self,
+        KeychainMacro.self,
     ]
 }

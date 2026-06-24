@@ -118,3 +118,43 @@ let (size, created, modified, isDir) = desktopURL.box.resourceValues(
     \.isDirectory
 )
 print("fileSize=\(size as Any), created=\(created as Any), modified=\(modified as Any), isDir=\(isDir as Any)")
+
+// MARK: - @Keychain macro verification
+
+private let exampleService = "com.frameworktoolbox.example"
+
+final class KeychainExample {
+    // Primitives encode without going through JSON.
+    @Keychain(key: "accessToken", service: exampleService)
+    var accessToken: String = ""
+
+    @Keychain(key: "launchCount", service: exampleService, synchronizable: false)
+    var launchCount: Int = 0
+
+    @Keychain(key: "biometricsEnabled", service: exampleService)
+    var biometricsEnabled: Bool = false
+
+    // Optional types: writing nil deletes the underlying Keychain item.
+    @Keychain(key: "refreshToken", service: exampleService)
+    var refreshToken: String? = nil
+
+    // Public properties also expose a public publisher.
+    @Keychain(key: "lastSyncDate", service: exampleService)
+    public var lastSyncDate: Date = Date(timeIntervalSince1970: 0)
+}
+
+// User-defined Codable types opt in via KeychainCodableStorable.
+struct KeychainExamplePreferences: KeychainCodableStorable {
+    var theme: String
+    var notificationsEnabled: Bool
+}
+
+final class KeychainPreferencesStore {
+    @Keychain(key: "preferences", service: exampleService)
+    var preferences: KeychainExamplePreferences = .init(theme: "system", notificationsEnabled: true)
+}
+
+// Reference the types so the compiler proves the macro expansion type-checks
+// without actually touching Keychain Services at startup.
+_ = KeychainExample.self
+_ = KeychainPreferencesStore.self
