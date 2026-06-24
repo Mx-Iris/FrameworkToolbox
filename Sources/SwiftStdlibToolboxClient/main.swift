@@ -42,3 +42,7 @@ enum EnumAssociatedValue {
     case optional(String?)
 }
 
+
+let array: [Int] = []
+
+print(array[safe: 2] as Any)
