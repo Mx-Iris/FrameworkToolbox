@@ -12,6 +12,7 @@ final class Greeter: NSObject {
 
 @DynamicSubclassHook(of: Greeter.self, suffix: "Loud")
 struct LoudGreeterHook {
+    @DynamicSubclassOverride
     func greet() -> String {
         let originalGreeting = callSuper()
         return originalGreeting.uppercased() + "!"
@@ -29,6 +30,7 @@ final class Formatter: NSObject {
 
 @DynamicSubclassHook(of: Formatter.self, suffix: "Capitalized")
 struct CapitalizedFormatterHook {
+    @DynamicSubclassOverride
     func format(_ name: String, age: Int) -> String {
         let originalDescription = callSuper(name, age)
         return originalDescription.uppercased()
@@ -50,6 +52,7 @@ final class NotificationLogger: NSObject {
 
 @DynamicSubclassHook(of: NotificationLogger.self, suffix: "Prefixed")
 struct PrefixedLoggerHook {
+    @DynamicSubclassOverride
     func log(_ message: String, level: Int) {
         callSuper("[hooked] " + message, level)
     }
@@ -70,6 +73,7 @@ final class BareSpeaker: NSObject {
 
 @DynamicSubclassHook(of: BareSpeaker.self, suffix: "Polite", adopts: [Greetable.self])
 struct PoliteSpeakerHook {
+    @DynamicSubclassOverride
     func greetingPrefix() -> String {
         // BareSpeaker has no greetingPrefix IMP — `callSuperIfImplemented`
         // takes the default branch.
@@ -81,11 +85,70 @@ struct PoliteSpeakerHook {
 
 @DynamicSubclassHook(of: BareSpeaker.self, suffix: "Logging")
 struct LoggingSpeakerHook {
+    @DynamicSubclassOverride
     func speak() -> String {
         // `speak` exists on BareSpeaker — `callSuperIfImplemented` dispatches.
         let originalUtterance = callSuperIfImplemented(default: "<no impl>")
         return "[log] " + originalUtterance
     }
+}
+
+// MARK: - Scenario 6 — shared suffix composes overrides from two hooks
+
+@objc(SharedSuffixHostScenario6)
+final class SharedSuffixHost: NSObject {
+    @objc dynamic func operationA() -> String { "A" }
+    @objc dynamic func operationB() -> String { "B" }
+}
+
+@DynamicSubclassHook(of: SharedSuffixHost.self, suffix: "Composed")
+struct ComposedAHook {
+    @DynamicSubclassOverride
+    func operationA() -> String { "[A] " + callSuper() }
+}
+
+@DynamicSubclassHook(of: SharedSuffixHost.self, suffix: "Composed")
+struct ComposedBHook {
+    @DynamicSubclassOverride
+    func operationB() -> String { "[B] " + callSuper() }
+}
+
+// MARK: - Scenario 7 — untagged helper method must not be registered
+
+@DynamicSubclassHook(of: Greeter.self, suffix: "WithHelper")
+struct GreeterWithHelperHook {
+    @DynamicSubclassOverride
+    func greet() -> String { "tagged:" + callSuper() }
+
+    // Intentionally NOT tagged — must remain a plain Swift helper that does
+    // not register against the dynamic subclass.
+    func helperWillNotBeRegistered() -> String { "helper" }
+}
+
+// MARK: - Scenario 8 — auto-cleanup via sentinel
+
+@objc(AutoCleanupTargetScenario8)
+final class AutoCleanupTarget: NSObject {
+    @objc dynamic func ping() -> Int { 1 }
+}
+
+@DynamicSubclassHook(of: AutoCleanupTarget.self, suffix: "AutoCleanup")
+struct AutoCleanupHook {
+    @DynamicSubclassOverride
+    func ping() -> Int { callSuper() + 100 }
+}
+
+// MARK: - Scenario 9 — concurrency stress target
+
+@objc(ConcurrencyTargetScenario9)
+final class ConcurrencyTarget: NSObject {
+    @objc dynamic func value() -> Int { 0 }
+}
+
+@DynamicSubclassHook(of: ConcurrencyTarget.self, suffix: "ConcurrencyStress")
+struct ConcurrencyStressHook {
+    @DynamicSubclassOverride
+    func value() -> Int { callSuper() + 1 }
 }
 
 // MARK: - Tests
@@ -188,6 +251,106 @@ final class ObjCRuntimeToolboxTests: XCTestCase {
         XCTAssertEqual(speaker.speak(), "[log] hello")
         LoggingSpeakerHook.uninstall(from: speaker)
         XCTAssertEqual(speaker.speak(), "hello")
+    }
+
+    // MARK: Scenario 6 — shared suffix composes overrides
+
+    func testSharedSuffixComposesOverridesAcrossHooks() {
+        let host = SharedSuffixHost()
+        // Installing both hooks on the same instance bumps retainCount, and
+        // each hook's installOverridesIfNeeded lands a distinct selector on
+        // the shared dynamic subclass.
+        ComposedAHook.install(on: host)
+        ComposedBHook.install(on: host)
+
+        XCTAssertEqual(host.operationA(), "[A] A")
+        XCTAssertEqual(host.operationB(), "[B] B")
+
+        // Both hooks share one side-table entry — uninstall once each to
+        // fully release.
+        ComposedBHook.uninstall(from: host)
+        XCTAssertEqual(host.operationA(), "[A] A", "operationA stays hooked while retainCount > 0")
+        ComposedAHook.uninstall(from: host)
+        XCTAssertEqual(host.operationA(), "A")
+        XCTAssertEqual(host.operationB(), "B")
+        XCTAssertFalse(DynamicSubclass.isInstalled(on: host))
+    }
+
+    // MARK: Scenario 7 — untagged method not registered as override
+
+    func testUntaggedHookMethodIsNotRegistered() {
+        let greeter = Greeter()
+        GreeterWithHelperHook.install(on: greeter)
+
+        // The tagged @DynamicSubclassOverride method is reachable.
+        XCTAssertEqual(greeter.greet(), "tagged:Hello")
+        // The untagged helper must NOT have been registered on the dynamic
+        // subclass — `responds(to:)` should be false.
+        XCTAssertFalse(greeter.responds(to: NSSelectorFromString("helperWillNotBeRegistered")))
+
+        GreeterWithHelperHook.uninstall(from: greeter)
+    }
+
+    // MARK: Ref-counted install
+
+    func testInstallIsRefCounted() {
+        let greeter = Greeter()
+        LoudGreeterHook.install(on: greeter)
+        LoudGreeterHook.install(on: greeter)
+
+        XCTAssertEqual(greeter.greet(), "HELLO!")
+
+        LoudGreeterHook.uninstall(from: greeter)
+        // Still hooked after one uninstall — retainCount is 1.
+        XCTAssertEqual(greeter.greet(), "HELLO!")
+
+        LoudGreeterHook.uninstall(from: greeter)
+        // Fully restored after second uninstall.
+        XCTAssertEqual(greeter.greet(), "Hello")
+        XCTAssertFalse(DynamicSubclass.isInstalled(on: greeter))
+    }
+
+    // MARK: Auto-cleanup via sentinel
+
+    func testSentinelClearsSideTableOnDealloc() {
+        var target: AutoCleanupTarget? = AutoCleanupTarget()
+        let identityCaptured: ObjectIdentifier
+        do {
+            let target = target!
+            AutoCleanupHook.install(on: target)
+            XCTAssertEqual(target.ping(), 101)
+            XCTAssertTrue(DynamicSubclass.isInstalled(on: target))
+            identityCaptured = ObjectIdentifier(target)
+        }
+        // Drop the only strong reference. ObjC sentinel's deinit should fire
+        // and remove the side-table entry. Wrap in an autoreleasepool to flush
+        // any deferred releases that ARC might be holding from the test
+        // framework's bookkeeping.
+        autoreleasepool {
+            target = nil
+        }
+
+        // Test that a fresh AutoCleanupTarget is not reported as installed
+        // even if its address happens to overlap the dead one. We can't
+        // directly observe identityCaptured because it dangles; we infer
+        // through behavior instead.
+        let fresh = AutoCleanupTarget()
+        XCTAssertEqual(fresh.ping(), 1)
+        XCTAssertFalse(DynamicSubclass.isInstalled(on: fresh))
+        _ = identityCaptured  // keep the captured value alive to avoid warnings
+    }
+
+    // MARK: Concurrent install / uninstall stress
+
+    func testConcurrentInstallUninstallOnDistinctInstances() {
+        let iterationCount = 200
+        DispatchQueue.concurrentPerform(iterations: iterationCount) { _ in
+            let target = ConcurrencyTarget()
+            ConcurrencyStressHook.install(on: target)
+            XCTAssertEqual(target.value(), 1)
+            ConcurrencyStressHook.uninstall(from: target)
+            XCTAssertEqual(target.value(), 0)
+        }
     }
 }
 #endif
