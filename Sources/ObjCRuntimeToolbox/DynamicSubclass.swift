@@ -61,6 +61,9 @@ public enum DynamicSubclass {
         /// The base class is itself a metaclass — installing per-instance
         /// hooks on a Class object would corrupt every instance system-wide.
         case baseClassIsMetaClass(baseClass: AnyClass)
+        /// Neither `prefix` nor `suffix` were supplied — at least one must be
+        /// non-empty to disambiguate hooks against the same base class.
+        case missingDiscriminator(baseClass: AnyClass)
 
         public var description: String {
             switch self {
@@ -70,33 +73,54 @@ public enum DynamicSubclass {
                 return "DynamicSubclass.getOrCreate: existing class \(existingClass) named \(dynamicClassName) is not a descendant of \(baseClass). Refusing to reuse it."
             case let .baseClassIsMetaClass(baseClass):
                 return "DynamicSubclass.getOrCreate: base class \(baseClass) is a metaclass; per-instance ISA swizzling cannot target metaclasses."
+            case let .missingDiscriminator(baseClass):
+                return "DynamicSubclass.getOrCreate: at least one of prefix/suffix must be non-empty for base \(baseClass)."
             }
         }
     }
 
     // MARK: - Subclass Lifecycle
 
-    /// Get or create a cached dynamic subclass of `baseClass` named
-    /// `_ObjCRuntimeToolbox_<suffix>_<baseClassName>`. The created subclass
-    /// carries three baseline overrides:
+    /// Get or create a cached dynamic subclass of `baseClass`. The dynamic
+    /// class name combines `_ObjCRuntimeToolbox`, the optional `prefix`, the
+    /// base class name, and the optional `suffix` separated by `_`:
+    ///
+    /// * prefix only: `_ObjCRuntimeToolbox_<prefix>_<baseClassName>`
+    /// * suffix only: `_ObjCRuntimeToolbox_<baseClassName>_<suffix>`
+    /// * both: `_ObjCRuntimeToolbox_<prefix>_<baseClassName>_<suffix>`
+    ///
+    /// At least one of `prefix` or `suffix` must be non-empty — supplying
+    /// neither would let every hook of `baseClass` collide on the same cache
+    /// entry. The created subclass carries three baseline overrides:
     ///
     /// * `-class` returns the original `baseClass` — KVO pattern.
     /// * `-respondsToSelector:` and `-conformsToProtocol:` consult the real ISA
     ///   first so that any selectors / protocols layered onto the dynamic
     ///   subclass remain discoverable even though `-class` lies.
     ///
-    /// Returns `nil` on failure; callers should bail out of the install path
-    /// when the dynamic subclass cannot be obtained.
-    public static func getOrCreate(of baseClass: AnyClass, suffix: String) throws -> AnyClass {
+    /// Throws `AllocationError` on failure; callers should bail out of the
+    /// install path when the dynamic subclass cannot be obtained.
+    public static func getOrCreate(
+        of baseClass: AnyClass,
+        prefix: String = "",
+        suffix: String = ""
+    ) throws -> AnyClass {
         if class_isMetaClass(baseClass) {
             throw AllocationError.baseClassIsMetaClass(baseClass: baseClass)
+        }
+        if prefix.isEmpty && suffix.isEmpty {
+            throw AllocationError.missingDiscriminator(baseClass: baseClass)
         }
 
         sharedLockLock()
         defer { sharedLockUnlock() }
 
         let baseClassName = String(cString: class_getName(baseClass))
-        let dynamicClassName = "_ObjCRuntimeToolbox_\(suffix)_\(baseClassName)"
+        let dynamicClassName = composeDynamicClassName(
+            prefix: prefix,
+            baseClassName: baseClassName,
+            suffix: suffix
+        )
 
         if let cached = sharedSubclassCache[dynamicClassName] {
             return cached
@@ -430,6 +454,18 @@ public enum DynamicSubclass {
     }
 
     // MARK: - Internal Helpers
+
+    private static func composeDynamicClassName(
+        prefix: String,
+        baseClassName: String,
+        suffix: String
+    ) -> String {
+        var components: [String] = ["_ObjCRuntimeToolbox"]
+        if !prefix.isEmpty { components.append(prefix) }
+        components.append(baseClassName)
+        if !suffix.isEmpty { components.append(suffix) }
+        return components.joined(separator: "_")
+    }
 
     private static func classChain(_ start: AnyClass, contains target: AnyClass) -> Bool {
         var cursor: AnyClass? = start

@@ -69,7 +69,7 @@ extension DynamicSubclassHookMacro: MemberMacro {
             let baseClass: AnyClass = ObjCRuntimeToolbox.DynamicSubclass.originalClass(of: instance)
             let dynamicSubclassValue: AnyClass
             do {
-                dynamicSubclassValue = try ObjCRuntimeToolbox.DynamicSubclass.getOrCreate(of: baseClass, suffix: \(literal: arguments.suffix))
+                dynamicSubclassValue = try ObjCRuntimeToolbox.DynamicSubclass.getOrCreate(of: baseClass, prefix: \(literal: arguments.prefix), suffix: \(literal: arguments.suffix))
             } catch {
                 ObjCRuntimeToolbox.DynamicSubclass.logAllocationFailure(error, baseClass: baseClass)
                 return nil
@@ -302,6 +302,7 @@ private func buildInstallOverridesBody(
 
 private struct ParsedHookArguments {
     let baseTypeText: String
+    let prefix: String
     let suffix: String
     let adoptedProtocolTypeTexts: [String]
 }
@@ -314,7 +315,7 @@ private func parseAttributeArguments(
         context.emit(
             .error(
                 "missingArguments",
-                "@DynamicSubclassHook requires 'of:' and 'suffix:' arguments."
+                "@DynamicSubclassHook requires 'of:' and at least one of 'prefix:' or 'suffix:'."
             ),
             at: node
         )
@@ -323,8 +324,12 @@ private func parseAttributeArguments(
 
     var baseTypeText: String?
     var ofArgumentNode: LabeledExprSyntax?
-    var suffix: String?
+    var prefix: String = ""
+    var prefixArgumentNode: LabeledExprSyntax?
+    var suffix: String = ""
     var suffixArgumentNode: LabeledExprSyntax?
+    var sawPrefix = false
+    var sawSuffix = false
     var adoptedProtocolTypeTexts: [String] = []
     var adoptsArgumentNode: LabeledExprSyntax?
 
@@ -334,9 +339,14 @@ private func parseAttributeArguments(
         case "of":
             baseTypeText = extractTypeName(from: argument.expression)
             ofArgumentNode = argument
+        case "prefix":
+            prefix = extractStringLiteral(from: argument.expression) ?? ""
+            prefixArgumentNode = argument
+            sawPrefix = true
         case "suffix":
-            suffix = extractStringLiteral(from: argument.expression)
+            suffix = extractStringLiteral(from: argument.expression) ?? ""
             suffixArgumentNode = argument
+            sawSuffix = true
         case "adopts":
             adoptedProtocolTypeTexts = extractTypeNameArray(from: argument.expression)
             adoptsArgumentNode = argument
@@ -344,7 +354,7 @@ private func parseAttributeArguments(
             context.emit(
                 .error(
                     "unknownAttributeLabel",
-                    "@DynamicSubclassHook: unknown argument label '\(actualLabel)'. Expected 'of:', 'suffix:', or 'adopts:'."
+                    "@DynamicSubclassHook: unknown argument label '\(actualLabel)'. Expected 'of:', 'prefix:', 'suffix:', or 'adopts:'."
                 ),
                 at: argument
             )
@@ -365,13 +375,37 @@ private func parseAttributeArguments(
         return nil
     }
 
-    guard let suffix else {
+    // Validate prefix/suffix string-literal shape — extractStringLiteral
+    // returns nil for non-literal expressions; treat that as an empty string
+    // for the discriminator but diagnose the bad form.
+    if sawPrefix, let prefixArgumentNode, extractStringLiteral(from: prefixArgumentNode.expression) == nil {
         context.emit(
             .error(
-                "missingSuffix",
-                "@DynamicSubclassHook requires a 'suffix:' string literal."
+                "prefixMustBeStringLiteral",
+                "@DynamicSubclassHook: 'prefix:' must be a string literal."
             ),
-            at: (suffixArgumentNode.map { Syntax($0) }) ?? Syntax(node)
+            at: prefixArgumentNode.expression
+        )
+        return nil
+    }
+    if sawSuffix, let suffixArgumentNode, extractStringLiteral(from: suffixArgumentNode.expression) == nil {
+        context.emit(
+            .error(
+                "suffixMustBeStringLiteral",
+                "@DynamicSubclassHook: 'suffix:' must be a string literal."
+            ),
+            at: suffixArgumentNode.expression
+        )
+        return nil
+    }
+
+    if prefix.isEmpty && suffix.isEmpty {
+        context.emit(
+            .error(
+                "missingDiscriminator",
+                "@DynamicSubclassHook requires at least one of 'prefix:' or 'suffix:' to be non-empty. They identify the hook variant in the dynamic-subclass cache and must differ between variants targeting the same base class."
+            ),
+            at: node
         )
         return nil
     }
@@ -405,6 +439,7 @@ private func parseAttributeArguments(
 
     return ParsedHookArguments(
         baseTypeText: baseTypeText,
+        prefix: prefix,
         suffix: suffix,
         adoptedProtocolTypeTexts: adoptedProtocolTypeTexts
     )

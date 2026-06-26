@@ -37,7 +37,8 @@ import ObjectiveC
 @attached(member, names: named(base), named(init), named(install), named(uninstall), named(dynamicSubclass), named(installOverridesIfNeeded))
 public macro DynamicSubclassHook<BaseClass: NSObject>(
     of baseClass: BaseClass.Type,
-    suffix: String,
+    prefix: String = "",
+    suffix: String = "",
     adopts adoptedProtocols: [Any.Type] = []
 ) = #externalMacro(
     module: "ObjCRuntimeToolboxMacros",

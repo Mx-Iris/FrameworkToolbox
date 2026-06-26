@@ -66,7 +66,7 @@ Tests/
 `public enum DynamicSubclass` 提供四组 API：
 
 **Subclass lifecycle**
-- `getOrCreate(of:suffix:) -> AnyClass` —— 用 `objc_allocateClassPair` 创建命名为 `_ObjCRuntimeToolbox_<suffix>_<baseClassName>` 的动态子类（已存在则缓存命中）；新建时立即装好三个 baseline overrides（见下）。
+- `getOrCreate(of:prefix:suffix:) throws -> AnyClass` —— 用 `objc_allocateClassPair` 创建命名为 `_ObjCRuntimeToolbox_<prefix>_<baseClassName>_<suffix>` 的动态子类（空 prefix / suffix 段被省略，规则：`_ObjCRuntimeToolbox_<prefix>_<baseClassName>` / `_ObjCRuntimeToolbox_<baseClassName>_<suffix>` / `_ObjCRuntimeToolbox_<prefix>_<baseClassName>_<suffix>`）。`prefix` 与 `suffix` 均可选，但至少一个非空 —— 否则 `AllocationError.missingDiscriminator` 抛出，宏入口也会在编译期 diagnose。已存在则缓存命中；新建时立即装好三个 baseline overrides（见下）。
 - `retain(_:dynamicSubclass:)` / `release(_:)` —— ref-counted ISA swap。首次 retain 用 `object_setClass` 换 isa 并挂 dealloc sentinel；release 到 0 时只在"当前 isa 仍是我们装的动态子类"时才把 isa 还原（避免破坏中途层叠上来的 KVO）。
 - `isInstalled(on:)` / `originalClass(of:) -> AnyClass` —— side table 查询。
 
@@ -99,7 +99,8 @@ Tests/
                           named(installOverridesIfNeeded))
 public macro DynamicSubclassHook<BaseClass: NSObject>(
     of baseClass: BaseClass.Type,
-    suffix: String,
+    prefix: String = "",
+    suffix: String = "",
     adopts adoptedProtocols: [Any.Type] = []
 ) = #externalMacro(module: "ObjCRuntimeToolboxMacros", type: "DynamicSubclassHookMacro")
 

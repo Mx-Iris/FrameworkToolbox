@@ -139,18 +139,34 @@ struct DynamicSubclassHookDiagnosticsTests {
         }
     }
 
-    @Test func missingSuffixIsRejected() {
+    @Test func missingDiscriminatorIsRejected() {
         assertMacro {
             """
             @DynamicSubclassHook(of: Greeter.self)
-            struct NoSuffixHook { }
+            struct NoDiscriminatorHook { }
             """
         } diagnostics: {
             """
             @DynamicSubclassHook(of: Greeter.self)
             ┬─────────────────────────────────────
-            ╰─ 🛑 @DynamicSubclassHook requires a 'suffix:' string literal.
-            struct NoSuffixHook { }
+            ╰─ 🛑 @DynamicSubclassHook requires at least one of 'prefix:' or 'suffix:' to be non-empty. They identify the hook variant in the dynamic-subclass cache and must differ between variants targeting the same base class.
+            struct NoDiscriminatorHook { }
+            """
+        }
+    }
+
+    @Test func bothEmptyPrefixAndSuffixIsRejected() {
+        assertMacro {
+            """
+            @DynamicSubclassHook(of: Greeter.self, prefix: "", suffix: "")
+            struct EmptyDiscriminatorHook { }
+            """
+        } diagnostics: {
+            """
+            @DynamicSubclassHook(of: Greeter.self, prefix: "", suffix: "")
+            ┬─────────────────────────────────────────────────────────────
+            ╰─ 🛑 @DynamicSubclassHook requires at least one of 'prefix:' or 'suffix:' to be non-empty. They identify the hook variant in the dynamic-subclass cache and must differ between variants targeting the same base class.
+            struct EmptyDiscriminatorHook { }
             """
         }
     }

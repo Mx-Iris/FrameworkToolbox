@@ -151,6 +151,25 @@ struct ConcurrencyStressHook {
     func value() -> Int { callSuper() + 1 }
 }
 
+// MARK: - Scenario 10 — prefix-only and prefix+suffix discriminators
+
+@objc(PrefixOnlyTargetScenario10)
+final class PrefixOnlyTarget: NSObject {
+    @objc dynamic func describe() -> String { "raw" }
+}
+
+@DynamicSubclassHook(of: PrefixOnlyTarget.self, prefix: "Decor")
+struct DecorPrefixedHook {
+    @DynamicSubclassOverride
+    func describe() -> String { "[Decor] " + callSuper() }
+}
+
+@DynamicSubclassHook(of: PrefixOnlyTarget.self, prefix: "Decor", suffix: "Outer")
+struct DecorOuterHook {
+    @DynamicSubclassOverride
+    func describe() -> String { "<<" + callSuper() + ">>" }
+}
+
 // MARK: - Tests
 
 final class ObjCRuntimeToolboxTests: XCTestCase {
@@ -338,6 +357,38 @@ final class ObjCRuntimeToolboxTests: XCTestCase {
         XCTAssertEqual(fresh.ping(), 1)
         XCTAssertFalse(DynamicSubclass.isInstalled(on: fresh))
         _ = identityCaptured  // keep the captured value alive to avoid warnings
+    }
+
+    // MARK: Scenario 10 — prefix-only and prefix+suffix
+
+    func testPrefixOnlyDiscriminatorWorks() {
+        let target = PrefixOnlyTarget()
+        DecorPrefixedHook.install(on: target)
+        XCTAssertEqual(target.describe(), "[Decor] raw")
+        DecorPrefixedHook.uninstall(from: target)
+        XCTAssertEqual(target.describe(), "raw")
+    }
+
+    func testPrefixAndSuffixDiscriminatorsProduceDistinctSubclasses() {
+        // DecorPrefixedHook (prefix only) and DecorOuterHook (prefix + suffix)
+        // are different variants targeting the same base class — they must
+        // resolve to different dynamic subclasses so neither steals the
+        // other's installation slot. Verified by installing them on
+        // **different** instances and asserting independent behavior.
+        let prefixOnly = PrefixOnlyTarget()
+        let prefixAndSuffix = PrefixOnlyTarget()
+
+        DecorPrefixedHook.install(on: prefixOnly)
+        DecorOuterHook.install(on: prefixAndSuffix)
+
+        XCTAssertEqual(prefixOnly.describe(), "[Decor] raw")
+        XCTAssertEqual(prefixAndSuffix.describe(), "<<raw>>")
+
+        DecorPrefixedHook.uninstall(from: prefixOnly)
+        DecorOuterHook.uninstall(from: prefixAndSuffix)
+
+        XCTAssertEqual(prefixOnly.describe(), "raw")
+        XCTAssertEqual(prefixAndSuffix.describe(), "raw")
     }
 
     // MARK: Concurrent install / uninstall stress
