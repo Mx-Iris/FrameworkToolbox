@@ -24,6 +24,10 @@ let package = Package(
             name: "CoreFoundationToolbox",
             targets: ["CoreFoundationToolbox"]
         ),
+        .library(
+            name: "ObjCRuntimeToolbox",
+            targets: ["ObjCRuntimeToolbox"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "509.1.0" ..< "604.0.0"),
@@ -56,6 +60,12 @@ let package = Package(
             name: "CoreFoundationToolbox",
             dependencies: [
                 "FrameworkToolbox",
+            ]
+        ),
+        .target(
+            name: "ObjCRuntimeToolbox",
+            dependencies: [
+                "ObjCRuntimeToolboxMacros",
             ]
         ),
         .target(
@@ -97,6 +107,17 @@ let package = Package(
                 .SwiftDiagnostics,
             ]
         ),
+        .macro(
+            name: "ObjCRuntimeToolboxMacros",
+            dependencies: [
+                "MacroToolbox",
+                .SwiftSyntax,
+                .SwiftSyntaxMacros,
+                .SwiftCompilerPlugin,
+                .SwiftSyntaxBuilder,
+                .SwiftDiagnostics,
+            ]
+        ),
         .executableTarget(
             name: "FrameworkToolboxClient",
             dependencies: ["FrameworkToolbox"]
@@ -112,6 +133,10 @@ let package = Package(
         .executableTarget(
             name: "CoreFoundationToolboxClient",
             dependencies: ["CoreFoundationToolbox"]
+        ),
+        .executableTarget(
+            name: "ObjCRuntimeToolboxClient",
+            dependencies: ["ObjCRuntimeToolbox"]
         ),
 
         .testTarget(
@@ -138,6 +163,20 @@ let package = Package(
             name: "CoreFoundationToolboxTests",
             dependencies: [
                 "CoreFoundationToolbox",
+            ]
+        ),
+        .testTarget(
+            name: "ObjCRuntimeToolboxTests",
+            dependencies: [
+                "ObjCRuntimeToolbox",
+            ]
+        ),
+        .testTarget(
+            name: "ObjCRuntimeToolboxMacroTests",
+            dependencies: [
+                "ObjCRuntimeToolboxMacros",
+                "MacroToolbox",
+                .product(name: "MacroTesting", package: "swift-macro-testing"),
             ]
         ),
 
