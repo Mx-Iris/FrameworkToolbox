@@ -28,8 +28,8 @@ Target library: `ObjCRuntimeToolbox` (新模块)
 
 - **不**做 method swizzle（替换原方法 IMP）的 API。本模块只做 per-instance ISA swizzle——更安全、可关、可逐实例开关。要做 method swizzle 的人请直接用 `method_setImplementation`。
 - **不**做 KVO 互操作的复杂保护。只实现"动态子类层叠到原始类之上"这一层；如果用户的代码同时跑 KVO + 这里的 hook，**KVO 在外、hook 在内**才有保障；反过来 KVO 后开 hook，本模块的 `release()` 不会破坏 KVO 状态（用 `currentClass === dynamicSubclass` 守卫）。
-- **不**自动处理 `throws` / `async`。当前宏只看签名形状，不识别这两个修饰符，遇到会编译报错。补 `throws` 简单；补 `async` 涉及 ObjC continuation 桥接，工作量大。
-- **不**自动处理 Swift 函数名首参非 `_` label 的 selector 推导。当前规则只把非 `_` label 直接拼接（`format(message:level:)` → `formatmessage:level:`，与 Swift 实际 `@objc` 桥接的 `formatWithMessage:level:` 不一致）。**约定首参必须用 `_`** ；如不行，将来加 `@selector("...")` 显式覆盖。
+- **不**自动桥接 `throws` / `async`。`throws` 由宏入口 `context.diagnose(...)` 拒绝；`async` 因 ObjC continuation 桥接复杂同样拒绝。错误锚到 `throws` / `async` 关键字 token，IDE 红线落在用户源码而非展开 buffer。
+- **不**自动派生 Swift `@objc` 桥接的 `<baseName>With<CapitalizedLabel>:` 形态。默认按 `baseName + 各 externalLabel + :` 朴素拼接；若首参带非 `_` label，宏在编译期 diagnose 报错，提示要么改用 `_`、要么显式传 selector：`@DynamicSubclassOverride("formatWithMessage:level:")`。
 
 ## Architecture
 
@@ -97,23 +97,28 @@ Tests/
 @attached(member, names: named(base), named(init), named(install),
                           named(uninstall), named(dynamicSubclass),
                           named(installOverridesIfNeeded))
-@attached(memberAttribute)
-public macro DynamicSubclassHook<BaseClass: AnyObject>(
+public macro DynamicSubclassHook<BaseClass: NSObject>(
     of baseClass: BaseClass.Type,
     suffix: String,
     adopts adoptedProtocols: [Any.Type] = []
 ) = #externalMacro(module: "ObjCRuntimeToolboxMacros", type: "DynamicSubclassHookMacro")
+
+@attached(body)
+public macro DynamicSubclassOverride(_ explicitSelector: String? = nil) = #externalMacro(
+    module: "ObjCRuntimeToolboxMacros",
+    type: "DynamicSubclassOverrideMacro"
+)
 ```
 
 **MemberMacro 角色**——给 hook struct 注入：
 - `let base: BaseClass` 和 `init(base:)`——储存当前调用的实例。Box pattern：`self.base` 就是原始 AppKit/Foundation 实例。
-- `static func install(on:)` / `static func uninstall(from:)` —— 用户入口；委托给 `DynamicSubclass.retain/release`。
-- `static func dynamicSubclass(for:) -> AnyClass` —— 查/造动态子类 + 装 override。
-- `private static func installOverridesIfNeeded(on:)` —— 为每个用户方法生成一个 `@convention(block)` 闭包（签名 `(BaseClass, ...funcParams) -> ReturnType`），闭包里 `HookType(base: instance).funcName(args...)`。然后一次 `addProtocols` + 一次 `addOverrides`。
+- `static func install(on:)` / `static func uninstall(from:)` —— 用户入口；委托给 `DynamicSubclass.retain/release`。`install` 处理 `getOrCreate` 失败时（`AllocationError`）早退。
+- `static func dynamicSubclass(for:) -> AnyClass?` —— `try DynamicSubclass.getOrCreate(...)`；失败转 `os_log .fault` 经 `logAllocationFailure(...)` 输出后返回 `nil`。
+- `private static func installOverridesIfNeeded(on:)` —— 由 `claimOverrideInstallation(on:hookIdentifier:)` once-guard 守卫，确保每个 `(dynamicSubclass, hookTypeName)` 只装载一次（同 suffix 多 hook 仍各自 claim，互不干扰）。仅为带 `@DynamicSubclassOverride` 标记的方法生成 `@convention(block)` 闭包；闭包变量命名 `block_<baseName>_<index>` 避免 baseName 重载冲突。
 
-**MemberAttributeMacro 角色**——给 struct 内每个非 static 函数自动挂上 `@ObjCRuntimeToolbox._DynamicSubclassMethodBody`，触发下面的 body macro。
+**Opt-in `@DynamicSubclassOverride`**——hook struct 内只有显式标注此 attribute 的方法会被注册为 ObjC override；未标注方法保持纯 Swift helper。可选第一个字符串参数覆盖 selector 自动派生。
 
-### 宏：`@_DynamicSubclassMethodBody`（内部）
+### 宏：`@DynamicSubclassOverride`（公开标记 + body 改写）
 
 BodyMacro 改写每个用户方法的 body：把原 statements 前面插入两个本地辅助函数，签名严格匹配用户方法。
 
@@ -203,7 +208,7 @@ public static func callSuperReturn<ReturnValue>(
 
 - runtime 不再需要为 arity × void/return × ifImpl 写一堆重载——所有组合在宏展开点统一生成。
 - super 调用的类型安全完全由宏保证（用户写的返回类型是什么，cast 就是什么，编译期校验）。
-- arity / 任意 Swift 类型自动支持，没有"arity > N 未实现"的人为天花板。
+- arity 没有人为天花板。**类型范围有边界**：`@convention(c)` 只能桥接 Objective-C representable 的 Swift 类型 —— `@objc` class、`Bool` / `Int` 系 / `Float` / `Double` / `CGFloat`、`String`（桥到 `NSString`）、`Selector`、`AnyClass`、`Optional<class>`、`Void`。`inout` / 元组返回 / 非 class 的 `Optional` / 裸 Swift 闭包 / 命中外层泛型参数的类型都由宏在编译期通过 `context.diagnose(...)` 拒绝，错误直接锚到用户的 `TypeSyntax`。
 
 ### 为什么 BodyMacro 而不是 PreambleMacro
 
@@ -236,6 +241,7 @@ final class Greeter: NSObject {
 
 @DynamicSubclassHook(of: Greeter.self, suffix: "Loud")
 struct LoudGreeterHook {
+    @DynamicSubclassOverride
     func greet() -> String {
         let originalGreeting = callSuper()
         return originalGreeting.uppercased() + "!"
@@ -259,6 +265,7 @@ final class Formatter: NSObject {
 
 @DynamicSubclassHook(of: Formatter.self, suffix: "Capitalized")
 struct CapitalizedFormatterHook {
+    @DynamicSubclassOverride
     func format(_ name: String, age: Int) -> String {
         callSuper(name, age).uppercased()
     }
@@ -281,6 +288,7 @@ final class NotificationLogger: NSObject {
 
 @DynamicSubclassHook(of: NotificationLogger.self, suffix: "Prefixed")
 struct PrefixedLoggerHook {
+    @DynamicSubclassOverride
     func log(_ message: String, level: Int) {
         callSuper("[hooked] " + message, level)
     }
@@ -303,6 +311,7 @@ final class BareSpeaker: NSObject {
 
 @DynamicSubclassHook(of: BareSpeaker.self, suffix: "Polite", adopts: [Greetable.self])
 struct PoliteSpeakerHook {
+    @DynamicSubclassOverride
     func greetingPrefix() -> String {
         // 原始类无 IMP，callSuperIfImplemented 走 default 分支
         callSuperIfImplemented(default: "Mx. ")
@@ -321,6 +330,7 @@ PoliteSpeakerHook.install(on: speaker)
 ```swift
 @DynamicSubclassHook(of: BareSpeaker.self, suffix: "Logging")
 struct LoggingSpeakerHook {
+    @DynamicSubclassOverride
     func speak() -> String {
         // speak 在 BareSpeaker 上存在，callSuperIfImplemented 透传
         let originalUtterance = callSuperIfImplemented(default: "<no impl>")
@@ -344,31 +354,68 @@ struct LoggingSpeakerHook {
 | `testProtocolAdoptionExposesNewMethod` | `adopts:` + `as? Protocol` + `conforms(to:)` + 协议方法 dispatch |
 | `testRespondsToSelectorReportsHookedMethods` | `-respondsToSelector:` 路由真实 ISA |
 | `testCallSuperIfImplementedDispatchesWhenSuperExists` | ifImplemented 命中 super 分支 |
+| `testSharedSuffixComposesOverridesAcrossHooks` | 同 suffix 多 hook 共享 dynamic subclass、各自的 IMP 注册不互相覆盖 |
+| `testUntaggedHookMethodIsNotRegistered` | 未标注 `@DynamicSubclassOverride` 的 helper 方法不会被注册为 ObjC override |
+| `testInstallIsRefCounted` | install / uninstall 是 ref-counted，N 次 install 需 N 次 uninstall 才完整复原 |
+| `testSentinelClearsSideTableOnDealloc` | `DynamicSubclassSentinel` 跟随宿主 dealloc，side table 条目被自动清理 |
+| `testConcurrentInstallUninstallOnDistinctInstances` | `DispatchQueue.concurrentPerform` × 200 iteration 并发压测，无 crash / 状态损坏 |
 
-`Tests/ObjCRuntimeToolboxMacroTests/` 留了占位文件——MacroTesting expansion 快照等设计稳定后再补。
+`Tests/ObjCRuntimeToolboxMacroTests/DynamicSubclassMacroTests.swift` 用 MacroTesting `assertMacro` 锁定 8 个诊断快照：`throws` / `async` / `@MainActor` / `inout` / 非 `_` 首参 label / `enum` 容器 / 缺 `suffix:` / baseline selector 冲突。expansion 全文快照因 macro 输出对空白敏感被刻意省略，行为正确性由上面的端到端用例锁定。
 
 ## Known Limitations / Future Work
 
-1. **首参非 `_` label 的 selector 推导**
-   当前直接拼接，得到的 selector 与 Swift `@objc` 实际桥接的 `<baseName>With<CapitalizedLabel>:` 不一致。临时约定首参必须 `_`；要支持的话，加 Swift-style camel-case 转换，或者支持 `@selector("...")` 显式覆盖。
+> **2026-06-26 集中修复**：以下 7 条 PoC 期 Known Limitations 全部按设计文档列出的方向收敛了一遍。当前剩余的边界与未做项见 "Remaining / Future" 段。
 
-2. **`throws` / `async` 修饰符**
-   宏不识别。`throws` 容易补（`callSuper` 同步加 throws、IMP cast 加 throws 标记）；`async` 涉及到 ObjC continuation 桥接，工作量较大。
+1. **首参非 `_` label 的 selector 推导 — resolved**
+   `FunctionShape.selectorString(explicitSelector:)` 现在接受可选 explicit selector。`@DynamicSubclassOverride("formatWithMessage:level:")` 允许在 Swift `@objc` 桥接产物与朴素拼接不一致时手动指定。未传 explicit 时，宏入口对非 `_` 首参 label 通过 `context.diagnose(...)` 抛错并下划线到该 label token，杜绝运行时静默不命中。
 
-3. **MacroTesting expansion 快照测试**
-   `ObjCRuntimeToolboxMacroTests/` 只有 placeholder。等 selector 推导规则、`callSuperIfImplemented` 签名、`adopts:` 表达式形态稳定后补上。
+2. **`throws` / `async` 修饰符 — resolved（拒绝）**
+   `FunctionShape.init` 已读取 `signature.effectSpecifiers`，`DynamicSubclassOverrideMacro` 在 expansion 入口对 `throws` / `async` / `@MainActor` / `mutating` / actor 隔离修饰符通过 `context.diagnose(...)` 抛错并精确锚到 token（IDE 红线落在 `throws` / `async` 关键字本身）。`throws` 的 IMP 桥接重写仍未做（保持拒绝语义），`async` 同因 ObjC continuation 桥接复杂被显式拒绝；用户得到的是清晰的编译期错误而非运行时崩溃或晦涩的展开 buffer 报错。
 
-4. **`OSAllocatedUnfairLock` vs `NSLock`**
-   PoC 用 `NSLock`，因为 `OSAllocatedUnfairLock` 在 `FoundationToolbox` 而 `ObjCRuntimeToolbox` 不依赖那条链。要升级的话要么把 lock 下沉到更基础的目标，要么让 `ObjCRuntimeToolbox` 依赖 `FoundationToolbox`（目前没有这层依赖）。
+3. **MacroTesting expansion 快照测试 — resolved（诊断集）**
+   `Tests/ObjCRuntimeToolboxMacroTests/DynamicSubclassMacroTests.swift` 用 MacroTesting `assertMacro` 覆盖 8 个诊断快照：`throws` / `async` / `@MainActor` / `inout` / 非 `_` 首参 / `enum` 容器 / 缺 `suffix:` / baseline selector 冲突。expansion 全文快照因 macro 输出对空白敏感被刻意省略 —— 行为正确性由 `Tests/ObjCRuntimeToolboxTests/` 14 个端到端用例锁定（含 `Scenario 6` shared-suffix 复合、`Scenario 7` 未标注 helper 不被注册、ref-counted install、sentinel 自动清理、`DispatchQueue.concurrentPerform` × 200 的并发压测）。
 
-5. **并发压力 / dealloc-time race**
-   sentinel + side table 路径写了但没做并发压测。理论上 lock + side table 操作都在锁内、associated object 操作在锁外（避免嵌套），但需要实际压一压。
+4. **`OSAllocatedUnfairLock` vs `NSLock` — resolved**
+   `NSLock` 换成裸 `os_unfair_lock_s`（iOS 10 / macOS 10.12 起可用，与现有 platforms 完全兼容）。不引入 `FoundationToolbox` 依赖、也不需要 16/13 版本门控，热路径成本最低。
 
-6. **多 hook 共享同一 dynamic subclass**
-   `getOrCreate` 用 `(baseClass, suffix)` 做 cache key——多个 `@DynamicSubclassHook` 用相同 suffix 时自然共享同一动态子类，`class_addMethod` 幂等性保证后到的 override 不会覆盖先到的。此模式在 AppKitPlus 用得很多（多个 interaction 都层叠到共享的 "Enhancements" 子类上）。当前没做专门测试，但运行时支持。
+5. **并发压力 / dealloc-time race — resolved**
+   - `SideTableEntry` 加 monotonic `generation: UInt64`；`DynamicSubclassSentinel` 捕获生成时 generation；`cleanupSideTableEntry` 在锁内做 generation 匹配后才 `removeValue`，关掉 "老 sentinel deinit 删掉新 install" 的 ABA 窗口。
+   - `retain` 的 sentinel 构造在锁内、`objc_setAssociatedObject` 在锁外（避免与关联对象内部锁嵌套）；`release` 的 sentinel 解绑同样在锁外，并由 generation 守卫保护。
+   - 新增 `testConcurrentInstallUninstallOnDistinctInstances` × 200 iteration 压测覆盖 `DispatchQueue.concurrentPerform` 路径。
 
-7. **错误诊断质量**
-   `DynamicSubclassHookMacroError` 只有三种错误类型，没用 SwiftDiagnostics 把光标定位到具体的 argument node 上。生产化时应该改用 `context.diagnose(...)` 给 IDE 提供精准下划线。
+6. **多 hook 共享同一 dynamic subclass — resolved**
+   `claimOverrideInstallation(on:hookIdentifier:)` 现在以 `(ObjectIdentifier(dynamicSubclass), hookIdentifier)` 为 key，每个 hook 独立 claim 一次。同 suffix 多 hook 仍共享 dynamic subclass、各自的 IMP 注册不互相覆盖。专项测试 `testSharedSuffixComposesOverridesAcrossHooks` 锁定该路径。反面情况 —— 同实例尝试用**不同 suffix** 叠加两个 hook —— 由 `retain(_:dynamicSubclass:)` 的 existing-entry 分支检测 `dynamicSubclass !== existing.dynamicSubclass` 时 `preconditionFailure`，把曾经的静默丢弃升级为可观察失败。
+
+7. **错误诊断质量 — resolved**
+   `DynamicSubclassMacroDiagnostic` 与 `MacroExpansionContext.emit(_:at:)` 把所有错误改成 `context.diagnose(...)`：缺 `of:` / `suffix:` 下划线落到 attribute 节点、未知 label 下划线落到具体实参、`adopts:` 非 `<Type>.self` 形态下划线落到具体元素、enum / actor / extension / protocol 容器下划线落到 attribute 本身、`throws` / `async` / `mutating` / `@MainActor` / `inout` 下划线落到具体修饰符 token、非 `_` 首参 label 下划线落到 label token、baseline selector 冲突下划线落到方法名、selector 重复或 baseName 索引冲突下划线落到方法名。`DynamicSubclassMethodBodyMacroError.notAFunctionDeclaration` 也真正 throw 了。
+
+### Resolved beyond the original 7
+
+集中修复期间另外关闭的 audit 项（节选；完整 finding 列表见 audit 输出）：
+
+- **Critical**: `objc_allocateClassPair` 返回 `nil` 时 `getOrCreate` 抛 `AllocationError`，宏生成的 `install(on:)` 早退，不再静默退化为全局 method swizzle；`addOverrides` 加 `precondition(dynamicSubclass !== referenceClass)` 防线。
+- **High**: `addOverrides` 在 `class_addMethod` 返回 false 时 `imp_removeBlock` 回收 trampoline；`claimOverrideInstallation` once-guard 让 `installOverridesIfNeeded` 真正幂等，重复 install 不再泄漏。
+- **High**: `@DynamicSubclassHook` 不再 `MemberAttributeMacro` 自动给每个 func 挂 body —— 改为显式 opt-in `@DynamicSubclassOverride` 标记。未标注 func 完全是普通 Swift helper，避免 "private helper 被静默 swizzle" 的 footgun。
+- **High**: block 名从 `block_<baseName>` 改为 `block_<baseName>_<index>`，消除 baseName 重载冲突；selector 重复在宏入口 diagnose。
+- **High**: `Package.swift` 把 `ObjCRuntimeToolbox` library 标 `type: .dynamic`，强制单一进程内拷贝，避免多 dylib 静态嵌入下 `sharedSideTable` / `sentinelAssociationKey` 各成一份。
+- **High**: 宏泛型 `BaseClass: AnyObject` 收紧为 `BaseClass: NSObject`。
+- **High**: `FunctionShape` / `DynamicSubclassOverrideMacro` 入口对 `inout` / `borrowing` / `consuming` 修饰符、Swift 元组返回、裸 Swift 闭包参数都 diagnose。
+- **Medium**: `retain` 检测 `NSKVONotifying_` 前缀（KVO 已激活的对象）→ `os_log .fault` + `assertionFailure` 并拒绝 install；`getOrCreate` / `retain` 对 `class_isMetaClass` 守卫。
+- **Medium**: `getOrCreate` 命中既有同名类时沿 `class_getSuperclass` 校验 `baseClass` 在祖先链中，否则 throw；命中分支也无条件重装 baseline overrides（`class_addMethod` 幂等）。
+- **Medium**: `installBaselineOverrides` 改用 `class_getInstanceMethod(NSObject.self, sel)` + `method_getTypeEncoding` 读取真实 BOOL 编码，兼容 x86_64 macOS / Mac Catalyst 的 `signed char` ABI。
+- **Medium**: `resolveTypeEncoding` fallback 分支 `os_log .info` 警告 + Debug `assertionFailure`，不再静默生效。
+- **Medium**: `release(_:)` 在缺 entry 分支 `assertionFailure`，over-release 在 Debug 早暴露。
+- **Medium**: `resolveSuperImplementation` fatalError 文案附使用建议（建议改用 `callSuperIfImplemented(default:)`）。
+- **Low**: 死代码 `FunctionShape.dispatchArgumentList` 与 `"PoC: missing default value"` fallback 移除。
+- **Low**: `PlaceholderTests.swift` 删除，由真实 MacroTesting 用例替换；客户端扩展到 5 个 Scenario。
+- **Low**: 宏生成代码改用 `NSSelectorFromString(...)` 而非 `Selector((...))`，消除编译器 `#selector` 建议警告。
+
+### Remaining / Future
+
+- **`throws` 桥接**：当前选择是 diagnose 拒绝。若未来需要支持，需要 `callSuper` 透传 `try`、IMP cast 加 `throws` 标记、生成 do/try/catch 路径。`async` 因 ObjC continuation 桥接复杂仍计划维持拒绝。
+- **expansion 全文快照**：因宏输出对空白敏感而省略；如要补，需要先对 emission 做 indent-stable 规范化。
+- **`adopts:` 协议非 `@objc` 的运行时校验**：当前在宏入口做语法形态校验（必须是 `.self`），运行时层依赖 Swift 类型系统 `[Protocol]` 形参把非 `@objc` 协议挡住；未来可在 `addProtocols` / `addOverrides` 多加一道 `class_conformsToProtocol` 探测以输出更具语义的错误。
+- **重新引入 `@_AdoptedProtocolMethod` 或类似显式标记**：让 body macro 对 adopts 协议方法只 emit `callSuperIfImplemented` 不生成 `callSuper`，避免用户误用 `callSuper()` 在 informal-protocol 上触发 fatalError。当前文档与 fatalError 文案里已提示，但缺编译期保护。
 
 ## Migration / Adoption
 
