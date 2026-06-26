@@ -14,34 +14,53 @@ struct FunctionShape {
         let internalName: String
         /// Type as written in the source (trimmed of trivia).
         let typeText: String
+        /// The original type syntax — kept for diagnostic anchoring.
+        let typeSyntax: TypeSyntax
     }
 
     let baseName: String
+    /// The original name token — kept for diagnostic anchoring.
+    let baseNameToken: TokenSyntax
     let parameters: [Parameter]
     /// Trimmed return-type text, or `nil` for `Void`-returning functions.
     let returnTypeText: String?
+    /// The original return-type syntax (for diagnostics). `nil` when the
+    /// function has no return clause or returns `Void` / `()`.
+    let returnTypeSyntax: TypeSyntax?
+
+    let isThrowing: Bool
+    let isAsync: Bool
 
     init(from declaration: FunctionDeclSyntax) {
         baseName = declaration.name.text
+        baseNameToken = declaration.name
         parameters = declaration.signature.parameterClause.parameters.map { parameter in
             let externalLabel = parameter.firstName.text
             let internalName = parameter.secondName?.text ?? externalLabel
             return Parameter(
                 externalLabel: externalLabel,
                 internalName: internalName,
-                typeText: parameter.type.trimmedDescription
+                typeText: parameter.type.trimmedDescription,
+                typeSyntax: parameter.type
             )
         }
         if let returnClause = declaration.signature.returnClause {
             let text = returnClause.type.trimmedDescription
             if text == "Void" || text == "()" {
                 returnTypeText = nil
+                returnTypeSyntax = nil
             } else {
                 returnTypeText = text
+                returnTypeSyntax = returnClause.type
             }
         } else {
             returnTypeText = nil
+            returnTypeSyntax = nil
         }
+
+        let effects = declaration.signature.effectSpecifiers
+        isThrowing = effects?.throwsClause != nil
+        isAsync = effects?.asyncSpecifier != nil
     }
 
     var isVoid: Bool { returnTypeText == nil }
@@ -49,7 +68,15 @@ struct FunctionShape {
     /// Objective-C selector string derived from the Swift name and parameter
     /// labels: `<baseName>[<param1Label>:<param2Label>:…]`. A `_` external
     /// label contributes only `:`. With zero parameters there are no colons.
-    var selectorString: String {
+    ///
+    /// When `explicitSelector` is non-nil, it overrides the derivation — used
+    /// to support cases like `format(message: String)` where the natural
+    /// derivation `formatmessage:` is wrong; the user passes
+    /// `formatWithMessage:` (matching Swift's `@objc` bridging) explicitly.
+    func selectorString(explicitSelector: String? = nil) -> String {
+        if let explicit = explicitSelector {
+            return explicit
+        }
         if parameters.isEmpty { return baseName }
         var result = baseName
         for (index, parameter) in parameters.enumerated() {
@@ -73,11 +100,6 @@ struct FunctionShape {
         parameters.enumerated().map { index, parameter in
             "_ argument\(index): \(parameter.typeText)"
         }.joined(separator: ", ")
-    }
-
-    /// Positional argument list for the inner runtime dispatch call.
-    var dispatchArgumentList: String {
-        parameters.enumerated().map { index, _ in "argument\(index)" }.joined(separator: ", ")
     }
 
     /// Block IMP signature: `(BaseType, ...paramTypes) -> ReturnType`.

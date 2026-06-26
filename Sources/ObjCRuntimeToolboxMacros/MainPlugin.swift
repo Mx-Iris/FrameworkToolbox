@@ -5,6 +5,6 @@ import SwiftSyntaxMacros
 struct MainPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
         DynamicSubclassHookMacro.self,
-        DynamicSubclassMethodBodyMacro.self,
+        DynamicSubclassOverrideMacro.self,
     ]
 }

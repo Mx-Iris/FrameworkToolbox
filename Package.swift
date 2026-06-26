@@ -25,7 +25,14 @@ let package = Package(
             targets: ["CoreFoundationToolbox"]
         ),
         .library(
+            // `.dynamic` keeps the runtime side-table (sharedSideTable,
+            // sharedSubclassCache, sentinelAssociationKey) as a single
+            // process-wide copy. Without it, every dylib that statically
+            // embeds this library would get its own state — `isInstalled`
+            // would lie across module boundaries and the associated-object
+            // key for the dealloc sentinel would differ between dylibs.
             name: "ObjCRuntimeToolbox",
+            type: .dynamic,
             targets: ["ObjCRuntimeToolbox"]
         ),
     ],
