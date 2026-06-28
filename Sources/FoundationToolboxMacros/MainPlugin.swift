@@ -10,5 +10,6 @@ struct MainPlugin: CompilerPlugin {
         OSAllocatedUnfairLockMacro.self,
         SelectorMacro.self,
         KeychainMacro.self,
+        UserDefaultMacro.self,
     ]
 }

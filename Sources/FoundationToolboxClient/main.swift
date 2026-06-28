@@ -158,3 +158,42 @@ final class KeychainPreferencesStore {
 // without actually touching Keychain Services at startup.
 _ = KeychainExample.self
 _ = KeychainPreferencesStore.self
+
+// MARK: - @UserDefault macro verification
+
+final class UserDefaultExample {
+    @UserDefault(key: "username")
+    var username: String = ""
+
+    @UserDefault(key: "launchCount")
+    var launchCount: Int = 0
+
+    @UserDefault(key: "darkModeEnabled")
+    var darkModeEnabled: Bool = false
+
+    // Optional types: writing nil calls removeObject(forKey:).
+    @UserDefault(key: "refreshToken")
+    var refreshToken: String? = nil
+
+    // Suite-backed storage for app-group sharing.
+    @UserDefault(key: "sharedToken", suite: "group.com.frameworktoolbox.example")
+    var sharedToken: String = ""
+
+    // Public properties also expose a public publisher.
+    @UserDefault(key: "lastSyncDate")
+    public var lastSyncDate: Date = Date(timeIntervalSince1970: 0)
+}
+
+// User-defined Codable types opt in via UserDefaultCodableStorable.
+struct UserDefaultExamplePreferences: UserDefaultCodableStorable {
+    var theme: String
+    var notificationsEnabled: Bool
+}
+
+final class UserDefaultPreferencesStore {
+    @UserDefault(key: "preferences")
+    var preferences: UserDefaultExamplePreferences = .init(theme: "system", notificationsEnabled: true)
+}
+
+_ = UserDefaultExample.self
+_ = UserDefaultPreferencesStore.self
