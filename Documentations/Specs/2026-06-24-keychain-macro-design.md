@@ -1,5 +1,7 @@
 # `@Keychain` Macro — Design
 
+> **Superseded:** The codec layer (`KeychainStorable` / `KeychainCodableStorable` and the `_decodeKeychainValue` / `_encodeKeychainValue` methods, the `_AnyOptionalKeychainValue` / `_isKeychainNil` dispatch hook, and the `AnyPublisher<Value, Never>` projection type) has since been refactored. See `Documentations/StorageLayer.md` for the current design. Symbol names mentioned in this spec — particularly `_decodeKeychainValue` / `_encodeKeychainValue` → `_decodeStorableData` / `_encodeStorableData`, `_AnyOptionalKeychainValue` → `_AnyOptionalStorableValue`, and `AnyPublisher` → `some Publisher` — are kept here as historical record of the original shipping shape. The high-level motivation, runtime semantics, and Codable opt-in story still apply.
+
 Date: 2026-06-24
 Target library: `FoundationToolbox`
 
