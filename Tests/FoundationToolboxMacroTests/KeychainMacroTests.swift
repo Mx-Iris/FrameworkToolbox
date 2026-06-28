@@ -23,12 +23,12 @@ struct KeychainMacroTests {
                 }
             }
 
-            private let _accessToken = KeychainStorage<String>(
+            private let _accessToken = FoundationToolbox.KeychainStorage<String>(
                 key: "accessToken", service: "com.example.app",
                 defaultValue: ""
             )
 
-            var $accessToken: AnyPublisher<String, Never> {
+            var $accessToken: some Combine.Publisher<String, Never> {
                 _accessToken.publisher
             }
             """
@@ -52,12 +52,12 @@ struct KeychainMacroTests {
                 }
             }
 
-            private let _launchCount = KeychainStorage<Int>(
+            private let _launchCount = FoundationToolbox.KeychainStorage<Int>(
                 key: "launchCount", service: "com.example.app",
                 defaultValue: 0
             )
 
-            var $launchCount: AnyPublisher<Int, Never> {
+            var $launchCount: some Combine.Publisher<Int, Never> {
                 _launchCount.publisher
             }
             """
@@ -81,12 +81,12 @@ struct KeychainMacroTests {
                 }
             }
 
-            private let _refreshToken = KeychainStorage<String?>(
+            private let _refreshToken = FoundationToolbox.KeychainStorage<String?>(
                 key: "refreshToken", service: "com.example.app",
                 defaultValue: nil
             )
 
-            var $refreshToken: AnyPublisher<String?, Never> {
+            var $refreshToken: some Combine.Publisher<String?, Never> {
                 _refreshToken.publisher
             }
             """
@@ -110,12 +110,12 @@ struct KeychainMacroTests {
                 }
             }
 
-            private let _secret = KeychainStorage<String>(
+            private let _secret = FoundationToolbox.KeychainStorage<String>(
                 key: "secret", service: "com.example.app", synchronizable: false, accessible: .whenPasscodeSetThisDeviceOnly,
                 defaultValue: ""
             )
 
-            var $secret: AnyPublisher<String, Never> {
+            var $secret: some Combine.Publisher<String, Never> {
                 _secret.publisher
             }
             """
@@ -139,12 +139,12 @@ struct KeychainMacroTests {
                 }
             }
 
-            private let _token = KeychainStorage<String>(
+            private let _token = FoundationToolbox.KeychainStorage<String>(
                 key: "token", service: "com.example.app",
                 defaultValue: ""
             )
 
-            public var $token: AnyPublisher<String, Never> {
+            public var $token: some Combine.Publisher<String, Never> {
                 _token.publisher
             }
             """
@@ -168,13 +168,80 @@ struct KeychainMacroTests {
                 }
             }
 
-            private static let _shared = KeychainStorage<String>(
+            private static let _shared = FoundationToolbox.KeychainStorage<String>(
                 key: "shared", service: "com.example.app",
                 defaultValue: ""
             )
 
-            static var $shared: AnyPublisher<String, Never> {
+            static var $shared: some Combine.Publisher<String, Never> {
                 _shared.publisher
+            }
+            """
+        }
+    }
+
+    // MARK: - Diagnostics
+
+    @Test func rejectsLet() {
+        // The diagnostic is emitted from both the AccessorMacro and PeerMacro
+        // expansions, so it appears twice in the assertion.
+        assertMacro {
+            """
+            @Keychain(key: "x", service: "s")
+            let foo: String = ""
+            """
+        } diagnostics: {
+            """
+            @Keychain(key: "x", service: "s")
+            ┬────────────────────────────────
+            ├─ 🛑 @Keychain requires a `var` (settable) property; `let` is not supported.
+            ╰─ 🛑 @Keychain requires a `var` (settable) property; `let` is not supported.
+            let foo: String = ""
+            """
+        }
+    }
+
+    @Test func rejectsWeak() {
+        assertMacro {
+            """
+            @Keychain(key: "x", service: "s")
+            weak var foo: NSObject? = nil
+            """
+        } diagnostics: {
+            """
+            @Keychain(key: "x", service: "s")
+            ┬────────────────────────────────
+            ├─ 🛑 @Keychain cannot be applied to a `weak` property; the backing storage holds the value strongly.
+            ╰─ 🛑 @Keychain cannot be applied to a `weak` property; the backing storage holds the value strongly.
+            weak var foo: NSObject? = nil
+            """
+        }
+    }
+
+    @Test func privateSetProjectionKeepsReadAccess() {
+        assertMacro {
+            """
+            @Keychain(key: "x", service: "s")
+            public private(set) var foo: String = ""
+            """
+        } expansion: {
+            """
+            public private(set) var foo: String {
+                get {
+                    _foo.get()
+                }
+                set {
+                    _foo.set(newValue)
+                }
+            }
+
+            private let _foo = FoundationToolbox.KeychainStorage<String>(
+                key: "x", service: "s",
+                defaultValue: ""
+            )
+
+            public var $foo: some Combine.Publisher<String, Never> {
+                _foo.publisher
             }
             """
         }

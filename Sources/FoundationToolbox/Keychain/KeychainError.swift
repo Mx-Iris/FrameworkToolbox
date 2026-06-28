@@ -8,8 +8,6 @@ public enum KeychainError: Error, Equatable, Sendable, CustomStringConvertible {
     case unhandled(OSStatus)
     /// A value could not be decoded from the bytes stored in the Keychain.
     case decodingFailed
-    /// A value could not be encoded into bytes for storage.
-    case encodingFailed
 
     public var description: String {
         switch self {
@@ -18,8 +16,6 @@ public enum KeychainError: Error, Equatable, Sendable, CustomStringConvertible {
             return "KeychainError.unhandled(status: \(status), message: \(message))"
         case .decodingFailed:
             return "KeychainError.decodingFailed"
-        case .encodingFailed:
-            return "KeychainError.encodingFailed"
         }
     }
 }

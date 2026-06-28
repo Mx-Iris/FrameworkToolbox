@@ -25,7 +25,7 @@ import Security
 /// - **Nil writes** (when `Value` is `Optional`) call `SecItemDelete`, mirror
 ///   the cache, and publish `nil`.
 public final class KeychainStorage<Value: KeychainStorable>: @unchecked Sendable {
-    private let item: KeychainItem
+    private let backend: any KeychainBackend
     private let defaultValue: Value
     private let lock = NSRecursiveLock()
     private var cachedValue: Value?
@@ -33,19 +33,33 @@ public final class KeychainStorage<Value: KeychainStorable>: @unchecked Sendable
     private let subject = PassthroughSubject<Value, Never>()
     private var _errorHandler: (@Sendable (Error) -> Void)?
 
-    public init(
+    public convenience init(
         key: String,
         service: String,
         synchronizable: Bool = true,
         accessible: KeychainAccessibility = .whenUnlocked,
         defaultValue: Value
     ) {
-        self.item = KeychainItem(
-            account: key,
-            service: service,
-            synchronizable: synchronizable,
-            accessible: accessible
+        self.init(
+            backend: KeychainItem(
+                account: key,
+                service: service,
+                synchronizable: synchronizable,
+                accessible: accessible
+            ),
+            defaultValue: defaultValue
         )
+    }
+
+    /// Internal init for tests: injects a custom ``KeychainBackend`` so the
+    /// test suite can exercise the runtime without touching the real Keychain
+    /// (which would prompt for user authorization, pollute the login
+    /// keychain, and fail on machines without entitlements).
+    internal init(
+        backend: any KeychainBackend,
+        defaultValue: Value
+    ) {
+        self.backend = backend
         self.defaultValue = defaultValue
     }
 
@@ -60,10 +74,10 @@ public final class KeychainStorage<Value: KeychainStorable>: @unchecked Sendable
                 return cached
             }
 
-            let readResult = item.read()
+            let readResult = backend.read()
             switch readResult {
             case .success(let data):
-                if let decoded = Value._decodeKeychainValue(from: data) {
+                if let decoded = Value._decodeStorableData(from: data) {
                     cachedValue = decoded
                     hasLoadedCache = true
                     return decoded
@@ -87,28 +101,37 @@ public final class KeychainStorage<Value: KeychainStorable>: @unchecked Sendable
     /// the encoded bytes are written via `SecItemUpdate` (falling back to
     /// `SecItemAdd`).
     public func set(_ newValue: Value) {
-        lock.withLock {
-            if let optional = newValue as? _AnyOptionalKeychainValue, optional._isKeychainNil {
-                switch item.delete() {
+        // Snapshot the value to publish (if any) inside the lock, then send
+        // outside the lock so a subscriber that re-enters the storage on a
+        // different thread does not deadlock against the lock we are
+        // holding.
+        let valueToPublish: Value? = lock.withLock { () -> Value? in
+            if let optional = newValue as? _AnyOptionalStorableValue, optional._isStorableNil {
+                switch backend.delete() {
                 case .success, .notFound:
                     cachedValue = newValue
                     hasLoadedCache = true
-                    subject.send(newValue)
+                    return newValue
                 case .failure(let status):
                     reportError(KeychainError.unhandled(status))
+                    return nil
                 }
-                return
             }
 
-            let data = newValue._encodeKeychainValue()
-            switch item.write(data) {
+            let data = newValue._encodeStorableData()
+            switch backend.write(data) {
             case .success:
                 cachedValue = newValue
                 hasLoadedCache = true
-                subject.send(newValue)
+                return newValue
             case .failure(let status):
                 reportError(KeychainError.unhandled(status))
+                return nil
             }
+        }
+
+        if let valueToPublish {
+            subject.send(valueToPublish)
         }
     }
 
@@ -116,8 +139,12 @@ public final class KeychainStorage<Value: KeychainStorable>: @unchecked Sendable
     ///
     /// Reading the value via ``get()`` does **not** emit; only successful
     /// ``set(_:)`` calls do.
-    public var publisher: AnyPublisher<Value, Never> {
-        subject.eraseToAnyPublisher()
+    ///
+    /// The opaque return type intentionally hides the underlying
+    /// `PassthroughSubject` so callers can't side-channel `.send(_:)` writes
+    /// that bypass the Keychain.
+    public var publisher: some Publisher<Value, Never> {
+        subject
     }
 
     /// Optional sink for Keychain errors. Defaults to `print(error)`.
@@ -137,32 +164,45 @@ public final class KeychainStorage<Value: KeychainStorable>: @unchecked Sendable
     }
 }
 
+// MARK: - Backend abstraction
+
+/// Internal CRUD-shaped facade over a Keychain item. Lives behind a
+/// protocol so tests can inject an in-memory fake without touching
+/// Security framework calls (which would prompt for user authorization,
+/// pollute the login keychain, and fail on machines without
+/// entitlements).
+internal protocol KeychainBackend: Sendable {
+    func read() -> KeychainReadResult
+    func write(_ data: Data) -> KeychainWriteResult
+    func delete() -> KeychainDeleteResult
+}
+
+internal enum KeychainReadResult: Sendable {
+    case success(Data)
+    case notFound
+    case failure(OSStatus)
+}
+
+internal enum KeychainWriteResult: Sendable {
+    case success
+    case failure(OSStatus)
+}
+
+internal enum KeychainDeleteResult: Sendable {
+    case success
+    case notFound
+    case failure(OSStatus)
+}
+
 // MARK: - SecItem wrapper
 
-private struct KeychainItem {
+private struct KeychainItem: KeychainBackend {
     let account: String
     let service: String
     let synchronizable: Bool
     let accessible: KeychainAccessibility
 
-    enum ReadResult {
-        case success(Data)
-        case notFound
-        case failure(OSStatus)
-    }
-
-    enum WriteResult {
-        case success
-        case failure(OSStatus)
-    }
-
-    enum DeleteResult {
-        case success
-        case notFound
-        case failure(OSStatus)
-    }
-
-    func read() -> ReadResult {
+    func read() -> KeychainReadResult {
         var query = lookupQuery()
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         query[kSecReturnData as String] = kCFBooleanTrue
@@ -182,7 +222,7 @@ private struct KeychainItem {
         }
     }
 
-    func write(_ data: Data) -> WriteResult {
+    func write(_ data: Data) -> KeychainWriteResult {
         let updateQuery = lookupQuery()
         let updateAttributes: [String: Any] = [
             kSecValueData as String: data,
@@ -204,7 +244,7 @@ private struct KeychainItem {
         }
     }
 
-    func delete() -> DeleteResult {
+    func delete() -> KeychainDeleteResult {
         let status = SecItemDelete(lookupQuery() as CFDictionary)
         switch status {
         case errSecSuccess:

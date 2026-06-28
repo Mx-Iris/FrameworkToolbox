@@ -17,7 +17,7 @@
 ///   ``KeychainStorage`` instance.
 /// - A `private let _<name> = KeychainStorage<Value>(...)` peer that owns
 ///   the Keychain item, an in-memory cache, and a publisher.
-/// - A `var $<name>: AnyPublisher<Value, Never>` peer that exposes that
+/// - A `var $<name>: some Publisher<Value, Never>` peer that exposes that
 ///   publisher under the same access level as the wrapped property.
 ///
 /// Primitives (`String`, `Data`, `Bool`, the integer and floating-point
