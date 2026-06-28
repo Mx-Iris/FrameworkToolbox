@@ -34,7 +34,7 @@ struct OSAllocatedUnfairLockMacroTests {
                 }
             }
 
-            private let _counter = OSAllocatedUnfairLock<Int >(initialState: 0)
+            private let _counter = os.OSAllocatedUnfairLock<Int >(initialState: 0)
             """
         }
     }
@@ -67,7 +67,7 @@ struct OSAllocatedUnfairLockMacroTests {
                 }
             }
 
-            private let _name = OSAllocatedUnfairLock<String >(initialState: "hello")
+            private let _name = os.OSAllocatedUnfairLock<String >(initialState: "hello")
             """
         }
     }
@@ -93,7 +93,7 @@ struct OSAllocatedUnfairLockMacroTests {
                 }
             }
 
-            private let _value = OSAllocatedUnfairLock<String?>(initialState: nil)
+            private let _value = os.OSAllocatedUnfairLock<String?>(initialState: nil)
             """
         }
     }
@@ -126,7 +126,7 @@ struct OSAllocatedUnfairLockMacroTests {
                 }
             }
 
-            private let _items = OSAllocatedUnfairLock<[String] >(initialState: [])
+            private let _items = os.OSAllocatedUnfairLock<[String] >(initialState: [])
             """
         }
     }
@@ -159,7 +159,7 @@ struct OSAllocatedUnfairLockMacroTests {
                 }
             }
 
-            private static let _counter = OSAllocatedUnfairLock<Int >(initialState: 0)
+            private static let _counter = os.OSAllocatedUnfairLock<Int >(initialState: 0)
             """
         }
     }

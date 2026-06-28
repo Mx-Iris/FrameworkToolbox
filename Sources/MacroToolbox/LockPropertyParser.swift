@@ -27,6 +27,13 @@ public enum LockPropertyParser {
             throw LockPropertyError.requiresVariable(macroName)
         }
 
+        // The macros all need a settable `var` — they generate get/set
+        // accessors. A `let` declaration would silently get the accessors
+        // attached and produce confusing downstream errors.
+        if varDecl.bindingSpecifier.tokenKind == .keyword(.let) {
+            throw LockPropertyError.requiresVar(macroName)
+        }
+
         guard let binding = varDecl.bindings.first,
               let pattern = binding.pattern.as(IdentifierPatternSyntax.self) else {
             throw LockPropertyError.invalidPropertyBinding(macroName)
@@ -110,16 +117,20 @@ public enum LockPropertyParser {
 
 public enum LockPropertyError: Error, CustomStringConvertible, DiagnosticMessage {
     case requiresVariable(String)
+    case requiresVar(String)
     case requiresInitialValue(String)
     case requiresExplicitType(String)
     case invalidPropertyBinding(String)
     case cannotHaveExistingAccessors(String)
     case weakRequiresOptional(String)
+    case weakNotSupported(String)
 
     public var description: String {
         switch self {
         case .requiresVariable(let name):
             return "@\(name) can only be applied to a variable declaration."
+        case .requiresVar(let name):
+            return "@\(name) requires a `var` (settable) property; `let` is not supported."
         case .requiresInitialValue(let name):
             return "@\(name) requires the property to have an initial value."
         case .requiresExplicitType(let name):
@@ -130,6 +141,8 @@ public enum LockPropertyError: Error, CustomStringConvertible, DiagnosticMessage
             return "@\(name) cannot be applied to computed properties or properties with existing accessors."
         case .weakRequiresOptional(let name):
             return "@\(name) on weak properties requires the type to be optional."
+        case .weakNotSupported(let name):
+            return "@\(name) cannot be applied to a `weak` property; the backing storage holds the value strongly."
         }
     }
 
@@ -139,11 +152,13 @@ public enum LockPropertyError: Error, CustomStringConvertible, DiagnosticMessage
         let id: String
         switch self {
         case .requiresVariable: id = "requiresVariable"
+        case .requiresVar: id = "requiresVar"
         case .requiresInitialValue: id = "requiresInitialValue"
         case .requiresExplicitType: id = "requiresExplicitType"
         case .invalidPropertyBinding: id = "invalidPropertyBinding"
         case .cannotHaveExistingAccessors: id = "cannotHaveExistingAccessors"
         case .weakRequiresOptional: id = "weakRequiresOptional"
+        case .weakNotSupported: id = "weakNotSupported"
         }
         return MessageID(domain: "LockPropertyError", id: id)
     }

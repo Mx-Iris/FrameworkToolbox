@@ -10,15 +10,15 @@ public struct OSAllocatedUnfairLockMacro: LockMacroProtocol {
         let staticKeyword = info.isStatic ? "static " : ""
         if info.isWeak {
             return """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = OSAllocatedUnfairLock(initialState: SwiftStdlibToolbox.WeakBox<\(raw: info.baseType)>(\(info.initialValue)))
+            private \(raw: staticKeyword)let \(raw: info.storageName) = os.OSAllocatedUnfairLock(initialState: SwiftStdlibToolbox.WeakBox<\(raw: info.baseType)>(\(info.initialValue)))
             """
         } else if info.isImplicitlyUnwrappedOptional {
             return """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = OSAllocatedUnfairLock<\(raw: info.baseType)?>(initialState: \(info.initialValue))
+            private \(raw: staticKeyword)let \(raw: info.storageName) = os.OSAllocatedUnfairLock<\(raw: info.baseType)?>(initialState: \(info.initialValue))
             """
         } else {
             return """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = OSAllocatedUnfairLock<\(raw: info.type)>(initialState: \(info.initialValue))
+            private \(raw: staticKeyword)let \(raw: info.storageName) = os.OSAllocatedUnfairLock<\(raw: info.type)>(initialState: \(info.initialValue))
             """
         }
     }

@@ -95,7 +95,7 @@ private func buildConcreteMembers(
     return [
         "\(raw: accessPrefix)nonisolated static var category: String { \(raw: categoryBody) }",
         "\(raw: accessPrefix)nonisolated static var subsystem: String { \(raw: subsystemBody) }",
-        "\(raw: accessPrefix)nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)",
+        "\(raw: accessPrefix)nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)",
         """
         @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
         \(raw: accessPrefix)nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
@@ -132,7 +132,7 @@ private func buildProtocolRequirements() -> [DeclSyntax] {
     return [
         "static var category: String { get }",
         "static var subsystem: String { get }",
-        "static var _osLog: OSLog { get }",
+        "static var _osLog: os.OSLog { get }",
         """
         @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
         static var logger: os.Logger { get }
@@ -166,7 +166,7 @@ private func buildProtocolDefaultImplementations(
         "\(raw: accessPrefix)nonisolated static var category: String { \(raw: categoryBody) }",
         "\(raw: accessPrefix)nonisolated static var subsystem: String { \(raw: subsystemBody) }",
         """
-        \(raw: accessPrefix)nonisolated static var _osLog: OSLog {
+        \(raw: accessPrefix)nonisolated static var _osLog: os.OSLog {
             LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
         }
         """,
