@@ -36,7 +36,9 @@ Skip these macros when:
 | Custom subsystem | `@Loggable(subsystem: "com.acme.app") struct Foo { }` |
 | Custom category | `@Loggable(category: "Network") struct Foo { }` |
 | Both, with access level | `@Loggable(.internal, subsystem: "com.acme.app", category: "Network") class Foo { }` |
+| Multiple named categories | `@Loggable(categories: "network", "ui") struct Foo { }` |
 | Emit a log line | `#log(.info, "User \(id, privacy: .private) signed in")` |
+| Emit under a named category | `#log(.info, category: \.network, "request issued")` |
 | Available log levels | `.debug` / `.info` / `.default` / `.error` / `.fault` |
 | Available privacy values | `.public` / `.private` / `.sensitive` / `.auto` (each also takes `mask: .hash` / `.none`) |
 | Available format hints | `.fixed` / `.hex` / `.exponential` / `.hybrid` / `.decimal` / `.octal` (numeric) and `.left(columns:)` / `.right(columns:)` (string alignment) |
@@ -62,11 +64,12 @@ The macros are gated on `#if canImport(os)`, so they are unavailable on platform
 ### Signature
 
 ```swift
-@attached(member, names: named(_osLog), named(category), named(subsystem), named(logger))
+@attached(member, names: named(_osLog), named(category), named(subsystem), named(logger), named(LogCategory))
 public macro Loggable(
     _ accessLevel: AccessLevel = .private,
     subsystem: StaticString? = nil,
-    category: StaticString? = nil
+    category: StaticString? = nil,
+    categories: StaticString...
 )
 ```
 
@@ -98,6 +101,24 @@ struct UserService {
 
 **`category:`** — optional `StaticString`. When omitted, defaults to the type name as a string literal (e.g., `"UserService"`).
 
+**`categories:`** — variadic `StaticString`. Declares additional named categories beside the type-level default. Each name must be a string literal that is also a valid Swift identifier (it becomes a `LogCategory` enum case; Swift keywords are fine — cases are backtick-quoted). When at least one name is given, the macro additionally generates:
+
+```swift
+private enum LogCategory: String {
+    case `network`
+    case `persistence`
+}
+private nonisolated static func _osLog(for category: LogCategory) -> os.OSLog {
+    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.rawValue)
+}
+@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+private nonisolated static func logger(for category: LogCategory) -> os.Logger {
+    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.rawValue)
+}
+```
+
+The runtime helpers cache one `os.Logger` / `OSLog` per subsystem/category string pair, shared process-wide. Not supported on `protocol` declarations — protocols cannot contain nested types, and the macro diagnoses this.
+
 The `StaticString` requirement means **only string literals are accepted**. You cannot pass a runtime `String`, a constant defined elsewhere, or a string-interpolation expression.
 
 ### Type support
@@ -113,6 +134,13 @@ Works on `struct`, `class`, `enum`, and `actor`. The `class` variant uses `Bundl
 ```swift
 @freestanding(expression)
 public macro log(_ level: LoggableMacro.OSLogType, _ message: LoggableMacro.OSLogMessage) -> Void
+
+@freestanding(expression)
+public macro log(
+    _ level: LoggableMacro.OSLogType,
+    category: KeyPath<LoggableMacro.Categories, LoggableMacro.Category>,
+    _ message: LoggableMacro.OSLogMessage
+) -> Void
 ```
 
 ### What it generates
@@ -136,6 +164,31 @@ expands to:
 ```
 
 The expansion is wrapped in an immediately-invoked closure so it remains a single expression and can be used anywhere a `Void` expression is valid.
+
+### Selecting a named category
+
+Inside a type annotated with `@Loggable(categories: ...)`, pass a key-path literal as the `category:` argument:
+
+```swift
+#log(.debug, category: \.network, "request issued")
+```
+
+expands to:
+
+```swift
+{
+    if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
+        Self.logger(for: .network).debug("request issued")
+    } else {
+        os_log(.debug, log: Self._osLog(for: .network), "request issued")
+    }
+}()
+```
+
+How the type-checking works: the `category:` parameter is declared as `KeyPath<LoggableMacro.Categories, LoggableMacro.Category>`, and `LoggableMacro.Categories` is a `@dynamicMemberLookup` dummy type whose String-keyed subscript accepts **any** member name — so `\.anything` type-checks at the macro call site. The macro then extracts the member name from the key-path syntax and re-emits it as `.anything` against the generated `LogCategory` enum, which is where real validation happens: an undeclared name fails to compile inside the expansion (the error message references the expansion rather than pointing at the key path directly). Two consequences:
+
+- The IDE does **not** autocomplete category names after `\.` (dynamic member lookup has no fixed member list).
+- The key path is never evaluated at runtime — it is purely syntactic transport for the name.
 
 ### Log level mapping
 
@@ -201,6 +254,10 @@ A literal `%` in the format string is automatically escaped to `%%` in the legac
 | Mistake | What happens | Fix |
 |---------|--------------|-----|
 | `#log(.info, "...")` in a free function | Compile error: `Self` is not in scope, or `logger`/`_osLog` not found. | Move the call into a method on a `@Loggable` type, or annotate the enclosing type with `@Loggable`. |
+| `#log(.info, category: \.network, ...)` without `categories:` on the type | Compile error inside the expansion: `logger(for:)` not found. | Add the name to the attribute: `@Loggable(categories: "network")`. |
+| `#log(.info, category: \.netwrok, ...)` (typo) | Compile error inside the expansion: `LogCategory` has no case `netwrok`. The error points at the expansion, not the key path. | Fix the name to match a declared category. |
+| `@Loggable(categories: "network layer")` | Macro diagnostic: the name is not a valid Swift identifier (it becomes an enum case). | Use identifier-safe names: `"networkLayer"`. |
+| `@Loggable(categories: "network")` on a `protocol` | Macro diagnostic: protocols cannot contain the nested `LogCategory` enum. | Attach categories to a concrete type instead. |
 | `@Loggable(subsystem: someConstant)` | Compile error: macro expects a string literal. | Inline the literal: `@Loggable(subsystem: "com.acme.app")`. |
 | `@Loggable(accessLevel: .public)` | Compile error: unknown argument label. | Drop the label: `@Loggable(.public)`. |
 | Expecting `.sensitive` to redact on iOS 13 | The legacy `os_log` API has no `sensitive`; the macro maps it to `%{private}@`. | If you truly need redaction on iOS 13, that is what you get — just be aware the wire-format collapses to `private`. |

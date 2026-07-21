@@ -16,6 +16,16 @@ private var loggerByObjectIdentifier = Mutex<[ObjectIdentifier: os.Logger]>([:])
 
 private var osLogByObjectIdentifier = Mutex<[ObjectIdentifier: OSLog]>([:])
 
+private struct SubsystemCategoryCacheKey: Hashable {
+    let subsystem: String
+    let category: String
+}
+
+@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+private var loggerBySubsystemAndCategory = Mutex<[SubsystemCategoryCacheKey: os.Logger]>([:])
+
+private var osLogBySubsystemAndCategory = Mutex<[SubsystemCategoryCacheKey: OSLog]>([:])
+
 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 extension Loggable {
     public static var logger: os.Logger {
@@ -90,6 +100,46 @@ extension LoggableMacro {
         let osLog = OSLog(subsystem: subsystem(), category: category())
         osLogByObjectIdentifier.withLock {
             $0[objectIdentifier] = osLog
+        }
+        return osLog
+    }
+
+    /// Runtime helper invoked by the `logger(for:)` accessor that
+    /// `@Loggable(categories:)` generates.
+    ///
+    /// Returns a cached `os.Logger` keyed by the subsystem/category string pair,
+    /// so every call site logging to the same category reuses one logger
+    /// instance regardless of which type it logs from.
+    @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+    public static func _sharedLogger(
+        subsystem: @autoclosure () -> String,
+        category: String
+    ) -> os.Logger {
+        let cacheKey = SubsystemCategoryCacheKey(subsystem: subsystem(), category: category)
+        if let logger = loggerBySubsystemAndCategory.withLock({ $0[cacheKey] }) {
+            return logger
+        }
+        let logger = os.Logger(subsystem: cacheKey.subsystem, category: cacheKey.category)
+        loggerBySubsystemAndCategory.withLock {
+            $0[cacheKey] = logger
+        }
+        return logger
+    }
+
+    /// Runtime helper invoked by the `_osLog(for:)` accessor that
+    /// `@Loggable(categories:)` generates, used by the legacy fallback path of
+    /// `#log` on OS versions older than the `os.Logger` minimums.
+    public static func _sharedOSLog(
+        subsystem: @autoclosure () -> String,
+        category: String
+    ) -> OSLog {
+        let cacheKey = SubsystemCategoryCacheKey(subsystem: subsystem(), category: category)
+        if let osLog = osLogBySubsystemAndCategory.withLock({ $0[cacheKey] }) {
+            return osLog
+        }
+        let osLog = OSLog(subsystem: cacheKey.subsystem, category: cacheKey.category)
+        osLogBySubsystemAndCategory.withLock {
+            $0[cacheKey] = osLog
         }
         return osLog
     }

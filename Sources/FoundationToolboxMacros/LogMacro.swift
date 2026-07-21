@@ -15,10 +15,22 @@ public struct LogMacro: ExpressionMacro {
             throw LogMacroError.missingLevel
         }
 
-        guard arguments.count >= 2,
-              let messageArg = arguments.dropFirst().first?.expression
-        else {
+        let remainingArguments = arguments.dropFirst()
+        let categoryArgument = remainingArguments.first { $0.label?.text == "category" }
+
+        guard let messageArg = remainingArguments.first(where: { $0.label == nil })?.expression else {
             throw LogMacroError.missingMessage
+        }
+
+        let loggerExpression: String
+        let osLogExpression: String
+        if let categoryArgument {
+            let categoryCaseName = try extractCategoryCaseName(from: categoryArgument.expression)
+            loggerExpression = "Self.logger(for: .\(categoryCaseName))"
+            osLogExpression = "Self._osLog(for: .\(categoryCaseName))"
+        } else {
+            loggerExpression = "Self.logger"
+            osLogExpression = "Self._osLog"
         }
 
         let osMethodName = mapLevelToOSLogMethod(levelArg)
@@ -30,12 +42,27 @@ public struct LogMacro: ExpressionMacro {
         return """
         {
             if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
-                Self.logger.\(raw: osMethodName)(\(osMessage))
+                \(raw: loggerExpression).\(raw: osMethodName)(\(osMessage))
             } else {
-                os_log(.\(raw: osLogType), log: Self._osLog, \(raw: formatString)\(raw: formatArgs))
+                os_log(.\(raw: osLogType), log: \(raw: osLogExpression), \(raw: formatString)\(raw: formatArgs))
             }
         }()
         """
+    }
+
+    /// Extracts the member name from a `\.name` key-path literal.
+    ///
+    /// The key path is purely syntactic transport for the category name: the
+    /// expansion re-resolves the name as a `LogCategory` enum case on the
+    /// enclosing type, which is where the compile-time validation happens.
+    private static func extractCategoryCaseName(from expression: ExprSyntax) throws -> String {
+        guard let keyPathExpression = expression.as(KeyPathExprSyntax.self),
+              keyPathExpression.components.count == 1,
+              let keyPathComponent = keyPathExpression.components.first,
+              case let .property(propertyComponent) = keyPathComponent.component else {
+            throw LogMacroError.invalidCategoryKeyPath
+        }
+        return propertyComponent.declName.baseName.text
     }
 
     /// Maps OSLogType member access expressions to os.Logger method names.
@@ -144,6 +171,7 @@ public struct LogMacro: ExpressionMacro {
 enum LogMacroError: Error, CustomStringConvertible {
     case missingLevel
     case missingMessage
+    case invalidCategoryKeyPath
 
     var description: String {
         switch self {
@@ -151,6 +179,8 @@ enum LogMacroError: Error, CustomStringConvertible {
             return "#log requires a log level as the first argument (e.g., .debug, .info, .error)"
         case .missingMessage:
             return "#log requires a message as the second argument"
+        case .invalidCategoryKeyPath:
+            return "#log category must be a key-path literal like \\.network naming a category declared via @Loggable(categories:)"
         }
     }
 }

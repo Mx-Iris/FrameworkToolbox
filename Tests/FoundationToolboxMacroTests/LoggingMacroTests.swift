@@ -462,6 +462,99 @@ struct LoggableMacroTests {
         }
     }
 
+    // MARK: Multiple categories
+
+    @Test func multipleCategories() {
+        assertMacro {
+            """
+            @Loggable(categories: "network", "persistence")
+            struct SyncService { }
+            """
+        } expansion: {
+            """
+            struct SyncService {\u{0020}
+
+                private nonisolated static var category: String {
+                    "SyncService"
+                }
+
+                private nonisolated static var subsystem: String {
+                    Bundle.main.bundleIdentifier ?? "SyncService"
+                }
+
+                private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+
+                private enum LogCategory: String {
+                    case `network`
+                    case `persistence`
+                }
+
+                private nonisolated static func _osLog(for category: LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.rawValue)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static func logger(for category: LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.rawValue)
+                }
+            }
+            """
+        }
+    }
+
+    @Test func categoriesWithAccessLevelAndSubsystem() {
+        assertMacro {
+            """
+            @Loggable(.public, subsystem: "com.example.app", categories: "ui")
+            class AppController { }
+            """
+        } expansion: {
+            """
+            class AppController {\u{0020}
+
+                public nonisolated static var category: String {
+                    "AppController"
+                }
+
+                public nonisolated static var subsystem: String {
+                    "com.example.app"
+                }
+
+                public nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+
+                public enum LogCategory: String {
+                    case `ui`
+                }
+
+                public nonisolated static func _osLog(for category: LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.rawValue)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static func logger(for category: LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.rawValue)
+                }
+            }
+            """
+        }
+    }
+
     // MARK: Protocol declarations
 
     @Test func protocolDefault() {
@@ -813,6 +906,44 @@ struct LogMacroTests {
                 }
             }()
             """
+        }
+    }
+
+    // MARK: Category selection
+
+    @Test func categoryKeyPath() {
+        assertMacro {
+            #"""
+            #log(.debug, category: \.network, "Hello")
+            """#
+        } expansion: {
+            """
+            {
+                if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
+                    Self.logger(for: .network).debug("Hello")
+                } else {
+                    os_log(.debug, log: Self._osLog(for: .network), "Hello")
+                }
+            }()
+            """
+        }
+    }
+
+    @Test func categoryKeyPathWithInterpolationPrivacy() {
+        assertMacro {
+            #"""
+            #log(.error, category: \.persistence, "saved \(count, privacy: .public) items for \(user, privacy: .private)")
+            """#
+        } expansion: {
+            #"""
+            {
+                if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
+                    Self.logger(for: .persistence).error("saved \(count, privacy: .public) items for \(user, privacy: .private)")
+                } else {
+                    os_log(.error, log: Self._osLog(for: .persistence), "saved %{public}@ items for %{private}@", "\(count)", "\(user)")
+                }
+            }()
+            """#
         }
     }
 

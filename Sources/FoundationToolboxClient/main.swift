@@ -74,6 +74,25 @@ class MainActorService {
     }
 }
 
+// Multiple named categories — call sites select one via a key-path literal.
+@Loggable(categories: "network", "persistence")
+struct MultiCategoryService {
+    func run() {
+        #log(.debug, category: \.network, "request issued")
+        #log(.info, category: \.persistence, "saved \(42, privacy: .public) records")
+        #log(.error, "falls back to the type-level default category")
+    }
+}
+
+// Categories combined with access level and custom subsystem.
+@Loggable(.internal, subsystem: "com.example.app", categories: "ui", "database")
+final class CategorizedController {
+    func refresh() {
+        #log(.info, category: \.ui, "refresh started")
+        #log(.debug, category: \.database, "query executed \(3, privacy: .public) times")
+    }
+}
+
 // MARK: - Protocol verification
 
 // Applied to a protocol — generates a sibling extension with default impls

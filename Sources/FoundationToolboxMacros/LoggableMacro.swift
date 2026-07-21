@@ -14,7 +14,13 @@ public struct LoggableMacro: MemberMacro, ExtensionMacro {
         conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
+        let categoryNames = try extractCategoryNames(from: node)
         if declaration.is(ProtocolDeclSyntax.self) {
+            // Protocols cannot contain nested types, so the generated
+            // `LogCategory` enum has nowhere to live.
+            guard categoryNames.isEmpty else {
+                throw LoggableMacroError.categoriesUnsupportedOnProtocol
+            }
             // Honor the `asProtocolRequirement:` opt-out: when the user explicitly
             // freezes the implementation, we skip emitting requirements so all
             // call sites resolve statically against the default extension.
@@ -24,7 +30,12 @@ public struct LoggableMacro: MemberMacro, ExtensionMacro {
             return buildProtocolRequirements()
         }
         let style = resolveConcreteStyle(for: declaration)
-        return buildConcreteMembers(node: node, declaration: declaration, style: style)
+        return buildConcreteMembers(
+            node: node,
+            declaration: declaration,
+            style: style,
+            categoryNames: categoryNames
+        )
     }
 
     // MARK: - ExtensionMacro
@@ -77,7 +88,8 @@ private func resolveConcreteStyle(for declaration: some DeclGroupSyntax) -> Conc
 private func buildConcreteMembers(
     node: AttributeSyntax,
     declaration: some DeclGroupSyntax,
-    style: ConcreteStyle
+    style: ConcreteStyle,
+    categoryNames: [String]
 ) -> [DeclSyntax] {
     let accessLevel = extractAccessLevel(from: node)
     let accessPrefix = accessLevel == "internal" ? "" : "\(accessLevel) "
@@ -92,7 +104,7 @@ private func buildConcreteMembers(
         customSubsystem: customSubsystem
     )
 
-    return [
+    var members: [DeclSyntax] = [
         "\(raw: accessPrefix)nonisolated static var category: String { \(raw: categoryBody) }",
         "\(raw: accessPrefix)nonisolated static var subsystem: String { \(raw: subsystemBody) }",
         "\(raw: accessPrefix)nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)",
@@ -103,6 +115,38 @@ private func buildConcreteMembers(
         """
         @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
         \(raw: accessPrefix)nonisolated var logger: os.Logger { Self.logger }
+        """,
+    ]
+    members.append(contentsOf: buildCategoryMembers(accessPrefix: accessPrefix, categoryNames: categoryNames))
+    return members
+}
+
+/// Builds the `LogCategory` enum plus the per-category accessors backing the
+/// `#log(category: \.name, ...)` overload. Case names are always backtick-quoted
+/// so category names that collide with Swift keywords still compile.
+private func buildCategoryMembers(accessPrefix: String, categoryNames: [String]) -> [DeclSyntax] {
+    guard !categoryNames.isEmpty else {
+        return []
+    }
+    let caseLines = categoryNames
+        .map { "    case `\($0)`" }
+        .joined(separator: "\n")
+    return [
+        """
+        \(raw: accessPrefix)enum LogCategory: String {
+        \(raw: caseLines)
+        }
+        """,
+        """
+        \(raw: accessPrefix)nonisolated static func _osLog(for category: LogCategory) -> os.OSLog {
+            LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.rawValue)
+        }
+        """,
+        """
+        @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+        \(raw: accessPrefix)nonisolated static func logger(for category: LogCategory) -> os.Logger {
+            LoggableMacro._sharedLogger(subsystem: subsystem, category: category.rawValue)
+        }
         """,
     ]
 }
@@ -254,6 +298,66 @@ private func extractStringLiteral(labeled label: String, from node: AttributeSyn
         }
     }
     return nil
+}
+
+/// Extracts the variadic `categories:` string literals.
+///
+/// A variadic call like `categories: "network", "ui"` parses as one argument
+/// labeled `categories` followed by unlabeled arguments, so collection starts
+/// at the `categories` label and stops at the next differently-labeled argument.
+private func extractCategoryNames(from node: AttributeSyntax) throws -> [String] {
+    guard let arguments = node.arguments,
+          case let .argumentList(argumentList) = arguments else {
+        return []
+    }
+    var isCollectingCategories = false
+    var categoryNames: [String] = []
+    for argument in argumentList {
+        if let label = argument.label?.text {
+            isCollectingCategories = label == "categories"
+        }
+        guard isCollectingCategories else {
+            continue
+        }
+        guard let stringLiteral = argument.expression.as(StringLiteralExprSyntax.self),
+              stringLiteral.segments.count == 1,
+              case let .stringSegment(stringSegment) = stringLiteral.segments.first else {
+            throw LoggableMacroError.categoryNameMustBeStringLiteral
+        }
+        let categoryName = stringSegment.content.text
+        guard isValidCategoryIdentifier(categoryName) else {
+            throw LoggableMacroError.invalidCategoryName(categoryName)
+        }
+        categoryNames.append(categoryName)
+    }
+    return categoryNames
+}
+
+/// Category names become enum case names, so they must be valid Swift
+/// identifiers (keywords are fine — generated cases are backtick-quoted).
+private func isValidCategoryIdentifier(_ name: String) -> Bool {
+    guard let firstCharacter = name.first,
+          firstCharacter.isLetter || firstCharacter == "_" else {
+        return false
+    }
+    return name.dropFirst().allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" }
+}
+
+enum LoggableMacroError: Error, CustomStringConvertible {
+    case categoriesUnsupportedOnProtocol
+    case categoryNameMustBeStringLiteral
+    case invalidCategoryName(String)
+
+    var description: String {
+        switch self {
+        case .categoriesUnsupportedOnProtocol:
+            return "@Loggable(categories:) is not supported on protocols because the generated LogCategory enum cannot be nested in a protocol; attach it to a concrete type instead"
+        case .categoryNameMustBeStringLiteral:
+            return "@Loggable(categories:) values must be plain string literals"
+        case .invalidCategoryName(let categoryName):
+            return "@Loggable(categories:) name \"\(categoryName)\" is not a valid Swift identifier; category names become LogCategory enum cases"
+        }
+    }
 }
 
 /// Extracts a boolean literal argument by its label.
