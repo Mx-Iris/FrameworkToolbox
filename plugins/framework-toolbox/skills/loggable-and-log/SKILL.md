@@ -36,9 +36,9 @@ Skip these macros when:
 | Custom subsystem | `@Loggable(subsystem: "com.acme.app") struct Foo { }` |
 | Custom category | `@Loggable(category: "Network") struct Foo { }` |
 | Both, with access level | `@Loggable(.internal, subsystem: "com.acme.app", category: "Network") class Foo { }` |
-| Multiple named categories | `@Loggable(categories: "network", "ui") struct Foo { }` |
+| Declare named categories | `extension LogCategory { static let network = LogCategory("network") }` |
 | Emit a log line | `#log(.info, "User \(id, privacy: .private) signed in")` |
-| Emit under a named category | `#log(.info, category: \.network, "request issued")` |
+| Emit under a named category | `#log(.info, category: .network, "request issued")` |
 | Available log levels | `.debug` / `.info` / `.default` / `.error` / `.fault` |
 | Available privacy values | `.public` / `.private` / `.sensitive` / `.auto` (each also takes `mask: .hash` / `.none`) |
 | Available format hints | `.fixed` / `.hex` / `.exponential` / `.hybrid` / `.decimal` / `.octal` (numeric) and `.left(columns:)` / `.right(columns:)` (string alignment) |
@@ -64,12 +64,11 @@ The macros are gated on `#if canImport(os)`, so they are unavailable on platform
 ### Signature
 
 ```swift
-@attached(member, names: named(_osLog), named(category), named(subsystem), named(logger), named(LogCategory))
+@attached(member, names: named(_osLog), named(category), named(subsystem), named(logger))
 public macro Loggable(
     _ accessLevel: AccessLevel = .private,
     subsystem: StaticString? = nil,
-    category: StaticString? = nil,
-    categories: StaticString...
+    category: StaticString? = nil
 )
 ```
 
@@ -88,8 +87,19 @@ struct UserService {
 
     @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
     private nonisolated var logger: os.Logger { Self.logger }
+
+    private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+        LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+    }
+
+    @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+    private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+        LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+    }
 }
 ```
+
+The last two members are the per-category accessors backing `#log(category:)`. They are always generated (on protocols they land in the default-implementation extension), and the runtime helpers cache one `os.Logger` / `OSLog` per subsystem/category string pair, shared process-wide.
 
 ### Parameters
 
@@ -100,24 +110,6 @@ struct UserService {
 - For `struct` / `enum` / `actor`: `Bundle.main.bundleIdentifier ?? "<TypeName>"`
 
 **`category:`** — optional `StaticString`. When omitted, defaults to the type name as a string literal (e.g., `"UserService"`).
-
-**`categories:`** — variadic `StaticString`. Declares additional named categories beside the type-level default. Each name must be a string literal that is also a valid Swift identifier (it becomes a `LogCategory` enum case; Swift keywords are fine — cases are backtick-quoted). When at least one name is given, the macro additionally generates:
-
-```swift
-private enum LogCategory: String {
-    case `network`
-    case `persistence`
-}
-private nonisolated static func _osLog(for category: LogCategory) -> os.OSLog {
-    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.rawValue)
-}
-@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-private nonisolated static func logger(for category: LogCategory) -> os.Logger {
-    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.rawValue)
-}
-```
-
-The runtime helpers cache one `os.Logger` / `OSLog` per subsystem/category string pair, shared process-wide. Not supported on `protocol` declarations — protocols cannot contain nested types, and the macro diagnoses this.
 
 The `StaticString` requirement means **only string literals are accepted**. You cannot pass a runtime `String`, a constant defined elsewhere, or a string-interpolation expression.
 
@@ -138,7 +130,7 @@ public macro log(_ level: LoggableMacro.OSLogType, _ message: LoggableMacro.OSLo
 @freestanding(expression)
 public macro log(
     _ level: LoggableMacro.OSLogType,
-    category: KeyPath<LoggableMacro.Categories, LoggableMacro.Category>,
+    category: LogCategory,
     _ message: LoggableMacro.OSLogMessage
 ) -> Void
 ```
@@ -167,10 +159,19 @@ The expansion is wrapped in an immediately-invoked closure so it remains a singl
 
 ### Selecting a named category
 
-Inside a type annotated with `@Loggable(categories: ...)`, pass a key-path literal as the `category:` argument:
+Declare categories once as static members on `LogCategory` (the `Notification.Name` pattern) — the IDE autocompletes them like any other static member:
 
 ```swift
-#log(.debug, category: \.network, "request issued")
+extension LogCategory {
+    static let network = LogCategory("network")
+    static let persistence = LogCategory("persistence")
+}
+```
+
+Then, inside any `@Loggable` type, pass one as the `category:` argument:
+
+```swift
+#log(.debug, category: .network, "request issued")
 ```
 
 expands to:
@@ -185,10 +186,11 @@ expands to:
 }()
 ```
 
-How the type-checking works: the `category:` parameter is declared as `KeyPath<LoggableMacro.Categories, LoggableMacro.Category>`, and `LoggableMacro.Categories` is a `@dynamicMemberLookup` dummy type whose String-keyed subscript accepts **any** member name — so `\.anything` type-checks at the macro call site. The macro then extracts the member name from the key-path syntax and re-emits it as `.anything` against the generated `LogCategory` enum, which is where real validation happens: an undeclared name fails to compile inside the expansion (the error message references the expansion rather than pointing at the key path directly). Two consequences:
+Notes:
 
-- The IDE does **not** autocomplete category names after `\.` (dynamic member lookup has no fixed member list).
-- The key path is never evaluated at runtime — it is purely syntactic transport for the name.
+- Categories are app-global values, shareable across types; the subsystem always stays the enclosing type's own.
+- The category expression is transplanted verbatim into the expansion, so any `LogCategory` expression works — `.network`, `LogCategory("adhoc")`, or a stored constant — and is evaluated at runtime like a normal function argument.
+- The category logger is resolved through a process-wide cache keyed by the subsystem/category pair, so repeated calls reuse one `os.Logger` instance.
 
 ### Log level mapping
 
@@ -254,10 +256,9 @@ A literal `%` in the format string is automatically escaped to `%%` in the legac
 | Mistake | What happens | Fix |
 |---------|--------------|-----|
 | `#log(.info, "...")` in a free function | Compile error: `Self` is not in scope, or `logger`/`_osLog` not found. | Move the call into a method on a `@Loggable` type, or annotate the enclosing type with `@Loggable`. |
-| `#log(.info, category: \.network, ...)` without `categories:` on the type | Compile error inside the expansion: `logger(for:)` not found. | Add the name to the attribute: `@Loggable(categories: "network")`. |
-| `#log(.info, category: \.netwrok, ...)` (typo) | Compile error inside the expansion: `LogCategory` has no case `netwrok`. The error points at the expansion, not the key path. | Fix the name to match a declared category. |
-| `@Loggable(categories: "network layer")` | Macro diagnostic: the name is not a valid Swift identifier (it becomes an enum case). | Use identifier-safe names: `"networkLayer"`. |
-| `@Loggable(categories: "network")` on a `protocol` | Macro diagnostic: protocols cannot contain the nested `LogCategory` enum. | Attach categories to a concrete type instead. |
+| `#log(.info, category: .netwrok, ...)` (typo) | Compile error at the call site: type `LogCategory` has no member `netwrok`. | Fix the name, or declare it: `extension LogCategory { static let netwrok = ... }` (don't). |
+| `#log(.info, category: .network, ...)` in a type without `@Loggable` | Compile error: `logger(for:)` not found on `Self`. | Annotate the enclosing type with `@Loggable`. |
+| Expecting `category: .network` to change the subsystem | The subsystem always stays the enclosing type's own; only the category varies. | Pass an explicit `subsystem:` on `@Loggable` if you need a different one. |
 | `@Loggable(subsystem: someConstant)` | Compile error: macro expects a string literal. | Inline the literal: `@Loggable(subsystem: "com.acme.app")`. |
 | `@Loggable(accessLevel: .public)` | Compile error: unknown argument label. | Drop the label: `@Loggable(.public)`. |
 | Expecting `.sensitive` to redact on iOS 13 | The legacy `os_log` API has no `sensitive`; the macro maps it to `%{private}@`. | If you truly need redaction on iOS 13, that is what you get — just be aware the wire-format collapses to `private`. |
@@ -304,5 +305,6 @@ Decisions made above:
 - `Sources/FoundationToolbox/Macros/LogMacro.swift` — macro declaration and doc comment for `#log`, plus the `LoggableMacro` namespace types (`OSLogType`, `OSLogPrivacy`, `OSLogMessage`, etc.) that exist purely to give IDE autocomplete in interpolation positions.
 - `Sources/FoundationToolboxMacros/LoggableMacro.swift` — implementation of the member macro.
 - `Sources/FoundationToolboxMacros/LogMacro.swift` — implementation of the expression macro, including the legacy-format builder and privacy-name mapping.
-- `Sources/FoundationToolbox/Loggable.swift` — the (separate, optional) `Loggable` protocol for manual opt-in.
+- `Sources/FoundationToolbox/LogCategory.swift` — the `LogCategory` struct users extend with static members for `#log(category:)`.
+- `Sources/FoundationToolbox/Loggable.swift` — the (separate, optional) `Loggable` protocol for manual opt-in, plus the shared per-subsystem/category logger caches.
 - `Tests/FoundationToolboxMacroTests/LoggingMacroTests.swift` — golden expansion tests covering every access level, every type kind, every level, every privacy variant, mask variants, format/align passthrough, and percent escaping. Read these to confirm exact expansion shape before changing call sites.

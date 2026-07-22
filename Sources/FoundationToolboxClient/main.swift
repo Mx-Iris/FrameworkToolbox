@@ -74,22 +74,29 @@ class MainActorService {
     }
 }
 
-// Multiple named categories — call sites select one via a key-path literal.
-@Loggable(categories: "network", "persistence")
+// Named categories declared once as static members — call sites reference
+// them with leading-dot syntax and full autocomplete.
+extension LogCategory {
+    static let network = LogCategory("network")
+    static let persistence = LogCategory("persistence")
+}
+
+@Loggable
 struct MultiCategoryService {
     func run() {
-        #log(.debug, category: \.network, "request issued")
-        #log(.info, category: \.persistence, "saved \(42, privacy: .public) records")
+        #log(.debug, category: .network, "request issued")
+        #log(.info, category: .persistence, "saved \(42, privacy: .public) records")
         #log(.error, "falls back to the type-level default category")
     }
 }
 
-// Categories combined with access level and custom subsystem.
-@Loggable(.internal, subsystem: "com.example.app", categories: "ui", "database")
+// Categories combined with access level and custom subsystem; any LogCategory
+// expression is accepted, not just leading-dot references.
+@Loggable(.internal, subsystem: "com.example.app")
 final class CategorizedController {
     func refresh() {
-        #log(.info, category: \.ui, "refresh started")
-        #log(.debug, category: \.database, "query executed \(3, privacy: .public) times")
+        #log(.info, category: .network, "refresh started")
+        #log(.debug, category: LogCategory("database"), "query executed \(3, privacy: .public) times")
     }
 }
 

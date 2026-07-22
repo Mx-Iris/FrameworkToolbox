@@ -18,7 +18,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {\u{0020}
+            struct MyService { 
 
                 private nonisolated static var category: String {
                     "MyService"
@@ -36,6 +36,15 @@ struct LoggableMacroTests {
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
                     Self.logger
+                }
+
+                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -50,7 +59,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {\u{0020}
+            struct MyService { 
 
                 private nonisolated static var category: String {
                     "MyService"
@@ -69,6 +78,15 @@ struct LoggableMacroTests {
                 private nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -82,7 +100,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {\u{0020}
+            struct MyService { 
 
                 public nonisolated static var category: String {
                     "MyService"
@@ -101,6 +119,15 @@ struct LoggableMacroTests {
                 public nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                public nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -114,7 +141,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {\u{0020}
+            struct MyService { 
 
                 nonisolated static var category: String {
                     "MyService"
@@ -133,6 +160,15 @@ struct LoggableMacroTests {
                 nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -148,7 +184,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            class MyService {\u{0020}
+            class MyService { 
 
                 private nonisolated static var category: String {
                     "MyService"
@@ -167,6 +203,15 @@ struct LoggableMacroTests {
                 private nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -180,7 +225,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            enum MyEvent {\u{0020}
+            enum MyEvent { 
 
                 private nonisolated static var category: String {
                     "MyEvent"
@@ -199,6 +244,15 @@ struct LoggableMacroTests {
                 private nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -212,7 +266,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            actor MyActor {\u{0020}
+            actor MyActor { 
 
                 private nonisolated static var category: String {
                     "MyActor"
@@ -231,6 +285,15 @@ struct LoggableMacroTests {
                 private nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -244,7 +307,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {\u{0020}
+            struct MyService { 
 
                 fileprivate nonisolated static var category: String {
                     "MyService"
@@ -263,6 +326,15 @@ struct LoggableMacroTests {
                 fileprivate nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                fileprivate nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                fileprivate nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -276,7 +348,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {\u{0020}
+            struct MyService { 
 
                 package nonisolated static var category: String {
                     "MyService"
@@ -295,6 +367,15 @@ struct LoggableMacroTests {
                 package nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                package nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                package nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -310,7 +391,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {\u{0020}
+            struct MyService { 
 
                 private nonisolated static var category: String {
                     "MyService"
@@ -329,6 +410,15 @@ struct LoggableMacroTests {
                 private nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -342,7 +432,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {\u{0020}
+            struct MyService { 
 
                 private nonisolated static var category: String {
                     "Network"
@@ -361,6 +451,15 @@ struct LoggableMacroTests {
                 private nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -374,7 +473,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {\u{0020}
+            struct MyService { 
 
                 private nonisolated static var category: String {
                     "Network"
@@ -393,6 +492,15 @@ struct LoggableMacroTests {
                 private nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -406,7 +514,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            struct MyService {\u{0020}
+            struct MyService { 
 
                 public nonisolated static var category: String {
                     "Network"
@@ -425,6 +533,15 @@ struct LoggableMacroTests {
                 public nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                public nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -438,7 +555,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            class MyService {\u{0020}
+            class MyService { 
 
                 nonisolated static var category: String {
                     "MyService"
@@ -457,98 +574,14 @@ struct LoggableMacroTests {
                 nonisolated var logger: os.Logger {
                     Self.logger
                 }
-            }
-            """
-        }
-    }
 
-    // MARK: Multiple categories
-
-    @Test func multipleCategories() {
-        assertMacro {
-            """
-            @Loggable(categories: "network", "persistence")
-            struct SyncService { }
-            """
-        } expansion: {
-            """
-            struct SyncService {\u{0020}
-
-                private nonisolated static var category: String {
-                    "SyncService"
-                }
-
-                private nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? "SyncService"
-                }
-
-                private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
-
-                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
-
-                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated var logger: os.Logger {
-                    Self.logger
-                }
-
-                private enum LogCategory: String {
-                    case `network`
-                    case `persistence`
-                }
-
-                private nonisolated static func _osLog(for category: LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.rawValue)
+                nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static func logger(for category: LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.rawValue)
-                }
-            }
-            """
-        }
-    }
-
-    @Test func categoriesWithAccessLevelAndSubsystem() {
-        assertMacro {
-            """
-            @Loggable(.public, subsystem: "com.example.app", categories: "ui")
-            class AppController { }
-            """
-        } expansion: {
-            """
-            class AppController {\u{0020}
-
-                public nonisolated static var category: String {
-                    "AppController"
-                }
-
-                public nonisolated static var subsystem: String {
-                    "com.example.app"
-                }
-
-                public nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
-
-                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
-
-                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public nonisolated var logger: os.Logger {
-                    Self.logger
-                }
-
-                public enum LogCategory: String {
-                    case `ui`
-                }
-
-                public nonisolated static func _osLog(for category: LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.rawValue)
-                }
-
-                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public nonisolated static func logger(for category: LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.rawValue)
+                nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -565,7 +598,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            protocol Networking {\u{0020}
+            protocol Networking { 
 
                 static var category: String {
                     get
@@ -612,6 +645,15 @@ struct LoggableMacroTests {
                 nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -625,7 +667,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            public protocol Networking {\u{0020}
+            public protocol Networking { 
 
                 static var category: String {
                     get
@@ -671,6 +713,15 @@ struct LoggableMacroTests {
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated var logger: os.Logger {
                     Self.logger
+                }
+
+                public nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -709,6 +760,15 @@ struct LoggableMacroTests {
                 nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -746,6 +806,15 @@ struct LoggableMacroTests {
                 public nonisolated var logger: os.Logger {
                     Self.logger
                 }
+
+                public nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
             }
             """
         }
@@ -759,7 +828,7 @@ struct LoggableMacroTests {
             """
         } expansion: {
             """
-            public protocol NetworkingChannel {\u{0020}
+            public protocol NetworkingChannel { 
 
                 static var category: String {
                     get
@@ -805,6 +874,15 @@ struct LoggableMacroTests {
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated var logger: os.Logger {
                     Self.logger
+                }
+
+                public nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -911,11 +989,11 @@ struct LogMacroTests {
 
     // MARK: Category selection
 
-    @Test func categoryKeyPath() {
+    @Test func categorySelection() {
         assertMacro {
-            #"""
-            #log(.debug, category: \.network, "Hello")
-            """#
+            """
+            #log(.debug, category: .network, "Hello")
+            """
         } expansion: {
             """
             {
@@ -929,11 +1007,11 @@ struct LogMacroTests {
         }
     }
 
-    @Test func categoryKeyPathWithInterpolationPrivacy() {
+    @Test func categorySelectionWithInterpolationPrivacy() {
         assertMacro {
-            #"""
-            #log(.error, category: \.persistence, "saved \(count, privacy: .public) items for \(user, privacy: .private)")
-            """#
+            """
+            #log(.error, category: .persistence, "saved \\(count, privacy: .public) items for \\(user, privacy: .private)")
+            """
         } expansion: {
             #"""
             {
@@ -944,6 +1022,24 @@ struct LogMacroTests {
                 }
             }()
             """#
+        }
+    }
+
+    @Test func categoryArbitraryExpression() {
+        assertMacro {
+            """
+            #log(.info, category: LogCategory("database"), "query executed")
+            """
+        } expansion: {
+            """
+            {
+                if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
+                    Self.logger(for: LogCategory("database")).info("query executed")
+                } else {
+                    os_log(.info, log: Self._osLog(for: LogCategory("database")), "query executed")
+                }
+            }()
+            """
         }
     }
 

@@ -104,8 +104,8 @@ extension LoggableMacro {
         return osLog
     }
 
-    /// Runtime helper invoked by the `logger(for:)` accessor that
-    /// `@Loggable(categories:)` generates.
+    /// Runtime helper invoked by the `logger(for:)` accessor that `@Loggable`
+    /// generates on every annotated type.
     ///
     /// Returns a cached `os.Logger` keyed by the subsystem/category string pair,
     /// so every call site logging to the same category reuses one logger
@@ -126,8 +126,8 @@ extension LoggableMacro {
         return logger
     }
 
-    /// Runtime helper invoked by the `_osLog(for:)` accessor that
-    /// `@Loggable(categories:)` generates, used by the legacy fallback path of
+    /// Runtime helper invoked by the `_osLog(for:)` accessor that `@Loggable`
+    /// generates on every annotated type, used by the legacy fallback path of
     /// `#log` on OS versions older than the `os.Logger` minimums.
     public static func _sharedOSLog(
         subsystem: @autoclosure () -> String,

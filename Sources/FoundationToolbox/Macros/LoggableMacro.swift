@@ -35,14 +35,12 @@ import Foundation
 ///     (or `Bundle(for: self).bundleIdentifier ?? "<TypeName>"` for classes).
 ///   - category: Override the auto-generated category with a string literal.
 ///     Defaults to `nil`, which generates `"<TypeName>"`.
-///   - categories: Declare additional named categories for the type. Each name
-///     must be a string literal that is also a valid Swift identifier. When at
-///     least one name is given, the macro additionally generates a nested
-///     `LogCategory` enum with one case per name plus `logger(for:)` /
-///     `_osLog(for:)` accessors backed by a shared per-subsystem/category
-///     cache. Call sites select a category with `#log(.debug, category:
-///     \.network, "…")`. Not supported on `protocol` declarations (protocols
-///     cannot contain nested types).
+///
+/// Besides the type-level default logger, the macro always generates
+/// `logger(for:)` / `_osLog(for:)` accessors taking a ``LogCategory``, backed
+/// by a shared per-subsystem/category cache. Declare categories as static
+/// members on ``LogCategory`` and select one per call site with
+/// `#log(.debug, category: .network, "…")`.
 ///
 /// Example — concrete type:
 ///
@@ -84,22 +82,26 @@ import Foundation
 ///     @Loggable(.internal, subsystem: "com.example.app", category: "Network")
 ///     struct NetworkService { }
 ///
-/// Or declare multiple named categories and pick one per call site:
+/// Or declare named categories on ``LogCategory`` and pick one per call site:
 ///
-///     @Loggable(categories: "network", "persistence")
+///     extension LogCategory {
+///         static let network = LogCategory("network")
+///         static let persistence = LogCategory("persistence")
+///     }
+///
+///     @Loggable
 ///     struct SyncService {
 ///         func run() {
-///             #log(.debug, category: \.network, "request issued")
-///             #log(.info, category: \.persistence, "records saved")
+///             #log(.debug, category: .network, "request issued")
+///             #log(.info, category: .persistence, "records saved")
 ///         }
 ///     }
-@attached(member, names: named(_osLog), named(category), named(subsystem), named(logger), named(LogCategory))
+@attached(member, names: named(_osLog), named(category), named(subsystem), named(logger))
 @attached(extension, names: named(_osLog), named(category), named(subsystem), named(logger))
 public macro Loggable(
     _ accessLevel: AccessLevel = .private,
     subsystem: StaticString? = nil,
-    category: StaticString? = nil,
-    categories: StaticString...
+    category: StaticString? = nil
 ) = #externalMacro(module: "FoundationToolboxMacros", type: "LoggableMacro")
 
 /// Overload of `@Loggable` that exposes the `asProtocolRequirement` switch
