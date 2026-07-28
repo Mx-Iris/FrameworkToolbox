@@ -1,6 +1,5 @@
-import SwiftSyntax
-import MacroToolkit
 import SwiftDiagnostics
+import SwiftSyntax
 import SwiftSyntaxMacros
 
 /// Modified from: https://github.com/DougGregor/swift-macro-examples/blob/f61ac7cdca8dc3557e53f86e7e03df1353908d3e/MacroExamplesPlugin/AddCompletionHandlerMacro.swift
@@ -10,38 +9,43 @@ public struct AddCompletionHandlerMacro: PeerMacro {
         providingPeersOf declaration: some DeclSyntaxProtocol,
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
-        guard let function = Function(declaration) else {
-            throw MacroError("@AddCompletionHandler only works on functions")
+        guard let function = declaration.as(FunctionDeclSyntax.self) else {
+            throw AddCompletionHandlerMacroError.notAFunction
         }
 
-        guard function.isAsync else {
-            let newSignature = function._syntax.withAsyncModifier().signature
-            let diagnostic = DiagnosticBuilder(for: function._syntax.funcKeyword)
-                .message("can only add a completion-handler variant to an 'async' function")
-                .messageID(domain: "AddCompletionHandlerMacro", id: "MissingAsync")
-                .suggestReplacement(
-                    "add 'async'",
-                    old: function._syntax.signature,
-                    new: newSignature
+        guard function.signature.effectSpecifiers?.asyncSpecifier != nil else {
+            let newSignature = function.withAsyncModifier().signature
+            let diagnostic = Diagnostic(
+                node: Syntax(function.funcKeyword),
+                message: AddCompletionHandlerMacroError.missingAsync,
+                fixIt: .replace(
+                    message: SimpleFixItMessage(
+                        message: "add 'async'",
+                        fixItID: AddCompletionHandlerMacroError.missingAsync.diagnosticID
+                    ),
+                    oldNode: function.signature,
+                    newNode: newSignature
                 )
-                .build()
+            )
 
             context.diagnose(diagnostic)
             return []
         }
 
-        let completionHandlerParameter =
-            FunctionParameter(
-                name: "completion",
-                type: "@escaping (Result<\(raw: function.returnType?.description ?? "Void"), Error>) -> Void"
-            )
+        let returnTypeDescription = function.signature.returnClause?.type.trimmedDescription ?? "Void"
+        let completionHandlerParameter = FunctionParameterSyntax(
+            firstName: .identifier("completion"),
+            colon: .colonToken(trailingTrivia: .space),
+            type: TypeSyntax("@escaping (Result<\(raw: returnTypeDescription), Error>) -> Void")
+        )
 
-        let callArguments = function.parameters.asPassthroughArguments
-        let body: ExprSyntax = if function.returnsVoid {
+        let callArguments = function.signature.parameterClause.parameters.asPassthroughArguments
+        let returnsVoid = function.signature.returnClause?.type.isVoid ?? true
+        let body: ExprSyntax = if returnsVoid {
             """
             Task {
                 do {
-                    try await \(raw: function.identifier)(\(raw: callArguments.joined(separator: ", ")))
+                    try await \(raw: function.name.text)(\(raw: callArguments.joined(separator: ", ")))
                     completion(.success(()))
                 } catch {
                     completion(.failure(error))
@@ -52,7 +56,7 @@ public struct AddCompletionHandlerMacro: PeerMacro {
             """
             Task {
                 do {
-                    let result = try await \(raw: function.identifier)(\(raw: callArguments.joined(separator: ", ")))
+                    let result = try await \(raw: function.name.text)(\(raw: callArguments.joined(separator: ", ")))
                     completion(.success(result))
                 } catch {
                     completion(.failure(error))
@@ -61,11 +65,11 @@ public struct AddCompletionHandlerMacro: PeerMacro {
             """
         }
         let newFunc =
-            function._syntax
+            function
                 .withAsyncModifier(false)
                 .withThrowsModifier(false)
                 .withReturnType(nil)
-                .withParameters(function.parameters + [completionHandlerParameter])
+                .withParameters(function.signature.parameterClause.parameters + [completionHandlerParameter])
                 .withBody([
                     body,
                 ])
@@ -74,4 +78,27 @@ public struct AddCompletionHandlerMacro: PeerMacro {
 
         return [DeclSyntax(newFunc)]
     }
+}
+
+/// Diagnostics emitted by `@AddCompletionHandler`.
+enum AddCompletionHandlerMacroError: Error, CustomStringConvertible, DiagnosticMessage {
+    case notAFunction
+    case missingAsync
+
+    var description: String {
+        switch self {
+        case .notAFunction:
+            return "@AddCompletionHandler only works on functions"
+        case .missingAsync:
+            return "can only add a completion-handler variant to an 'async' function"
+        }
+    }
+
+    var message: String { description }
+
+    var diagnosticID: MessageID {
+        MessageID(domain: "AddCompletionHandlerMacro", id: "\(self)")
+    }
+
+    var severity: DiagnosticSeverity { .error }
 }

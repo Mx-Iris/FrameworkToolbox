@@ -1,5 +1,4 @@
 import SwiftSyntax
-import MacroToolkit
 import SwiftSyntaxMacros
 
 public enum AddAsyncAllMembersMacro: MemberMacro {

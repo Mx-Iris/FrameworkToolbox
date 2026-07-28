@@ -1,5 +1,5 @@
+import SwiftDiagnostics
 import SwiftSyntax
-import MacroToolkit
 import SwiftSyntaxMacros
 
 // Modified from: https://github.com/DougGregor/swift-macro-examples/blob/f61ac7cdca8dc3557e53f86e7e03df1353908d3e/MacroExamplesPlugin/AddAsyncMacro.swift
@@ -7,53 +7,49 @@ import SwiftSyntaxMacros
 enum AddAsyncMacroCore {
     static func expansion(of node: AttributeSyntax?, providingFunctionOf declaration: some DeclSyntaxProtocol) throws -> DeclSyntax {
         // Only on functions at the moment.
-        guard let function = Function(declaration) else {
-            throw MacroError("@AddAsync only works on functions")
+        guard let function = declaration.as(FunctionDeclSyntax.self) else {
+            throw AddAsyncMacroError.notAFunction
         }
 
         // This only makes sense for non async functions.
-        guard !function.isAsync else {
-            throw MacroError("@AddAsync requires a non async function")
+        guard function.signature.effectSpecifiers?.asyncSpecifier == nil else {
+            throw AddAsyncMacroError.alreadyAsync
         }
 
         // This only makes sense void functions
-        guard function.returnsVoid else {
-            throw MacroError("@AddAsync requires a function that returns void")
+        guard function.signature.returnClause?.type.isVoid ?? true else {
+            throw AddAsyncMacroError.nonVoidReturnType
         }
 
         // Requires a completion handler block as last parameter
         guard
-            let completionHandlerType = function.parameters.last?.type.asFunctionType
+            let completionHandlerType = function.signature.parameterClause.parameters.last?.type.asFunctionType
         else {
-            throw MacroError(
-                "@AddAsync requires a function that has a completion handler as last parameter")
+            throw AddAsyncMacroError.missingCompletionHandler
         }
 
         // Completion handler needs to return Void
-        guard completionHandlerType.returnType.isVoid else {
-            throw MacroError(
-                "@AddAsync requires a function that has a completion handler that returns Void")
+        guard completionHandlerType.returnClause.type.isVoid else {
+            throw AddAsyncMacroError.completionHandlerReturnsNonVoid
         }
 
-        guard let returnType = completionHandlerType.parameters.first else {
-            throw MacroError(
-                "@AddAsync requires a function that has a completion handler that has one parameter"
-            )
+        guard let returnType = completionHandlerType.parameters.first.map(\.type) else {
+            throw AddAsyncMacroError.completionHandlerWithoutParameter
         }
 
         // Destructure return type
-        let successReturnType: Type
+        let successReturnType: TypeSyntax
         let isResultReturn: Bool
-        if case let .simple("Result", (successType, _)) = destructure(returnType) {
+        if let resultTypeArguments = returnType.asResultTypeArguments {
             isResultReturn = true
-            successReturnType = successType
+            successReturnType = resultTypeArguments.success
         } else {
             isResultReturn = false
             successReturnType = returnType
         }
 
         // Remove completionHandler and comma from the previous parameter
-        let newParameters = function.parameters.dropLast()
+        let newParameters = function.signature.parameterClause.parameters.dropLast()
 
         // Drop the @AddAsync attribute from the new declaration.
         var filteredAttributes = function.attributes
@@ -63,7 +59,7 @@ enum AddAsyncMacroCore {
 
         let callArguments = newParameters.asPassthroughArguments
 
-        let newBody = function._syntax.body.map { _ in
+        let newBody = function.body.map { _ in
             let switchBody: ExprSyntax =
             """
             switch returnValue {
@@ -82,16 +78,16 @@ enum AddAsyncMacroCore {
             let newBody: ExprSyntax =
             """
             \(raw: continuationExpr)
-                \(raw: function.identifier)(\(raw: callArguments.joined(separator: ", "))) { returnValue in
+                \(raw: function.name.text)(\(raw: callArguments.joined(separator: ", "))) { returnValue in
                     \(isResultReturn ? switchBody : "continuation.resume(returning: returnValue)")
                 }
             }
             """
             return CodeBlockSyntax([newBody])
         }
-        // TODO: Make better codeblock init
+
         var newFunc =
-            function._syntax
+            function
             .withParameters(newParameters)
             .withReturnType(successReturnType)
             .withAsyncModifier()
@@ -105,4 +101,40 @@ enum AddAsyncMacroCore {
 
         return DeclSyntax(newFunc)
     }
+}
+
+/// Diagnostics emitted by `@AddAsync`. `@AddAsyncAllMembers` swallows these so
+/// that ineligible members are simply skipped rather than failing the build.
+enum AddAsyncMacroError: Error, CustomStringConvertible, DiagnosticMessage {
+    case notAFunction
+    case alreadyAsync
+    case nonVoidReturnType
+    case missingCompletionHandler
+    case completionHandlerReturnsNonVoid
+    case completionHandlerWithoutParameter
+
+    var description: String {
+        switch self {
+        case .notAFunction:
+            return "@AddAsync only works on functions"
+        case .alreadyAsync:
+            return "@AddAsync requires a non async function"
+        case .nonVoidReturnType:
+            return "@AddAsync requires a function that returns void"
+        case .missingCompletionHandler:
+            return "@AddAsync requires a function that has a completion handler as last parameter"
+        case .completionHandlerReturnsNonVoid:
+            return "@AddAsync requires a function that has a completion handler that returns Void"
+        case .completionHandlerWithoutParameter:
+            return "@AddAsync requires a function that has a completion handler that has one parameter"
+        }
+    }
+
+    var message: String { description }
+
+    var diagnosticID: MessageID {
+        MessageID(domain: "\(AddAsyncMacro.self)", id: "\(Self.self)")
+    }
+
+    var severity: DiagnosticSeverity { .error }
 }
