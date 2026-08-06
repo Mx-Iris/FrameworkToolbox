@@ -199,3 +199,18 @@ if let surface = IconTileSurfaceImplementation(iconTile) {
     print("  proxy unavailable")
 }
 print("  proxy refuses an unrelated object:", IconTileSurfaceImplementation(NSObject()) == nil)
+
+// MARK: - Scenario 8 — DynamicObject (call a class with no header)
+
+print("== Scenario 8 — DynamicObject ==")
+
+let dateFormatter = ObjC.NSDateFormatter()
+dateFormatter.dateFormat = "yyyy-MM-dd"
+let formattedDate: String? = dateFormatter.stringFromDate(Date(timeIntervalSince1970: 1_600_000_000))
+print("  formatted date : \(formattedDate ?? "<nil>")")
+
+let processorCount: Int? = ObjC.NSProcessInfo.processInfo.processorCount
+print("  processor count: \(processorCount.map(String.init) ?? "<nil>") (native \(ProcessInfo.processInfo.processorCount))")
+
+let missing = ObjC.NSDateFormatter().noSuchMethodExists()
+print("  unknown selector is an error, not a crash: \(missing.isError)")
