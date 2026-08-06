@@ -132,3 +132,70 @@ LoggingSpeakerHook.uninstall(from: loggingSpeaker)
 print("  after uninstall:", loggingSpeaker.speak())
 
 #endif
+
+// MARK: - Scenario 6 — @RuntimeClassHook: replacing a method on a class known only by name
+//
+// The target is reached by string, exactly as it would be inside an injected
+// payload where the class has no header. The type encoding is derived from the
+// Swift signature below and checked against the live class before anything is
+// replaced.
+
+@objc(IconTileRuntimeClient)
+final class IconTile: NSObject {
+    @objc dynamic var displayedIconName: NSString?
+
+    @objc dynamic func setIcon(_ name: NSString?, animated: Bool) {
+        displayedIconName = name
+    }
+}
+
+@RuntimeClassHook("IconTileRuntimeClient")
+struct IconTileHooks {
+    @RuntimeMethodReplacement
+    func setIcon(_ name: NSString?, animated: Bool) {
+        // `host` is the receiver; `callOriginal` goes straight to the
+        // implementation this replacement displaced, so it cannot re-enter.
+        callOriginal("overridden:\(name ?? "")" as NSString, animated)
+    }
+}
+
+// MARK: - Scenario 7 — @RuntimeClassProxy: calling into that same class
+
+@RuntimeClassProxy("IconTileRuntimeClient")
+protocol IconTileSurface {
+    var displayedIconName: NSString? { get set }
+    func setIcon(_ name: NSString?, animated: Bool)
+}
+
+// MARK: - Driver
+
+print("== Scenario 6 — IconTile / IconTileHooks (@RuntimeClassHook) ==")
+let iconTile = IconTile()
+iconTile.setIcon("finder", animated: false)
+print("  before install:", iconTile.displayedIconName ?? "<nil>")
+
+do {
+    try IconTileHooks.install()
+    print("  install       : ok")
+} catch {
+    print("  install       : refused —", error)
+}
+
+iconTile.setIcon("finder", animated: false)
+print("  after install :", iconTile.displayedIconName ?? "<nil>")
+
+print("  derived descriptors:")
+for descriptor in IconTileHooks.descriptors() {
+    print("    \(descriptor) encoding=\(descriptor.expectedTypeEncoding)")
+}
+
+print("== Scenario 7 — IconTileSurface (@RuntimeClassProxy) ==")
+print("  isSupported:", IconTileSurfaceImplementation.isSupported)
+if let surface = IconTileSurfaceImplementation(iconTile) {
+    print("  read via proxy :", surface.displayedIconName ?? "<nil>")
+    surface.setIcon("mail", animated: true)
+    print("  after proxy set:", surface.displayedIconName ?? "<nil>")
+} else {
+    print("  proxy unavailable")
+}
+print("  proxy refuses an unrelated object:", IconTileSurfaceImplementation(NSObject()) == nil)

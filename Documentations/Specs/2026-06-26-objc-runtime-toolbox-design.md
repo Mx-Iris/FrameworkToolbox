@@ -27,6 +27,8 @@ Target library: `ObjCRuntimeToolbox` (新模块)
 ## Non-Goals
 
 - **不**做 method swizzle（替换原方法 IMP）的 API。本模块只做 per-instance ISA swizzle——更安全、可关、可逐实例开关。要做 method swizzle 的人请直接用 `method_setImplementation`。
+
+  > **2026-08-05 更新：这条已被推翻。** `@RuntimeClassHook` 补上了 method swizzle，因为「请直接用 `method_setImplementation`」恰恰是产生「type encoding 字符串和 `@convention(block)` 签名各写各的、谁都不比对」这一类崩溃的写法——挡在库外并没有让它变安全，只是让每个调用方各自重写一遍。见 [2026-08-05 设计文档](2026-08-05-runtime-class-hook-design.md)。本节其余各条仍然成立。
 - **不**做 KVO 互操作的复杂保护。只实现"动态子类层叠到原始类之上"这一层；如果用户的代码同时跑 KVO + 这里的 hook，**KVO 在外、hook 在内**才有保障；反过来 KVO 后开 hook，本模块的 `release()` 不会破坏 KVO 状态（用 `currentClass === dynamicSubclass` 守卫）。
 - **不**自动桥接 `throws` / `async`。`throws` 由宏入口 `context.diagnose(...)` 拒绝；`async` 因 ObjC continuation 桥接复杂同样拒绝。错误锚到 `throws` / `async` 关键字 token，IDE 红线落在用户源码而非展开 buffer。
 - **不**自动派生 Swift `@objc` 桥接的 `<baseName>With<CapitalizedLabel>:` 形态。默认按 `baseName + 各 externalLabel + :` 朴素拼接；若首参带非 `_` label，宏在编译期 diagnose 报错，提示要么改用 `_`、要么显式传 selector：`@DynamicSubclassOverride("formatWithMessage:level:")`。
