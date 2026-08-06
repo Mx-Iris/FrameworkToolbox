@@ -80,7 +80,10 @@ extension DynamicSubclassOverrideMacro: BodyMacro {
 /// than one statement, so a single-expression user body (e.g.
 /// `callSuper(name, age).uppercased()`) stops compiling. Detect that shape and
 /// promote the lone expression to an explicit `return`.
-private func liftImplicitReturn(
+///
+/// Shared with `@RuntimeMethodReplacement`, which prepends a `callOriginal`
+/// declaration and hits the same rule.
+func liftImplicitReturn(
     in statements: CodeBlockItemListSyntax,
     when shape: FunctionShape
 ) -> [CodeBlockItemSyntax] {

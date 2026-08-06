@@ -4,10 +4,11 @@ import SwiftSyntaxMacros
 
 // MARK: - Message
 
-/// All compile-time diagnostics emitted by the `@DynamicSubclassHook` /
-/// `@DynamicSubclassOverride` macros. Errors anchor to the offending syntax
-/// node so the IDE can underline the actual source rather than the macro
-/// expansion buffer.
+/// All compile-time diagnostics emitted by this module's macros —
+/// `@DynamicSubclassHook` / `@DynamicSubclassOverride` and `@RuntimeClassHook`
+/// / `@RuntimeMethodReplacement`. Errors anchor to the offending syntax node so
+/// the IDE can underline the actual source rather than the macro expansion
+/// buffer.
 struct DynamicSubclassMacroDiagnostic: DiagnosticMessage {
     let message: String
     let identifier: String
@@ -48,16 +49,29 @@ struct OverrideMarker {
     let explicitSelector: String?
 }
 
-func extractOverrideMarker(from functionDeclaration: FunctionDeclSyntax) -> OverrideMarker? {
+func extractOverrideMarker(
+    from functionDeclaration: FunctionDeclSyntax,
+    attributeNamed markerAttributeName: String = "DynamicSubclassOverride"
+) -> OverrideMarker? {
+    guard let attribute = findAttribute(named: markerAttributeName, on: functionDeclaration) else {
+        return nil
+    }
+    let explicitSelector = extractExplicitSelectorArgument(from: attribute)
+    return OverrideMarker(attribute: attribute, explicitSelector: explicitSelector)
+}
+
+/// Finds an attribute by name on a function declaration, matching both the bare
+/// spelling (`DynamicSubclassOverride`) and the fully-qualified one
+/// (`ObjCRuntimeToolbox.DynamicSubclassOverride`).
+func findAttribute(
+    named wantedAttributeName: String,
+    on functionDeclaration: FunctionDeclSyntax
+) -> AttributeSyntax? {
     for attributeListEntry in functionDeclaration.attributes {
         guard let attribute = attributeListEntry.as(AttributeSyntax.self) else { continue }
         let attributeName = attribute.attributeName.trimmedDescription
-        // Match both bare `DynamicSubclassOverride` and the fully-qualified
-        // `ObjCRuntimeToolbox.DynamicSubclassOverride` form.
         let lastComponent = attributeName.split(separator: ".").last.map(String.init) ?? attributeName
-        if lastComponent != "DynamicSubclassOverride" { continue }
-        let explicitSelector = extractExplicitSelectorArgument(from: attribute)
-        return OverrideMarker(attribute: attribute, explicitSelector: explicitSelector)
+        if lastComponent == wantedAttributeName { return attribute }
     }
     return nil
 }
@@ -93,11 +107,15 @@ func extractStringLiteral(from expression: ExprSyntax) -> String? {
 /// found is non-fatal (warning); `false` when at least one fatal issue means
 /// the macro should NOT proceed to generate code that would explode in the
 /// expansion buffer.
+///
+/// `macroName` names the macro in every message so the two macro families that
+/// share this pass each report themselves rather than a sibling.
 @discardableResult
 func diagnoseUnsupportedFunctionShape(
     _ functionDeclaration: FunctionDeclSyntax,
     in context: some MacroExpansionContext,
-    overrideMarker: OverrideMarker?
+    overrideMarker: OverrideMarker?,
+    macroName: String = "@DynamicSubclassOverride"
 ) -> Bool {
     var canProceed = true
 
@@ -107,7 +125,7 @@ func diagnoseUnsupportedFunctionShape(
             context.emit(
                 .error(
                     "asyncNotSupported",
-                    "@DynamicSubclassOverride does not support 'async' methods — Objective-C IMP blocks cannot bridge Swift continuations."
+                    "\(macroName) does not support 'async' methods — Objective-C IMP blocks cannot bridge Swift continuations."
                 ),
                 at: asyncSpecifier
             )
@@ -117,7 +135,7 @@ func diagnoseUnsupportedFunctionShape(
             context.emit(
                 .error(
                     "throwsNotSupported",
-                    "@DynamicSubclassOverride does not support 'throws' methods. Catch the error inside the hook body instead."
+                    "\(macroName) does not support 'throws' methods. Catch the error inside the hook body instead."
                 ),
                 at: throwsClause
             )
@@ -132,7 +150,7 @@ func diagnoseUnsupportedFunctionShape(
             context.emit(
                 .error(
                     "mutatingNotSupported",
-                    "@DynamicSubclassOverride does not support 'mutating' methods — the hook container is reconstructed per ObjC invocation."
+                    "\(macroName) does not support 'mutating' methods — the hook container is reconstructed per ObjC invocation."
                 ),
                 at: modifier
             )
@@ -144,7 +162,7 @@ func diagnoseUnsupportedFunctionShape(
             context.emit(
                 .error(
                     "actorIsolationNotSupported",
-                    "@DynamicSubclassOverride does not support actor-isolated methods."
+                    "\(macroName) does not support actor-isolated methods."
                 ),
                 at: modifier
             )
@@ -163,7 +181,7 @@ func diagnoseUnsupportedFunctionShape(
             context.emit(
                 .error(
                     "mainActorNotSupported",
-                    "@DynamicSubclassOverride does not support @MainActor methods — the ObjC IMP block does not carry actor isolation."
+                    "\(macroName) does not support @MainActor methods — the ObjC IMP block does not carry actor isolation."
                 ),
                 at: attribute
             )
@@ -173,7 +191,7 @@ func diagnoseUnsupportedFunctionShape(
 
     // 4. Parameters — each type must be syntactically ObjC representable.
     for parameter in functionDeclaration.signature.parameterClause.parameters {
-        if !diagnoseObjcRepresentable(parameter.type, role: "parameter", in: context) {
+        if !diagnoseObjcRepresentable(parameter.type, role: "parameter", in: context, macroName: macroName) {
             canProceed = false
         }
     }
@@ -182,7 +200,7 @@ func diagnoseUnsupportedFunctionShape(
     if let returnClause = functionDeclaration.signature.returnClause {
         let returnTypeText = returnClause.type.trimmedDescription
         if returnTypeText != "Void" && returnTypeText != "()" {
-            if !diagnoseObjcRepresentable(returnClause.type, role: "return type", in: context) {
+            if !diagnoseObjcRepresentable(returnClause.type, role: "return type", in: context, macroName: macroName) {
                 canProceed = false
             }
         }
@@ -197,9 +215,9 @@ func diagnoseUnsupportedFunctionShape(
                 .error(
                     "firstParameterLabelMustBeUnderscore",
                     """
-                    @DynamicSubclassOverride: first parameter label must be '_'. \
+                    \(macroName): first parameter label must be '_'. \
                     Swift's @objc bridging produces a selector like '<baseName>With<CapitalizedLabel>:' for labelled first parameters, but this macro derives '<baseName><label>:' which won't match. \
-                    Either drop the label (use '_'), or pass an explicit selector: @DynamicSubclassOverride("real:selector:").
+                    Either drop the label (use '_'), or pass an explicit selector: \(macroName)("real:selector:").
                     """
                 ),
                 at: firstParameter.firstName
@@ -219,7 +237,8 @@ func diagnoseUnsupportedFunctionShape(
 private func diagnoseObjcRepresentable(
     _ typeSyntax: TypeSyntax,
     role: String,
-    in context: some MacroExpansionContext
+    in context: some MacroExpansionContext,
+    macroName: String
 ) -> Bool {
     if let attributed = typeSyntax.as(AttributedTypeSyntax.self) {
         for specifier in attributed.specifiers {
@@ -230,7 +249,7 @@ private func diagnoseObjcRepresentable(
                     context.emit(
                         .error(
                             "ownershipSpecifierNotSupported",
-                            "@DynamicSubclassOverride \(role) cannot use 'inout' / 'borrowing' / 'consuming' — these specifiers don't bridge to @convention(c)."
+                            "\(macroName) \(role) cannot use 'inout' / 'borrowing' / 'consuming' — these specifiers don't bridge to @convention(c)."
                         ),
                         at: simpleSpecifier
                     )
@@ -243,7 +262,7 @@ private func diagnoseObjcRepresentable(
             }
         }
         // The wrapped type still needs checking.
-        return diagnoseObjcRepresentable(attributed.baseType, role: role, in: context)
+        return diagnoseObjcRepresentable(attributed.baseType, role: role, in: context, macroName: macroName)
     }
 
     if let tuple = typeSyntax.as(TupleTypeSyntax.self) {
@@ -252,14 +271,14 @@ private func diagnoseObjcRepresentable(
             context.emit(
                 .error(
                     "tupleNotRepresentable",
-                    "@DynamicSubclassOverride \(role) cannot use Swift tuples — Objective-C has no tuple type."
+                    "\(macroName) \(role) cannot use Swift tuples — Objective-C has no tuple type."
                 ),
                 at: tuple
             )
             return false
         }
         // Single-element tuple is just a paren-wrapped type — recurse.
-        return diagnoseObjcRepresentable(tuple.elements.first!.type, role: role, in: context)
+        return diagnoseObjcRepresentable(tuple.elements.first!.type, role: role, in: context, macroName: macroName)
     }
 
     if let function = typeSyntax.as(FunctionTypeSyntax.self) {
@@ -267,7 +286,7 @@ private func diagnoseObjcRepresentable(
         context.emit(
             .error(
                 "swiftClosureNotRepresentable",
-                "@DynamicSubclassOverride \(role) cannot use bare Swift closure types. If you need an ObjC block, declare it as @convention(block) ... and wrap it with @attribute syntax."
+                "\(macroName) \(role) cannot use bare Swift closure types. If you need an ObjC block, declare it as @convention(block) ... and wrap it with @attribute syntax."
             ),
             at: function
         )
