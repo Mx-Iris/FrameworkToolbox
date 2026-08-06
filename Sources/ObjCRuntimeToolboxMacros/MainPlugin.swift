@@ -6,5 +6,8 @@ struct MainPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
         DynamicSubclassHookMacro.self,
         DynamicSubclassOverrideMacro.self,
+        RuntimeClassHookMacro.self,
+        RuntimeMethodReplacementMacro.self,
+        RuntimeClassProxyMacro.self,
     ]
 }
