@@ -1,6 +1,6 @@
 import Testing
 import Dispatch
-@testable import SwiftStdlibToolbox
+@testable import OSToolbox
 
 // MARK: - LockSingleConsumerStack (ported from swift/test/stdlib/Synchronization/Mutex)
 

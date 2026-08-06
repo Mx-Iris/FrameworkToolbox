@@ -1,7 +1,7 @@
 #if canImport(os)
 
 import os.log
-import Foundation
+import FrameworkToolbox
 
 /// Automatically generates logging infrastructure for the annotated declaration.
 ///
@@ -30,9 +30,12 @@ import Foundation
 ///     extension is emitted — conforming types cannot override, and all call
 ///     sites resolve statically to the default implementation. Use the latter
 ///     when you want the logging properties to be "frozen" for all conformers.
-///   - subsystem: Override the auto-generated subsystem with a string literal.
-///     Defaults to `nil`, which generates `Bundle.main.bundleIdentifier ?? "<TypeName>"`
-///     (or `Bundle(for: self).bundleIdentifier ?? "<TypeName>"` for classes).
+///   - subsystem: The subsystem string literal. Defaults to `nil`, which uses
+///     `"<TypeName>"` — the same string the category defaults to. There is no
+///     bundle-identifier fallback on purpose: deriving one would put `Bundle`
+///     into the expansion, and the expansion lands in the caller's file, which
+///     would then fail to compile unless it had imported Foundation. Pass a
+///     literal here to group several types under one subsystem.
 ///   - category: Override the auto-generated category with a string literal.
 ///     Defaults to `nil`, which generates `"<TypeName>"`.
 ///
@@ -50,7 +53,7 @@ import Foundation
 ///     // Expands to:
 ///     // struct MyService {
 ///     //     static var category: String { "MyService" }
-///     //     static var subsystem: String { Bundle.main.bundleIdentifier ?? "MyService" }
+///     //     static var subsystem: String { "MyService" }
 ///     //     static let _osLog = OSLog(subsystem: subsystem, category: category)
 ///     //     @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 ///     //     static let logger = os.Logger(subsystem: subsystem, category: category)
@@ -66,7 +69,7 @@ import Foundation
 ///     // Expands to (alongside the protocol):
 ///     // extension Networking {
 ///     //     static var category: String { String(describing: self) }
-///     //     static var subsystem: String { Bundle.main.bundleIdentifier ?? String(describing: self) }
+///     //     static var subsystem: String { String(describing: self) }
 ///     //     static var _osLog: OSLog { LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category) }
 ///     //     @available(...) static var logger: os.Logger {
 ///     //         LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
@@ -102,7 +105,7 @@ public macro Loggable(
     _ accessLevel: AccessLevel = .private,
     subsystem: StaticString? = nil,
     category: StaticString? = nil
-) = #externalMacro(module: "FoundationToolboxMacros", type: "LoggableMacro")
+) = #externalMacro(module: "OSToolboxMacros", type: "LoggableMacro")
 
 /// Overload of `@Loggable` that exposes the `asProtocolRequirement` switch
 /// (see the parameter documentation on the main `@Loggable` declaration).
@@ -113,6 +116,6 @@ public macro Loggable(
     asProtocolRequirement: Bool,
     subsystem: StaticString? = nil,
     category: StaticString? = nil
-) = #externalMacro(module: "FoundationToolboxMacros", type: "LoggableMacro")
+) = #externalMacro(module: "OSToolboxMacros", type: "LoggableMacro")
 
 #endif

@@ -15,7 +15,7 @@
 @attached(peer, names: prefixed(_))
 @attached(accessor)
 public macro OSAllocatedUnfairLock() = #externalMacro(
-    module: "FoundationToolboxMacros",
+    module: "OSToolboxMacros",
     type: "OSAllocatedUnfairLockMacro"
 )
 

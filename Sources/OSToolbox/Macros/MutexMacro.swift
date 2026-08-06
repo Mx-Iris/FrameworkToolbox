@@ -20,7 +20,7 @@
 @attached(accessor)
 // @attached(member, names: arbitrary)
 public macro Mutex() = #externalMacro(
-    module: "SwiftStdlibToolboxMacros",
+    module: "OSToolboxMacros",
     type: "MutexMacro"
 )
 

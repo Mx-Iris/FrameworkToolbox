@@ -1,15 +1,15 @@
 import MacroTesting
 import Testing
 
-@testable import FoundationToolboxMacros
+@testable import OSToolboxMacros
 
-@Suite(.macros(["OSAllocatedUnfairLock": OSAllocatedUnfairLockMacro.self]))
-struct OSAllocatedUnfairLockMacroTests {
+@Suite(.macros(["Mutex": MutexMacro.self]))
+struct MutexMacroTests {
 
     @Test func basicProperty() {
         assertMacro {
             """
-            @OSAllocatedUnfairLock
+            @Mutex
             var counter: Int = 0
             """
         } expansion: {
@@ -34,7 +34,7 @@ struct OSAllocatedUnfairLockMacroTests {
                 }
             }
 
-            private let _counter = os.OSAllocatedUnfairLock<Int >(initialState: 0)
+            private let _counter = Mutex<Int >(0)
             """
         }
     }
@@ -42,8 +42,8 @@ struct OSAllocatedUnfairLockMacroTests {
     @Test func stringProperty() {
         assertMacro {
             """
-            @OSAllocatedUnfairLock
-            var name: String = "hello"
+            @Mutex
+            var name: String = ""
             """
         } expansion: {
             """
@@ -67,7 +67,40 @@ struct OSAllocatedUnfairLockMacroTests {
                 }
             }
 
-            private let _name = os.OSAllocatedUnfairLock<String >(initialState: "hello")
+            private let _name = Mutex<String >("")
+            """
+        }
+    }
+
+    @Test func optionalProperty() {
+        assertMacro {
+            """
+            @Mutex
+            var value: String? = nil
+            """
+        } expansion: {
+            """
+            var value: String? {
+                get {
+                    _value.withLock {
+                        $0
+                    }
+                }
+                set {
+                    _value.withLock { (value: inout String? ) -> Void in
+                        value = newValue
+                    }
+                }
+                _modify {
+                    let valuePointer = _value._unsafeLock()
+                    defer {
+                        _value._unsafeUnlock()
+                    }
+                    yield &valuePointer.pointee
+                }
+            }
+
+            private let _value = Mutex<String? >(nil)
             """
         }
     }
@@ -75,7 +108,7 @@ struct OSAllocatedUnfairLockMacroTests {
     @Test func implicitlyUnwrappedOptional() {
         assertMacro {
             """
-            @OSAllocatedUnfairLock
+            @Mutex
             var value: String!
             """
         } expansion: {
@@ -93,7 +126,7 @@ struct OSAllocatedUnfairLockMacroTests {
                 }
             }
 
-            private let _value = os.OSAllocatedUnfairLock<String?>(initialState: nil)
+            private let _value = Mutex<String?>(nil)
             """
         }
     }
@@ -101,7 +134,7 @@ struct OSAllocatedUnfairLockMacroTests {
     @Test func arrayProperty() {
         assertMacro {
             """
-            @OSAllocatedUnfairLock
+            @Mutex
             var items: [String] = []
             """
         } expansion: {
@@ -126,7 +159,40 @@ struct OSAllocatedUnfairLockMacroTests {
                 }
             }
 
-            private let _items = os.OSAllocatedUnfairLock<[String] >(initialState: [])
+            private let _items = Mutex<[String] >([])
+            """
+        }
+    }
+
+    /// Pins the module that qualifies `WeakBox` in the generated storage.
+    ///
+    /// `weak` is the only shape whose expansion names a type from another file
+    /// by its module, so it is the only one that breaks when `WeakBox` moves
+    /// between targets — as it did when `OSToolbox` was split out of
+    /// `SwiftStdlibToolbox`. Every other shape spells out `Mutex<...>` alone
+    /// and would keep compiling through such a move.
+    @Test func weakProperty() {
+        assertMacro {
+            """
+            @Mutex
+            weak var delegate: AnyObject?
+            """
+        } expansion: {
+            """
+            weak var delegate: AnyObject? {
+                get {
+                    _delegate.withLock {
+                        $0.value
+                    }
+                }
+                set {
+                    _delegate.withLock { (weakBox: inout OSToolbox.WeakBox<AnyObject>) -> Void in
+                        weakBox.value = newValue
+                    }
+                }
+            }
+
+            private let _delegate = Mutex(OSToolbox.WeakBox<AnyObject>(nil))
             """
         }
     }
@@ -134,7 +200,7 @@ struct OSAllocatedUnfairLockMacroTests {
     @Test func staticProperty() {
         assertMacro {
             """
-            @OSAllocatedUnfairLock
+            @Mutex
             static var counter: Int = 0
             """
         } expansion: {
@@ -159,7 +225,7 @@ struct OSAllocatedUnfairLockMacroTests {
                 }
             }
 
-            private static let _counter = os.OSAllocatedUnfairLock<Int >(initialState: 0)
+            private static let _counter = Mutex<Int >(0)
             """
         }
     }

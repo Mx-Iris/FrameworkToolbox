@@ -13,6 +13,17 @@ let package = Package(
             targets: ["FrameworkToolbox"]
         ),
         .library(
+            // Holds every abstraction layered directly on Apple's `os` module —
+            // `Mutex`, `@Loggable`/`#log`, `@OSAllocatedUnfairLock`. It sits
+            // below `SwiftStdlibToolbox` so that targets which must not pull in
+            // the stdlib or Foundation layers (notably `ObjCRuntimeToolbox`)
+            // can still use them. Both `SwiftStdlibToolbox` and, through it,
+            // `FoundationToolbox` re-export this target, so existing call sites
+            // importing either one keep working unchanged.
+            name: "OSToolbox",
+            targets: ["OSToolbox"]
+        ),
+        .library(
             name: "SwiftStdlibToolbox",
             targets: ["SwiftStdlibToolbox"]
         ),
@@ -48,9 +59,18 @@ let package = Package(
             ]
         ),
         .target(
+            name: "OSToolbox",
+            dependencies: [
+                // For `AccessLevel`, the parameter type of `@Loggable`.
+                "FrameworkToolbox",
+                "OSToolboxMacros",
+            ]
+        ),
+        .target(
             name: "SwiftStdlibToolbox",
             dependencies: [
                 "FrameworkToolbox",
+                "OSToolbox",
                 "SwiftStdlibToolboxMacros",
                 "PointerAuthenticationSupport",
             ]
@@ -78,6 +98,7 @@ let package = Package(
         .target(
             name: "ObjCRuntimeToolbox",
             dependencies: [
+                "OSToolbox",
                 "ObjCRuntimeToolboxMacros",
             ]
         ),
@@ -96,6 +117,17 @@ let package = Package(
                 .SwiftSyntaxMacros,
                 .SwiftCompilerPlugin,
                 .SwiftSyntaxBuilder,
+            ]
+        ),
+        .macro(
+            name: "OSToolboxMacros",
+            dependencies: [
+                "MacroToolbox",
+                .SwiftSyntax,
+                .SwiftSyntaxMacros,
+                .SwiftCompilerPlugin,
+                .SwiftSyntaxBuilder,
+                .SwiftDiagnostics,
             ]
         ),
         .macro(
@@ -135,6 +167,10 @@ let package = Package(
             dependencies: ["FrameworkToolbox"]
         ),
         .executableTarget(
+            name: "OSToolboxClient",
+            dependencies: ["OSToolbox"]
+        ),
+        .executableTarget(
             name: "SwiftStdlibToolboxClient",
             dependencies: ["SwiftStdlibToolbox"]
         ),
@@ -155,6 +191,20 @@ let package = Package(
             name: "FrameworkToolboxTests",
             dependencies: [
                 "FrameworkToolbox",
+            ]
+        ),
+        .testTarget(
+            name: "OSToolboxTests",
+            dependencies: [
+                "OSToolbox",
+            ]
+        ),
+        .testTarget(
+            name: "OSToolboxMacroTests",
+            dependencies: [
+                "OSToolboxMacros",
+                "MacroToolbox",
+                .product(name: "MacroTesting", package: "swift-macro-testing"),
             ]
         ),
         .testTarget(

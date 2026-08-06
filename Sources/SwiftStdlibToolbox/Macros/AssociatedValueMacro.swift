@@ -1,3 +1,5 @@
+import FrameworkToolbox
+
 // MARK: - @AssociatedValue Macro
 
 /// Adds a computed property for each enum case with a single associated value.

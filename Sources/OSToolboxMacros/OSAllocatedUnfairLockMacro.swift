@@ -3,22 +3,22 @@ import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import MacroToolbox
 
-public struct MutexMacro: LockMacroProtocol {
-    public static let macroName = "Mutex"
+public struct OSAllocatedUnfairLockMacro: LockMacroProtocol {
+    public static let macroName = "OSAllocatedUnfairLock"
 
     public static func makeStorageDecl(for info: LockPropertyInfo) -> DeclSyntax {
         let staticKeyword = info.isStatic ? "static " : ""
         if info.isWeak {
             return """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = Mutex(SwiftStdlibToolbox.WeakBox<\(raw: info.baseType)>(\(info.initialValue)))
+            private \(raw: staticKeyword)let \(raw: info.storageName) = os.OSAllocatedUnfairLock(initialState: OSToolbox.WeakBox<\(raw: info.baseType)>(\(info.initialValue)))
             """
         } else if info.isImplicitlyUnwrappedOptional {
             return """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = Mutex<\(raw: info.baseType)?>(\(info.initialValue))
+            private \(raw: staticKeyword)let \(raw: info.storageName) = os.OSAllocatedUnfairLock<\(raw: info.baseType)?>(initialState: \(info.initialValue))
             """
         } else {
             return """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = Mutex<\(raw: info.type)>(\(info.initialValue))
+            private \(raw: staticKeyword)let \(raw: info.storageName) = os.OSAllocatedUnfairLock<\(raw: info.type)>(initialState: \(info.initialValue))
             """
         }
     }
@@ -49,7 +49,7 @@ public struct MutexMacro: LockMacroProtocol {
         if info.isWeak {
             return """
             set {
-                \(raw: info.storageName).withLock { (weakBox: inout SwiftStdlibToolbox.WeakBox<\(raw: info.baseType)>) -> Void in
+                \(raw: info.storageName).withLock { (weakBox: inout OSToolbox.WeakBox<\(raw: info.baseType)>) -> Void in
                     weakBox.value = newValue
                 }
             }

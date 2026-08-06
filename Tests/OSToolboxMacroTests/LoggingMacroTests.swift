@@ -1,7 +1,7 @@
 import MacroTesting
 import Testing
 
-@testable import FoundationToolboxMacros
+@testable import OSToolboxMacros
 
 // MARK: - @Loggable
 
@@ -25,7 +25,7 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? "MyService"
+                    "MyService"
                 }
 
                 private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
@@ -38,12 +38,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -66,7 +66,7 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? "MyService"
+                    "MyService"
                 }
 
                 private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
@@ -79,12 +79,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -107,7 +107,7 @@ struct LoggableMacroTests {
                 }
 
                 public nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? "MyService"
+                    "MyService"
                 }
 
                 public nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
@@ -120,12 +120,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                public nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                public nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                public nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -148,7 +148,7 @@ struct LoggableMacroTests {
                 }
 
                 nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? "MyService"
+                    "MyService"
                 }
 
                 nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
@@ -161,12 +161,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -176,7 +176,7 @@ struct LoggableMacroTests {
 
     // MARK: Type variants
 
-    @Test func classUseBundleForSelf() {
+    @Test func classUsesTheTypeNameAsSubsystem() {
         assertMacro {
             """
             @Loggable(.private)
@@ -191,7 +191,7 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static var subsystem: String {
-                    Bundle(for: self).bundleIdentifier ?? "MyService"
+                    "MyService"
                 }
 
                 private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
@@ -204,12 +204,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -232,7 +232,7 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? "MyEvent"
+                    "MyEvent"
                 }
 
                 private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
@@ -245,12 +245,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -273,7 +273,7 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? "MyActor"
+                    "MyActor"
                 }
 
                 private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
@@ -286,12 +286,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -314,7 +314,7 @@ struct LoggableMacroTests {
                 }
 
                 fileprivate nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? "MyService"
+                    "MyService"
                 }
 
                 fileprivate nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
@@ -327,12 +327,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                fileprivate nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                fileprivate nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                fileprivate nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                fileprivate nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -355,7 +355,7 @@ struct LoggableMacroTests {
                 }
 
                 package nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? "MyService"
+                    "MyService"
                 }
 
                 package nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
@@ -368,12 +368,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                package nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                package nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                package nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                package nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -411,12 +411,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -439,7 +439,7 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? "MyService"
+                    "MyService"
                 }
 
                 private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
@@ -452,12 +452,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -493,12 +493,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                private nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -534,12 +534,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                public nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                public nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                public nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -575,12 +575,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -629,7 +629,7 @@ struct LoggableMacroTests {
                 }
 
                 nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? String(describing: self)
+                    String(describing: self)
                 }
 
                 nonisolated static var _osLog: os.OSLog {
@@ -646,12 +646,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -698,7 +698,7 @@ struct LoggableMacroTests {
                 }
 
                 public nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? String(describing: self)
+                    String(describing: self)
                 }
 
                 public nonisolated static var _osLog: os.OSLog {
@@ -715,12 +715,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                public nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                public nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                public nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -744,7 +744,7 @@ struct LoggableMacroTests {
                 }
 
                 nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? String(describing: self)
+                    String(describing: self)
                 }
 
                 nonisolated static var _osLog: os.OSLog {
@@ -761,12 +761,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -790,7 +790,7 @@ struct LoggableMacroTests {
                 }
 
                 public nonisolated static var subsystem: String {
-                    Bundle.main.bundleIdentifier ?? String(describing: self)
+                    String(describing: self)
                 }
 
                 public nonisolated static var _osLog: os.OSLog {
@@ -807,12 +807,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                public nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                public nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                public nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
@@ -876,12 +876,12 @@ struct LoggableMacroTests {
                     Self.logger
                 }
 
-                public nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+                public nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
                     LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+                public nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
                     LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }

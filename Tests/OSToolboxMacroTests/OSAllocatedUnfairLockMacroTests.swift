@@ -1,15 +1,15 @@
 import MacroTesting
 import Testing
 
-@testable import SwiftStdlibToolboxMacros
+@testable import OSToolboxMacros
 
-@Suite(.macros(["Mutex": MutexMacro.self]))
-struct MutexMacroTests {
+@Suite(.macros(["OSAllocatedUnfairLock": OSAllocatedUnfairLockMacro.self]))
+struct OSAllocatedUnfairLockMacroTests {
 
     @Test func basicProperty() {
         assertMacro {
             """
-            @Mutex
+            @OSAllocatedUnfairLock
             var counter: Int = 0
             """
         } expansion: {
@@ -34,7 +34,7 @@ struct MutexMacroTests {
                 }
             }
 
-            private let _counter = Mutex<Int >(0)
+            private let _counter = os.OSAllocatedUnfairLock<Int >(initialState: 0)
             """
         }
     }
@@ -42,8 +42,8 @@ struct MutexMacroTests {
     @Test func stringProperty() {
         assertMacro {
             """
-            @Mutex
-            var name: String = ""
+            @OSAllocatedUnfairLock
+            var name: String = "hello"
             """
         } expansion: {
             """
@@ -67,40 +67,7 @@ struct MutexMacroTests {
                 }
             }
 
-            private let _name = Mutex<String >("")
-            """
-        }
-    }
-
-    @Test func optionalProperty() {
-        assertMacro {
-            """
-            @Mutex
-            var value: String? = nil
-            """
-        } expansion: {
-            """
-            var value: String? {
-                get {
-                    _value.withLock {
-                        $0
-                    }
-                }
-                set {
-                    _value.withLock { (value: inout String? ) -> Void in
-                        value = newValue
-                    }
-                }
-                _modify {
-                    let valuePointer = _value._unsafeLock()
-                    defer {
-                        _value._unsafeUnlock()
-                    }
-                    yield &valuePointer.pointee
-                }
-            }
-
-            private let _value = Mutex<String? >(nil)
+            private let _name = os.OSAllocatedUnfairLock<String >(initialState: "hello")
             """
         }
     }
@@ -108,7 +75,7 @@ struct MutexMacroTests {
     @Test func implicitlyUnwrappedOptional() {
         assertMacro {
             """
-            @Mutex
+            @OSAllocatedUnfairLock
             var value: String!
             """
         } expansion: {
@@ -126,7 +93,7 @@ struct MutexMacroTests {
                 }
             }
 
-            private let _value = Mutex<String?>(nil)
+            private let _value = os.OSAllocatedUnfairLock<String?>(initialState: nil)
             """
         }
     }
@@ -134,7 +101,7 @@ struct MutexMacroTests {
     @Test func arrayProperty() {
         assertMacro {
             """
-            @Mutex
+            @OSAllocatedUnfairLock
             var items: [String] = []
             """
         } expansion: {
@@ -159,7 +126,7 @@ struct MutexMacroTests {
                 }
             }
 
-            private let _items = Mutex<[String] >([])
+            private let _items = os.OSAllocatedUnfairLock<[String] >(initialState: [])
             """
         }
     }
@@ -167,7 +134,7 @@ struct MutexMacroTests {
     @Test func staticProperty() {
         assertMacro {
             """
-            @Mutex
+            @OSAllocatedUnfairLock
             static var counter: Int = 0
             """
         } expansion: {
@@ -192,7 +159,7 @@ struct MutexMacroTests {
                 }
             }
 
-            private static let _counter = Mutex<Int >(0)
+            private static let _counter = os.OSAllocatedUnfairLock<Int >(initialState: 0)
             """
         }
     }

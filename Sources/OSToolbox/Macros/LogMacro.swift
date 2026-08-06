@@ -1,6 +1,12 @@
 #if canImport(os)
 
-import Foundation
+// For the `NSObject` interpolation overloads below. `ObjectiveC` rather than
+// `Foundation`: it is the module that actually declares `NSObject`, and this
+// target deliberately stays off Foundation. Declaring it here also stops this
+// file from silently relying on the `@_exported import os` in `Exported.swift`
+// — that one is visible module-wide, unlike a plain `import`, which makes it an
+// easy dependency to lean on by accident.
+import ObjectiveC
 
 // MARK: - LoggableMacro (Namespace)
 
@@ -289,7 +295,7 @@ public enum LoggableMacro {
 ///     //     }
 ///     // }()
 @freestanding(expression)
-public macro log(_ level: LoggableMacro.OSLogType, _ message: LoggableMacro.OSLogMessage) -> Void = #externalMacro(module: "FoundationToolboxMacros", type: "LogMacro")
+public macro log(_ level: LoggableMacro.OSLogType, _ message: LoggableMacro.OSLogMessage) -> Void = #externalMacro(module: "OSToolboxMacros", type: "LogMacro")
 
 /// Overload of `#log` that logs under a specific ``LogCategory`` instead of
 /// the enclosing type's default category.
@@ -327,6 +333,6 @@ public macro log(
     _ level: LoggableMacro.OSLogType,
     category: LogCategory,
     _ message: LoggableMacro.OSLogMessage
-) -> Void = #externalMacro(module: "FoundationToolboxMacros", type: "LogMacro")
+) -> Void = #externalMacro(module: "OSToolboxMacros", type: "LogMacro")
 
 #endif

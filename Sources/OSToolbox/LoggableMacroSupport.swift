@@ -1,16 +1,15 @@
 #if canImport(os)
 
+// `os` and the standard library only. `@Loggable` deliberately has no
+// bundle-identifier default — an unspecified subsystem is just the type name —
+// so nothing here needs Foundation, and neither does anything the macro
+// expands into the caller's file.
 import os.log
-import Foundation
 
-@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-public protocol Loggable {
-    var logger: os.Logger { get }
-    static var logger: os.Logger { get }
-    static var subsystem: String { get }
-    static var category: String { get }
-}
+// MARK: - Caches
 
+// Keyed by runtime metatype identity — used by `@Loggable` on protocols, where
+// every conforming type needs its own logger.
 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 private var loggerByObjectIdentifier = Mutex<[ObjectIdentifier: os.Logger]>([:])
 
@@ -21,45 +20,15 @@ private struct SubsystemCategoryCacheKey: Hashable {
     let category: String
 }
 
+// Keyed by the subsystem/category pair — used by the `logger(for:)` accessors,
+// so that every call site logging to one category shares a single logger no
+// matter which type it logs from.
 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 private var loggerBySubsystemAndCategory = Mutex<[SubsystemCategoryCacheKey: os.Logger]>([:])
 
 private var osLogBySubsystemAndCategory = Mutex<[SubsystemCategoryCacheKey: OSLog]>([:])
 
-@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-extension Loggable {
-    public static var logger: os.Logger {
-        let objectIdentifier = ObjectIdentifier(self)
-        if let logger = loggerByObjectIdentifier.withLock({ $0[objectIdentifier] }) {
-            return logger
-        }
-
-        let logger = os.Logger(subsystem: subsystem, category: category)
-        loggerByObjectIdentifier.withLock {
-            $0[objectIdentifier] = logger
-        }
-        return logger
-    }
-
-    public var logger: os.Logger { Self.logger }
-
-    public static var category: String {
-        .init(describing: self)
-    }
-
-    public static var subsystem: String {
-        Bundle(for: BundleClass.self).bundleIdentifier ?? .init(describing: self)
-    }
-}
-
-@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-extension Loggable where Self: AnyObject {
-    public static var subsystem: String {
-        Bundle(for: self).bundleIdentifier ?? .init(describing: self)
-    }
-}
-
-// MARK: - Macro runtime support
+// MARK: - Logger caches
 
 extension LoggableMacro {
     /// Runtime helper invoked by `@Loggable`-generated code on protocols and extensions.
@@ -144,7 +113,5 @@ extension LoggableMacro {
         return osLog
     }
 }
-
-private final class BundleClass {}
 
 #endif

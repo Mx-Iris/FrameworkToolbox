@@ -23,8 +23,7 @@ public struct LoggableMacro: MemberMacro, ExtensionMacro {
             }
             return buildProtocolRequirements()
         }
-        let style = resolveConcreteStyle(for: declaration)
-        return buildConcreteMembers(node: node, declaration: declaration, style: style)
+        return buildConcreteMembers(node: node, declaration: declaration)
     }
 
     // MARK: - ExtensionMacro
@@ -56,28 +55,9 @@ public struct LoggableMacro: MemberMacro, ExtensionMacro {
 
 // MARK: - Concrete (struct/class/enum/actor) generation
 
-private enum ConcreteStyle {
-    /// `static let` stored properties, `Bundle.main` for subsystem.
-    case structValue
-    /// `static let` stored properties, `Bundle(for: self)` for subsystem.
-    case classValue
-    /// `static let` stored properties, `Bundle.main` for subsystem.
-    case enumOrActor
-}
-
-private func resolveConcreteStyle(for declaration: some DeclGroupSyntax) -> ConcreteStyle {
-    if declaration.is(ClassDeclSyntax.self) {
-        return .classValue
-    } else if declaration.is(StructDeclSyntax.self) {
-        return .structValue
-    }
-    return .enumOrActor
-}
-
 private func buildConcreteMembers(
     node: AttributeSyntax,
-    declaration: some DeclGroupSyntax,
-    style: ConcreteStyle
+    declaration: some DeclGroupSyntax
 ) -> [DeclSyntax] {
     let accessLevel = extractAccessLevel(from: node)
     let accessPrefix = accessLevel == "internal" ? "" : "\(accessLevel) "
@@ -86,11 +66,10 @@ private func buildConcreteMembers(
 
     let typeNameLiteral = quoteString(staticTypeName(from: declaration))
     let categoryBody = customCategory ?? typeNameLiteral
-    let subsystemBody = concreteSubsystemBody(
-        style: style,
-        typeNameLiteral: typeNameLiteral,
-        customSubsystem: customSubsystem
-    )
+    // No bundle-identifier fallback: an unspecified subsystem is the type name,
+    // the same string the category defaults to. Deriving it from `Bundle` would
+    // put Foundation in the expansion, which lands in the caller's file.
+    let subsystemBody = customSubsystem ?? typeNameLiteral
 
     var members: [DeclSyntax] = [
         "\(raw: accessPrefix)nonisolated static var category: String { \(raw: categoryBody) }",
@@ -116,33 +95,17 @@ private func buildConcreteMembers(
 private func buildCategoryAccessorMembers(accessPrefix: String) -> [DeclSyntax] {
     return [
         """
-        \(raw: accessPrefix)nonisolated static func _osLog(for category: FoundationToolbox.LogCategory) -> os.OSLog {
+        \(raw: accessPrefix)nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
             LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
         }
         """,
         """
         @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-        \(raw: accessPrefix)nonisolated static func logger(for category: FoundationToolbox.LogCategory) -> os.Logger {
+        \(raw: accessPrefix)nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
             LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
         }
         """,
     ]
-}
-
-private func concreteSubsystemBody(
-    style: ConcreteStyle,
-    typeNameLiteral: String,
-    customSubsystem: String?
-) -> String {
-    if let customSubsystem {
-        return customSubsystem
-    }
-    switch style {
-    case .classValue:
-        return "Bundle(for: self).bundleIdentifier ?? \(typeNameLiteral)"
-    case .structValue, .enumOrActor:
-        return "Bundle.main.bundleIdentifier ?? \(typeNameLiteral)"
-    }
 }
 
 // MARK: - Protocol requirements
@@ -182,7 +145,7 @@ private func buildProtocolDefaultImplementations(
 
     let typeNameExpression = "String(describing: self)"
     let categoryBody = customCategory ?? typeNameExpression
-    let subsystemBody = customSubsystem ?? "Bundle.main.bundleIdentifier ?? \(typeNameExpression)"
+    let subsystemBody = customSubsystem ?? typeNameExpression
 
     var members: [DeclSyntax] = [
         "\(raw: accessPrefix)nonisolated static var category: String { \(raw: categoryBody) }",
