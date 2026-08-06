@@ -13,6 +13,7 @@ struct MainPlugin: CompilerPlugin {
         AvailableNonMutatingMacro.self,
         AvailableMutatingMacro.self,
         DyldInterposeMacro.self,
+        DyldDynamicInterposeMacro.self,
         AddAsyncMacro.self,
         AddAsyncAllMembersMacro.self,
         AddCompletionHandlerMacro.self,

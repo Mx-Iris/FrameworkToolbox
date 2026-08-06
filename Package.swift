@@ -52,7 +52,14 @@ let package = Package(
             dependencies: [
                 "FrameworkToolbox",
                 "SwiftStdlibToolboxMacros",
+                "PointerAuthenticationSupport",
             ]
+        ),
+        // C shim for the arm64e pointer-authentication intrinsics Swift has no
+        // spelling for. Needed by `DyldDynamicInterpose` to compare and rewrite
+        // signed `__auth_got` slots; a no-op on arm64 and x86_64.
+        .target(
+            name: "PointerAuthenticationSupport"
         ),
         .target(
             name: "FoundationToolbox",
