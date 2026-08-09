@@ -23,6 +23,7 @@
 
 - **`@DyldDynamicInterpose`**（2026-08-06）—— [设计](Specs/2026-08-06-dyld-dynamic-interpose-design.md)
   复活 dyld4 之后已成空函数的 `dyld_dynamic_interpose`：写入私有的 `__DATA,__dyn_interpose` 段，运行时自行读回并改写符号指针槽。可从主执行文件发起、可撤销。
+  **代码位置已变更**：这套东西已由提案 [0001](Evolutions/0001-dyld-toolbox-extraction.md) 从 `SwiftStdlibToolbox` 迁至独立的 `DyldToolbox`；这篇设计文档描述的机制不变，但里面写的文件路径是旧的。
 - **Dynamic 移植（DynamicObject）**（2026-08-06）—— [设计](Specs/2026-08-06-dynamic-invocation-design.md)
   基于 `NSInvocation` 的 `@dynamicMemberLookup` + `@dynamicCallable` 调用无头文件的类与方法。**含一条要命的约定**：对象返回值必须写成 `AnyObject?`，写成 `Any?` 能编译但会破坏内存。
 - **OSToolbox 抽取**（2026-08-06）—— [设计](Specs/2026-08-06-ostoolbox-extraction-design.md)

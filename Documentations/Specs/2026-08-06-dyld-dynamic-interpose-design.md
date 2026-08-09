@@ -3,6 +3,16 @@
 Date: 2026-08-06
 Target library: `SwiftStdlibToolbox`（与既有 `@DyldInterpose` 并列），新增 C target `PointerAuthenticationSupport`
 
+> **归档提示（2026-08-08 补记，正文保持原貌）**
+>
+> 本文描述的机制全部仍然成立，但**代码位置已变更**：提案
+> [`Evolutions/0001-dyld-toolbox-extraction.md`](../Evolutions/0001-dyld-toolbox-extraction.md)
+> 已把整套 dyld interposing 从 `SwiftStdlibToolbox` / `SwiftStdlibToolboxMacros`
+> 迁到独立的 `DyldToolbox` / `DyldToolboxMacros`，`PointerAuthenticationSupport`
+> 也改挂在 `DyldToolbox` 之下。`SwiftStdlibToolbox` re-export `DyldToolbox`，
+> 所以下文出现的所有 `import SwiftStdlibToolbox` 用法依然有效。
+> 阅读下文时把文件路径里的 `SwiftStdlibToolbox` 换成 `DyldToolbox` 即可。
+
 ## Motivation
 
 `@DyldInterpose` 复刻的是 `<mach-o/dyld-interposing.h>` 里的 `DYLD_INTERPOSE` 宏：往 `__DATA,__interpose` 里塞一个 `(replacement, replacee)` 二元组，dyld 在加载期读走并改写所有镜像的导入槽位。它有两条硬约束：
