@@ -37,6 +37,6 @@
 ///   in via `-enable-experimental-feature SymbolLinkageMarkers`.
 @attached(peer, names: prefixed(_dyldInterpose_))
 public macro DyldInterpose(_ target: Any) = #externalMacro(
-    module: "SwiftStdlibToolboxMacros",
+    module: "DyldToolboxMacros",
     type: "DyldInterposeMacro"
 )

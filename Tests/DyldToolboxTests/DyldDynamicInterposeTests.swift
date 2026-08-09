@@ -3,7 +3,7 @@
 import Darwin
 import Testing
 
-@testable import SwiftStdlibToolbox
+@testable import DyldToolbox
 
 /// `getppid` is the target on purpose: nothing else in this process calls it,
 /// so redirecting it cannot disturb the test runner even while the interpose

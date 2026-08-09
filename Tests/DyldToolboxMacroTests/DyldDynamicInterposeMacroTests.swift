@@ -1,7 +1,7 @@
 import MacroTesting
 import Testing
 
-@testable import SwiftStdlibToolboxMacros
+@testable import DyldToolboxMacros
 
 @Suite(.macros([
     "DyldDynamicInterpose": DyldDynamicInterposeMacro.self,

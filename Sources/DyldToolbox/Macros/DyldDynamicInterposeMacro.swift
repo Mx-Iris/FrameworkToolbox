@@ -14,7 +14,7 @@
 /// Usage:
 /// ```swift
 /// import Darwin
-/// import SwiftStdlibToolbox
+/// import DyldToolbox
 ///
 /// @DyldDynamicInterpose(puts)
 /// func interposedPuts(_ string: UnsafePointer<CChar>?) -> Int32 {
@@ -68,6 +68,6 @@
 ///   in via `-enable-experimental-feature SymbolLinkageMarkers`.
 @attached(peer, names: prefixed(_dyldDynamicInterpose_))
 public macro DyldDynamicInterpose(_ target: Any) = #externalMacro(
-    module: "SwiftStdlibToolboxMacros",
+    module: "DyldToolboxMacros",
     type: "DyldDynamicInterposeMacro"
 )

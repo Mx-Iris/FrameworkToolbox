@@ -24,6 +24,26 @@ let package = Package(
             targets: ["OSToolbox"]
         ),
         .library(
+            // dyld interposing — `@DyldInterpose`, `@DyldDynamicInterpose`, and
+            // the runtime that reads their sections back. Split out so that a
+            // consumer wanting only the binary-level hooks does not drag in the
+            // Swift-extension layers above (`SwiftStdlibToolbox`,
+            // `FoundationToolbox`) — and, in the other direction, so that a
+            // consumer of those layers no longer links the arm64e
+            // pointer-authentication C shim only these hooks need.
+            // It does sit on `OSToolbox` (and through it `FrameworkToolbox`)
+            // for `Mutex`. `SwiftStdlibToolbox` re-exports this target, so
+            // existing call sites keep working unchanged.
+            //
+            // Deliberately a static library rather than `.dynamic`:
+            // `@DyldDynamicInterpose` reads the `__DATA,__dyn_interpose` section
+            // of the *calling* image (`#dsohandle` is a default argument, so it
+            // is evaluated at the call site), and static embedding is what makes
+            // "whoever declares the interpose owns the section" hold.
+            name: "DyldToolbox",
+            targets: ["DyldToolbox"]
+        ),
+        .library(
             name: "SwiftStdlibToolbox",
             targets: ["SwiftStdlibToolbox"]
         ),
@@ -72,6 +92,17 @@ let package = Package(
                 "FrameworkToolbox",
                 "OSToolbox",
                 "SwiftStdlibToolboxMacros",
+                // Only to re-export it — see `SwiftStdlibToolbox/Exported.swift`.
+                // Nothing in this target's own sources touches dyld interposing.
+                "DyldToolbox",
+            ]
+        ),
+        .target(
+            name: "DyldToolbox",
+            dependencies: [
+                // For `Mutex`, guarding the bookkeeping `revertAll()` needs.
+                "OSToolbox",
+                "DyldToolboxMacros",
                 "PointerAuthenticationSupport",
             ]
         ),
@@ -141,6 +172,19 @@ let package = Package(
             ]
         ),
         .macro(
+            name: "DyldToolboxMacros",
+            dependencies: [
+                // Deliberately no `MacroToolbox`: what lives there is the
+                // lock-macro shared machinery (`LockMacroProtocol`,
+                // `LockPropertyParser`), none of which these macros use.
+                .SwiftSyntax,
+                .SwiftSyntaxMacros,
+                .SwiftCompilerPlugin,
+                .SwiftSyntaxBuilder,
+                .SwiftDiagnostics,
+            ]
+        ),
+        .macro(
             name: "FoundationToolboxMacros",
             dependencies: [
                 "MacroToolbox",
@@ -173,6 +217,10 @@ let package = Package(
         .executableTarget(
             name: "SwiftStdlibToolboxClient",
             dependencies: ["SwiftStdlibToolbox"]
+        ),
+        .executableTarget(
+            name: "DyldToolboxClient",
+            dependencies: ["DyldToolbox"]
         ),
         .executableTarget(
             name: "FoundationToolboxClient",
@@ -212,6 +260,19 @@ let package = Package(
             dependencies: [
                 "SwiftStdlibToolbox",
                 "MacroToolbox",
+            ]
+        ),
+        .testTarget(
+            name: "DyldToolboxTests",
+            dependencies: [
+                "DyldToolbox",
+            ]
+        ),
+        .testTarget(
+            name: "DyldToolboxMacroTests",
+            dependencies: [
+                "DyldToolboxMacros",
+                .product(name: "MacroTesting", package: "swift-macro-testing"),
             ]
         ),
         .testTarget(

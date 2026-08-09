@@ -2,8 +2,8 @@
 
 import Darwin
 import MachO
+import OSToolbox
 import PointerAuthenticationSupport
-import os.lock
 
 /// Applies the interposes declared with `@DyldDynamicInterpose`, and takes
 /// them back again.
@@ -116,7 +116,9 @@ public enum DyldDynamicInterpose {
         }
 
         if !newRecords.isEmpty {
-            sharedState.appendRecords(newRecords)
+            rewrittenSlotRecordsByApplicationOrder.withLock { records in
+                records.append(contentsOf: newRecords)
+            }
         }
         return DyldDynamicInterposeReport(rewrittenSlots: rewrittenSlots, skippedSlots: skippedSlots)
     }
@@ -134,7 +136,7 @@ public enum DyldDynamicInterpose {
         var rewrittenSlots: [DyldDynamicInterposeReport.RewrittenSlot] = []
         var skippedSlots: [DyldDynamicInterposeReport.SkippedSlot] = []
 
-        sharedState.withRecords { records in
+        rewrittenSlotRecordsByApplicationOrder.withLock { records in
             var unrestoredRecords: [RewrittenSlotRecord] = []
 
             for record in records.reversed() {
@@ -332,28 +334,9 @@ private struct RewrittenSlotRecord {
     let protectionToRestore: Int32
 }
 
-private final class DyldDynamicInterposeState: @unchecked Sendable {
-    private let lockPointer: UnsafeMutablePointer<os_unfair_lock>
-    private var rewrittenSlotRecords: [RewrittenSlotRecord] = []
-
-    init() {
-        lockPointer = .allocate(capacity: 1)
-        lockPointer.initialize(to: os_unfair_lock())
-    }
-
-    func appendRecords(_ newRecords: [RewrittenSlotRecord]) {
-        os_unfair_lock_lock(lockPointer)
-        defer { os_unfair_lock_unlock(lockPointer) }
-        rewrittenSlotRecords.append(contentsOf: newRecords)
-    }
-
-    func withRecords(_ body: (inout [RewrittenSlotRecord]) -> Void) {
-        os_unfair_lock_lock(lockPointer)
-        defer { os_unfair_lock_unlock(lockPointer) }
-        body(&rewrittenSlotRecords)
-    }
-}
-
-private let sharedState = DyldDynamicInterposeState()
+/// The records needed to undo what ``DyldDynamicInterpose/applyAll(to:excludingDeclaringImage:declaredIn:)``
+/// wrote, guarded by `OSToolbox`'s `Mutex` — an `os_unfair_lock` and its value
+/// in one allocation, which is what this used to hand-roll.
+private let rewrittenSlotRecordsByApplicationOrder = Mutex<[RewrittenSlotRecord]>([])
 
 #endif

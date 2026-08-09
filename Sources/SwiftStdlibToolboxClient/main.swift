@@ -46,3 +46,28 @@ enum EnumAssociatedValue {
 let array: [Int] = []
 
 print(array[safe: 2] as Any)
+
+// MARK: - `DyldToolbox` re-export
+
+// dyld interposing was extracted into `DyldToolbox`, which this module
+// re-exports. These two declarations are the compile-time proof that the split
+// stayed invisible: a bare `import SwiftStdlibToolbox` must still resolve both
+// macro declarations *and* their compiler plugin. Deleting them would let a
+// broken re-export ship unnoticed, because nothing else here would fail.
+//
+// Neither one has any runtime effect: `@DyldInterpose`'s section is only
+// consumed by dyld in a dylib, not in a main executable, and
+// `@DyldDynamicInterpose` does nothing until `applyAll()` is called.
+#if canImport(Darwin) && _pointerBitWidth(_64)
+
+@DyldInterpose(getpgrp)
+func reExportProbeInterposedGetProcessGroupIdentifier() -> pid_t {
+    424_243
+}
+
+@DyldDynamicInterpose(getppid)
+func reExportProbeInterposedGetParentProcessIdentifier() -> pid_t {
+    424_242
+}
+
+#endif
