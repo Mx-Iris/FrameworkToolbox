@@ -23,5 +23,6 @@ SPM library product，使用方以源码依赖并重新编译，未开启 librar
 | 编号 | 标题 | 状态 |
 |------|------|------|
 | [0001](0001-dyld-toolbox-extraction.md) | 把 dyld interposing 抽成独立的 DyldToolbox | Implemented |
+| [0002](0002-signpost-macros.md) | 仿 @Loggable / #log 实现 os_signpost：@Signpostable 与 #signpost | Implemented |
 
 `Specs/` 与 `Plans/` 是提案制确立前的产物，见[上级索引](../README.md)，保持原样不迁移。

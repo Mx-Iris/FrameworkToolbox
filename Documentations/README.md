@@ -12,9 +12,16 @@
 | [`Specs/`](Specs/) | 提案制确立前的设计文档。保留归档，不再新增 |
 | [`Plans/`](Plans/) | 与 `Specs/` 配对的实现计划。保留归档，不再新增 |
 
+## 提案（Evolutions）
+
+- [0001 —— 把 dyld interposing 抽成独立的 DyldToolbox](Evolutions/0001-dyld-toolbox-extraction.md)（Implemented）
+- [0002 —— 仿 `@Loggable` / `#log` 实现 os_signpost](Evolutions/0002-signpost-macros.md)（Implemented）
+  新增 `@Signpostable` 与 `#signpost`，三种调用形态；顺带修 `#log` 带插值时依赖调用方 `import Foundation` 的缺陷。
+
 ## 专题说明
 
 - [`LogCategory` 与 `#log(category:)` 多 Category 支持](LoggableCategories.md) —— `@Loggable` / `#log` 从「一个类型一个 category」扩展为支持多 category 的经过。
+- [`@Signpostable` 与 `#signpost` 用法契约与实现决策](SignpostMacros.md) —— 三种调用形态怎么选、区间凭据为什么要自带 log handle、为什么防 Foundation 依赖的守卫必须独占一个 target。
 - [存储层重构与 `@UserDefault` 宏](StorageLayer.md) —— `@Keychain` 宏发布后，运行时与编码协议都是 Keychain 专用的；这篇记录如何把存储层抽象出来以容纳 `@UserDefault`。
 
 ## 设计文档（Specs，归档）
@@ -28,6 +35,9 @@
   基于 `NSInvocation` 的 `@dynamicMemberLookup` + `@dynamicCallable` 调用无头文件的类与方法。**含一条要命的约定**：对象返回值必须写成 `AnyObject?`，写成 `Any?` 能编译但会破坏内存。
 - **OSToolbox 抽取**（2026-08-06）—— [设计](Specs/2026-08-06-ostoolbox-extraction-design.md)
   分层与 re-export 链的调整。`@_exported import` 会把宏声明及其插件一并带过传递依赖，这是宏能下沉一层而不破坏调用点的原因。
+  **守卫位置已变更**：文中的 `Sources/OSToolboxClient/LoggableWithoutFoundation.swift` 已由提案 [0002](Evolutions/0002-signpost-macros.md)
+  移入独占的 `OSToolboxNoFoundationClient` target —— 它原先与一个 `import Foundation` 的 `main.swift` 同 target，
+  而 Swift 的 conformance 查找是模块级的，那个守卫因此并不成立。
 - **`@RuntimeClassHook` / `@RuntimeClassProxy`**（2026-08-05）—— [设计](Specs/2026-08-05-runtime-class-hook-design.md)
 - **`ObjCRuntimeToolbox`**（2026-06-26）—— [设计](Specs/2026-06-26-objc-runtime-toolbox-design.md)
 - **`@Keychain` 宏**（2026-06-24）—— [设计](Specs/2026-06-24-keychain-macro-design.md)
