@@ -291,9 +291,18 @@ public enum LoggableMacro {
 ///     //     if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
 ///     //         Self.logger.debug("Processing \(value, privacy: .public) with \(secret, privacy: .private)")
 ///     //     } else {
-///     //         os_log(.debug, log: Self._osLog, "Processing %{public}@ with %{private}@", "\(value)", "\(secret)")
+///     //         "\(value)".withCString { legacyArgument0 in
+///     //             "\(secret)".withCString { legacyArgument1 in
+///     //                 os_log(.debug, log: Self._osLog, "Processing %{public}s with %{private}s", legacyArgument0, legacyArgument1)
+///     //             }
+///     //         }
 ///     //     }
 ///     // }()
+///
+/// The legacy branch passes each segment as a C string rather than as a `String`,
+/// because `String: CVarArg` comes from Foundation and this expansion lands in
+/// the caller's file — which may not have imported it. See
+/// `Sources/OSToolboxNoFoundationClient/` for the guard that keeps it that way.
 @freestanding(expression)
 public macro log(_ level: LoggableMacro.OSLogType, _ message: LoggableMacro.OSLogMessage) -> Void = #externalMacro(module: "OSToolboxMacros", type: "LogMacro")
 

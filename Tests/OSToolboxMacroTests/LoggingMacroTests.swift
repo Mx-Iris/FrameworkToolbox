@@ -1018,7 +1018,11 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger(for: .persistence).error("saved \(count, privacy: .public) items for \(user, privacy: .private)")
                 } else {
-                    os_log(.error, log: Self._osLog(for: .persistence), "saved %{public}@ items for %{private}@", "\(count)", "\(user)")
+                    "\(count)".withCString { legacyArgument0 in
+                        "\(user)".withCString { legacyArgument1 in
+                            os_log(.error, log: Self._osLog(for: .persistence), "saved %{public}s items for %{private}s", legacyArgument0, legacyArgument1)
+                        }
+                    }
                 }
             }()
             """#
@@ -1056,7 +1060,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.debug("Value: \(x, privacy: .public)")
                 } else {
-                    os_log(.debug, log: Self._osLog, "Value: %{public}@", "\(x)")
+                    "\(x)".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog, "Value: %{public}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1074,7 +1080,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.debug("Value: \(x, privacy: .private)")
                 } else {
-                    os_log(.debug, log: Self._osLog, "Value: %{private}@", "\(x)")
+                    "\(x)".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog, "Value: %{private}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1092,7 +1100,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.debug("Value: \(x, privacy: .sensitive)")
                 } else {
-                    os_log(.debug, log: Self._osLog, "Value: %{private}@", "\(x)")
+                    "\(x)".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog, "Value: %{private}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1110,7 +1120,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.debug("Value: \(x, privacy: .auto)")
                 } else {
-                    os_log(.debug, log: Self._osLog, "Value: %{public}@", "\(x)")
+                    "\(x)".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog, "Value: %{public}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1128,7 +1140,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.debug("Value: \(x)")
                 } else {
-                    os_log(.debug, log: Self._osLog, "Value: %{public}@", "\(x)")
+                    "\(x)".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog, "Value: %{public}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1146,7 +1160,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.debug("Value: \(x, privacy: .private(mask: .hash))")
                 } else {
-                    os_log(.debug, log: Self._osLog, "Value: %{private}@", "\(x)")
+                    "\(x)".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog, "Value: %{private}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1166,7 +1182,11 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.error("\(a, privacy: .public) and \(b, privacy: .private)")
                 } else {
-                    os_log(.error, log: Self._osLog, "%{public}@ and %{private}@", "\(a)", "\(b)")
+                    "\(a)".withCString { legacyArgument0 in
+                        "\(b)".withCString { legacyArgument1 in
+                            os_log(.error, log: Self._osLog, "%{public}s and %{private}s", legacyArgument0, legacyArgument1)
+                        }
+                    }
                 }
             }()
             """#
@@ -1184,7 +1204,13 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.info("user: \(name, privacy: .public) secret: \(token, privacy: .sensitive) id: \(id)")
                 } else {
-                    os_log(.info, log: Self._osLog, "user: %{public}@ secret: %{private}@ id: %{public}@", "\(name)", "\(token)", "\(id)")
+                    "\(name)".withCString { legacyArgument0 in
+                        "\(token)".withCString { legacyArgument1 in
+                            "\(id)".withCString { legacyArgument2 in
+                                os_log(.info, log: Self._osLog, "user: %{public}s secret: %{private}s id: %{public}s", legacyArgument0, legacyArgument1, legacyArgument2)
+                            }
+                        }
+                    }
                 }
             }()
             """#
@@ -1224,7 +1250,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.debug("hex: \(x, format: .hex, privacy: .public)")
                 } else {
-                    os_log(.debug, log: Self._osLog, "hex: %{public}@", "\(x)")
+                    "\(x)".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog, "hex: %{public}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1242,7 +1270,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.info("name: \(s, align: .left(columns: 20), privacy: .public)")
                 } else {
-                    os_log(.info, log: Self._osLog, "name: %{public}@", "\(s)")
+                    "\(s)".withCString { legacyArgument0 in
+                        os_log(.info, log: Self._osLog, "name: %{public}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1260,7 +1290,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.debug("val: \(n, format: .decimal(minDigits: 4), align: .right(columns: 10), privacy: .private)")
                 } else {
-                    os_log(.debug, log: Self._osLog, "val: %{private}@", "\(n)")
+                    "\(n)".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog, "val: %{private}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1278,7 +1310,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.info("pi: \(pi, format: .fixed(precision: 2))")
                 } else {
-                    os_log(.info, log: Self._osLog, "pi: %{public}@", "\(pi)")
+                    "\(pi)".withCString { legacyArgument0 in
+                        os_log(.info, log: Self._osLog, "pi: %{public}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1298,7 +1332,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.info("100% done: \(x)")
                 } else {
-                    os_log(.info, log: Self._osLog, "100%% done: %{public}@", "\(x)")
+                    "\(x)".withCString { legacyArgument0 in
+                        os_log(.info, log: Self._osLog, "100%% done: %{public}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1318,7 +1354,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.error("token: \(t, privacy: .sensitive(mask: .hash))")
                 } else {
-                    os_log(.error, log: Self._osLog, "token: %{private}@", "\(t)")
+                    "\(t)".withCString { legacyArgument0 in
+                        os_log(.error, log: Self._osLog, "token: %{private}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1336,7 +1374,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.debug("val: \(v, privacy: .auto(mask: .hash))")
                 } else {
-                    os_log(.debug, log: Self._osLog, "val: %{public}@", "\(v)")
+                    "\(v)".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog, "val: %{public}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1356,7 +1396,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.debug("\(value)")
                 } else {
-                    os_log(.debug, log: Self._osLog, "%{public}@", "\(value)")
+                    "\(value)".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog, "%{public}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1376,7 +1418,9 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.info("count: \(items.count, privacy: .public)")
                 } else {
-                    os_log(.info, log: Self._osLog, "count: %{public}@", "\(items.count)")
+                    "\(items.count)".withCString { legacyArgument0 in
+                        os_log(.info, log: Self._osLog, "count: %{public}s", legacyArgument0)
+                    }
                 }
             }()
             """#
@@ -1396,7 +1440,13 @@ struct LogMacroTests {
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
                     Self.logger.info("id: \(id, format: .hex, privacy: .public) name: \(name, privacy: .private) rate: \(rate, format: .fixed(precision: 1))")
                 } else {
-                    os_log(.info, log: Self._osLog, "id: %{public}@ name: %{private}@ rate: %{public}@", "\(id)", "\(name)", "\(rate)")
+                    "\(id)".withCString { legacyArgument0 in
+                        "\(name)".withCString { legacyArgument1 in
+                            "\(rate)".withCString { legacyArgument2 in
+                                os_log(.info, log: Self._osLog, "id: %{public}s name: %{private}s rate: %{public}s", legacyArgument0, legacyArgument1, legacyArgument2)
+                            }
+                        }
+                    }
                 }
             }()
             """#

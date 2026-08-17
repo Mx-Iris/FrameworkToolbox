@@ -11,14 +11,14 @@ public struct LogMacro: ExpressionMacro {
     ) throws -> ExprSyntax {
         let arguments = node.arguments
 
-        guard let levelArg = arguments.first?.expression else {
+        guard let levelArgument = arguments.first?.expression else {
             throw LogMacroError.missingLevel
         }
 
         let remainingArguments = arguments.dropFirst()
         let categoryArgument = remainingArguments.first { $0.label?.text == "category" }
 
-        guard let messageArg = remainingArguments.first(where: { $0.label == nil })?.expression else {
+        guard let messageArgument = remainingArguments.first(where: { $0.label == nil })?.expression else {
             throw LogMacroError.missingMessage
         }
 
@@ -37,26 +37,30 @@ public struct LogMacro: ExpressionMacro {
             osLogExpression = "Self._osLog"
         }
 
-        let osMethodName = mapLevelToOSLogMethod(levelArg)
-        let osLogType = mapLevelToOSLogType(levelArg)
+        let osMethodName = mapLevelToOSLogMethod(levelArgument)
+        let osLogType = mapLevelToOSLogType(levelArgument)
 
-        let osMessage = messageArg
-        let (formatString, formatArgs) = buildLegacyOSLogFormat(from: messageArg)
+        let legacyFormat = buildLegacyOSLogFormat(from: messageArgument)
+        let legacyCall = legacyFormat.wrappingInCStringScopes(
+            "os_log(.\(osLogType), log: \(osLogExpression), \(legacyFormat.formatLiteral)\(legacyFormat.argumentList))",
+            // The `else` branch of the expansion below sits eight spaces in.
+            continuationIndent: 8
+        )
 
         return """
         {
             if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
-                \(raw: loggerExpression).\(raw: osMethodName)(\(osMessage))
+                \(raw: loggerExpression).\(raw: osMethodName)(\(messageArgument))
             } else {
-                os_log(.\(raw: osLogType), log: \(raw: osLogExpression), \(raw: formatString)\(raw: formatArgs))
+                \(raw: legacyCall)
             }
         }()
         """
     }
 
     /// Maps OSLogType member access expressions to os.Logger method names.
-    private static func mapLevelToOSLogMethod(_ expr: ExprSyntax) -> String {
-        guard let memberAccess = expr.as(MemberAccessExprSyntax.self) else {
+    private static func mapLevelToOSLogMethod(_ expression: ExprSyntax) -> String {
+        guard let memberAccess = expression.as(MemberAccessExprSyntax.self) else {
             return "log"
         }
         let name = memberAccess.declName.baseName.text
@@ -71,8 +75,8 @@ public struct LogMacro: ExpressionMacro {
     }
 
     /// Maps OSLogType member access expressions to OSLogType case names for the legacy os_log API.
-    private static func mapLevelToOSLogType(_ expr: ExprSyntax) -> String {
-        guard let memberAccess = expr.as(MemberAccessExprSyntax.self) else {
+    private static func mapLevelToOSLogType(_ expression: ExprSyntax) -> String {
+        guard let memberAccess = expression.as(MemberAccessExprSyntax.self) else {
             return "default"
         }
         let name = memberAccess.declName.baseName.text
@@ -83,76 +87,6 @@ public struct LogMacro: ExpressionMacro {
         case "error": return "error"
         case "fault": return "fault"
         default: return "default"
-        }
-    }
-
-    /// Builds an `os_log` format string and argument list from a string interpolation expression.
-    ///
-    /// Each interpolation segment becomes a `%{privacy}@` format specifier with its value
-    /// wrapped in `"\(expr)"` to convert to `String` (which conforms to `CVarArg`).
-    ///
-    /// - Returns: A tuple of (format string literal, comma-prefixed argument list) as raw source text.
-    private static func buildLegacyOSLogFormat(from expr: ExprSyntax) -> (format: String, args: String) {
-        guard let stringLiteral = expr.as(StringLiteralExprSyntax.self) else {
-            return ("\"%{public}@\"", ", \"\\(\(expr.trimmedDescription))\"")
-        }
-
-        var format = ""
-        var args: [String] = []
-
-        for segment in stringLiteral.segments {
-            switch segment {
-            case .stringSegment(let text):
-                // Escape literal `%` as `%%` for os_log format strings
-                format += text.content.text.replacingOccurrences(of: "%", with: "%%")
-            case .expressionSegment(let exprSegment):
-                guard let valueExpr = exprSegment.expressions.first?.expression else { continue }
-                let privacy = extractOSLogPrivacy(from: exprSegment.expressions)
-                format += "%{\(privacy)}@"
-                args.append("\"\\(\(valueExpr.trimmedDescription))\"")
-            }
-        }
-
-        let formatStr = "\"\(format)\""
-        let argsStr = args.isEmpty ? "" : ", " + args.joined(separator: ", ")
-        return (formatStr, argsStr)
-    }
-
-    /// Extracts the privacy annotation from an interpolation segment's labeled expressions.
-    ///
-    /// Maps `LogPrivacy` values to `os_log` format specifier privacy qualifiers:
-    /// - `.public` → `"public"`
-    /// - `.private` / `.private(mask:)` → `"private"`
-    /// - `.sensitive` / `.sensitive(mask:)` → `"private"` (no `sensitive` in legacy API)
-    /// - `.auto` / `.auto(mask:)` / absent → `"public"` (default to visible)
-    private static func extractOSLogPrivacy(from expressions: LabeledExprListSyntax) -> String {
-        for expr in expressions {
-            guard expr.label?.text == "privacy" else { continue }
-
-            // Handle simple member access: .public, .private, .auto, .sensitive
-            if let memberAccess = expr.expression.as(MemberAccessExprSyntax.self) {
-                return mapPrivacyName(memberAccess.declName.baseName.text)
-            }
-
-            // Handle function call: .private(mask: .hash), .sensitive(mask: .hash), .auto(mask: .hash)
-            if let funcCall = expr.expression.as(FunctionCallExprSyntax.self),
-               let memberAccess = funcCall.calledExpression.as(MemberAccessExprSyntax.self) {
-                return mapPrivacyName(memberAccess.declName.baseName.text)
-            }
-
-            return "public"
-        }
-
-        // No privacy parameter — default to public for visibility
-        return "public"
-    }
-
-    private static func mapPrivacyName(_ name: String) -> String {
-        switch name {
-        case "public": return "public"
-        case "private": return "private"
-        case "sensitive": return "private"
-        default: return "public"
         }
     }
 }
