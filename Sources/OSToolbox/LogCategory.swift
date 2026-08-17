@@ -31,4 +31,33 @@ public struct LogCategory: Hashable, Sendable {
     }
 }
 
+// MARK: - Categories the system gives special meaning
+
+/// The three category strings `os/signpost.h` singles out. They change how the
+/// system treats signposts emitted to a log handle carrying them, so they are
+/// spelled exactly as the header defines — a typo here does not fail, it just
+/// silently produces an ordinary category.
+///
+/// Only ``pointsOfInterest`` has a Swift counterpart in the SDK
+/// (`OSLog.Category.pointsOfInterest`); the other two exist as C macros only.
+///
+/// These are declared on `LogCategory` rather than a separate signpost-specific
+/// type because the system models signposts as riding on the same
+/// subsystem/category pairs as logging — see the `@Signpostable` documentation.
+/// Passing one to `#log` compiles and simply means "a category by that name",
+/// exactly as `OSLog(subsystem:category: .pointsOfInterest)` does.
+extension LogCategory {
+    /// High-level events used to orient a developer reading performance data.
+    /// Instruments displays signposts in this category by default.
+    public static let pointsOfInterest = LogCategory("PointsOfInterest")
+
+    /// Signposts disabled by default, reducing runtime overhead. They become
+    /// enabled only while a performance tool such as Instruments is recording.
+    public static let dynamicTracing = LogCategory("DynamicTracing")
+
+    /// Like ``dynamicTracing``, and additionally captures user backtraces —
+    /// more expensive, and likewise only enabled while a tool is recording.
+    public static let dynamicStackTracing = LogCategory("DynamicStackTracing")
+}
+
 #endif
