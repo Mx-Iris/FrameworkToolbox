@@ -223,3 +223,21 @@ final class UserDefaultPreferencesStore {
 
 _ = UserDefaultExample.self
 _ = UserDefaultPreferencesStore.self
+
+// MARK: - `@Signpostable` / `#signpost` re-export (two hops)
+
+// Two re-export hops away from where these are declared:
+// `OSToolbox` → `SwiftStdlibToolbox` → `FoundationToolbox`. A bare
+// `import FoundationToolbox` must still resolve the macros and their plugin.
+
+@Signpostable
+struct SignpostReExportProbeTwoHops {
+    func measure() -> Int {
+        #signpost(.event, category: .pointsOfInterest, "two hops")
+        let interval = #signpost(.begin, "two hop interval", "at=\(Date(), privacy: .public)")
+        #signpost(.end, interval)
+        return #signpostInterval("two hop scoped") { 2 }
+    }
+}
+
+print("signpost re-export (two hops):", SignpostReExportProbeTwoHops().measure())

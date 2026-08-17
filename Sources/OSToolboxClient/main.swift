@@ -60,6 +60,6 @@ struct DiagnosticsService {
 
 DiagnosticsService().run()
 
-// Exercise the no-Foundation defaults so their subsystem shows up in the log.
-ServiceWithoutFoundation().emit()
-ClassWithoutFoundation().emit()
+// The no-Foundation guards moved to their own target, `OSToolboxNoFoundationClient`
+// — the `import Foundation` at the top of this file was silently satisfying them,
+// because Swift resolves conformances module-wide rather than per file.

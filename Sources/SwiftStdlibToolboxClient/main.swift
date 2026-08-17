@@ -71,3 +71,22 @@ func reExportProbeInterposedGetParentProcessIdentifier() -> pid_t {
 }
 
 #endif
+
+// MARK: - `@Signpostable` / `#signpost` re-export (one hop)
+
+// `@Signpostable` and `#signpost` are declared in `OSToolbox`, which this module
+// re-exports. Same reasoning as the `DyldToolbox` probes above: a bare
+// `import SwiftStdlibToolbox` must resolve the macro declarations *and* their
+// plugin, and nothing else here would fail if that stopped working.
+
+@Signpostable
+struct SignpostReExportProbeOneHop {
+    func measure() -> Int {
+        #signpost(.event, "one hop")
+        let interval = #signpost(.begin, "one hop interval")
+        #signpost(.end, interval)
+        return #signpostInterval("one hop scoped") { 1 }
+    }
+}
+
+print("signpost re-export (one hop):", SignpostReExportProbeOneHop().measure())

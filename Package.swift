@@ -214,6 +214,16 @@ let package = Package(
             name: "OSToolboxClient",
             dependencies: ["OSToolbox"]
         ),
+        // Guards that `@Loggable` / `@Signpostable` / `#log` / `#signpost` never
+        // expand to code requiring Foundation. It has to be a separate target
+        // from `OSToolboxClient`: conformance lookup is module-wide, so a single
+        // `import Foundation` anywhere in a target would hand `String: CVarArg`
+        // to every file in it and defeat the guard. No file here may import
+        // Foundation.
+        .executableTarget(
+            name: "OSToolboxNoFoundationClient",
+            dependencies: ["OSToolbox"]
+        ),
         .executableTarget(
             name: "SwiftStdlibToolboxClient",
             dependencies: ["SwiftStdlibToolbox"]
