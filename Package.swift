@@ -138,6 +138,12 @@ let package = Package(
             dependencies: [
                 .SwiftSyntax,
                 .SwiftSyntaxMacros,
+                // `LockPropertyParser` builds syntax from string literals
+                // (`ExprSyntax("nil")`), and that conformance is SwiftSyntaxBuilder's.
+                // It used to resolve only because `SwiftSyntaxMacros` pulls the module
+                // into the search path — an undeclared dependency of exactly the kind
+                // Xcode 27's `VALIDATE_DEPENDENCIES` reports.
+                .SwiftSyntaxBuilder,
                 .SwiftDiagnostics,
             ]
         ),
@@ -236,12 +242,36 @@ let package = Package(
             name: "FoundationToolboxClient",
             dependencies: ["FoundationToolbox"]
         ),
+        // Guards that a single `import FoundationToolbox` is enough — see the comment at
+        // the top of the target's `main.swift`. It must stay a target of its own:
+        // `FoundationToolboxClient` imports other modules for unrelated reasons, and any
+        // one of those silently satisfies what the macros expand to.
+        .executableTarget(
+            name: "FoundationToolboxSoleImportClient",
+            dependencies: ["FoundationToolbox"]
+        ),
         .executableTarget(
             name: "CoreFoundationToolboxClient",
             dependencies: ["CoreFoundationToolbox"]
         ),
+        // Guards that a single `import CoreFoundationToolbox` is enough — see the comment at
+        // the top of the target's `main.swift`. It must stay a target of its own:
+        // `CoreFoundationToolboxClient` imports other modules for unrelated reasons, and any
+        // one of those silently satisfies what the macros expand to.
+        .executableTarget(
+            name: "CoreFoundationToolboxSoleImportClient",
+            dependencies: ["CoreFoundationToolbox"]
+        ),
         .executableTarget(
             name: "ObjCRuntimeToolboxClient",
+            dependencies: ["ObjCRuntimeToolbox"]
+        ),
+        // Guards that a single `import ObjCRuntimeToolbox` is enough — see the comment at
+        // the top of the target's `main.swift`. It must stay a target of its own:
+        // `ObjCRuntimeToolboxClient` imports other modules for unrelated reasons, and any
+        // one of those silently satisfies what the macros expand to.
+        .executableTarget(
+            name: "ObjCRuntimeToolboxSoleImportClient",
             dependencies: ["ObjCRuntimeToolbox"]
         ),
 
