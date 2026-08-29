@@ -1,5 +1,6 @@
 import Foundation
 import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftDiagnostics
 
 // MARK: - Parsed Property Info

@@ -1,3 +1,4 @@
+import Foundation
 import SwiftSyntax
 
 // Shared by `#log` and `#signpost`: both fall back to a C-variadic API
