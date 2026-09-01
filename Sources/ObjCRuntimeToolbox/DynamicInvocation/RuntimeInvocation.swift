@@ -6,7 +6,7 @@
 #if canImport(ObjectiveC)
 import Foundation
 import ObjectiveC
-import OSToolbox
+import os
 
 /// One message send, built through `NSInvocation`.
 ///
@@ -21,7 +21,6 @@ import OSToolbox
 ///
 /// Logs to the same subsystem and category as ``DynamicObject``, so one
 /// `log stream` predicate covers member access through return value.
-@Loggable(subsystem: "ObjCRuntimeToolbox", category: "DynamicInvocation")
 final class RuntimeInvocation {
     private let target: NSObject
     private let selector: Selector
@@ -67,7 +66,7 @@ final class RuntimeInvocation {
         // it here is what keeps a bad member name from becoming a
         // doesNotRecognizeSelector: crash later.
         guard let methodSignature = NSInvocationBridge.methodSignature(forSelector: selector, on: target) else {
-            #log(.error, "'\(className, privacy: .public)' does not recognize selector '\(selectorName, privacy: .public)'")
+            os_log(.error, log: dynamicInvocationLog, "'%{public}@' does not recognize selector '%{public}@'", className, selectorName)
             throw .unrecognizedSelector(className: className, selectorName: selectorName)
         }
 
@@ -111,7 +110,7 @@ final class RuntimeInvocation {
     /// - Parameter index: The invocation-relative index, so the first declared
     ///   argument is `2`.
     func setArgument(_ argument: Any?, atIndex index: Int) {
-        #log(.debug, "argument #\(index - 1) = \(String(describing: argument ?? "<nil>"))")
+        os_log(.debug, log: dynamicInvocationLog, "argument #%ld = %@", index - 1, String(describing: argument ?? "<nil>"))
 
         if let boxedValue = argument as? NSValue {
             // An NSValue carries its own payload and encoding, so the bytes it
@@ -191,12 +190,12 @@ final class RuntimeInvocation {
         // The ternary matters: `alloc` hands back memory that is not an
         // initialised object yet, so asking it to describe itself would send a
         // message it cannot answer. Only the chosen branch is evaluated.
-        #log(
+        os_log(
             .debug,
-            """
-            [\(NSStringFromSelector(self.selector), privacy: .public)] returned \
-            \(self.isAllocating ? "<allocated instance>" : String(describing: object))
-            """
+            log: dynamicInvocationLog,
+            "[%{public}@] returned %@",
+            NSStringFromSelector(selector),
+            isAllocating ? "<allocated instance>" : String(describing: object)
         )
 
         if isRetainingMethod {

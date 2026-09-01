@@ -16,10 +16,10 @@ let package = Package(
             // Holds every abstraction layered directly on Apple's `os` module —
             // `Mutex`, `@Loggable`/`#log`, `@OSAllocatedUnfairLock`. It sits
             // below `SwiftStdlibToolbox` so that targets which must not pull in
-            // the stdlib or Foundation layers (notably `ObjCRuntimeToolbox`)
-            // can still use them. Both `SwiftStdlibToolbox` and, through it,
-            // `FoundationToolbox` re-export this target, so existing call sites
-            // importing either one keep working unchanged.
+            // the stdlib or Foundation layers (notably `DyldToolbox`, for
+            // `Mutex`) can still use them. Both `SwiftStdlibToolbox` and,
+            // through it, `FoundationToolbox` re-export this target, so existing
+            // call sites importing either one keep working unchanged.
             name: "OSToolbox",
             targets: ["OSToolbox"]
         ),
@@ -62,6 +62,12 @@ let package = Package(
             // embeds this library would get its own state — `isInstalled`
             // would lie across module boundaries and the associated-object
             // key for the dealloc sentinel would differ between dylibs.
+            //
+            // The flip side of `.dynamic`: Xcode builds a dynamic product's
+            // transitive targets as shared dynamic frameworks too, switching
+            // every client in the workspace to @rpath-linking them. That is
+            // why the target below must stay macro-only — see its comment and
+            // the `objc-runtime-toolbox-self-contained-leaf` proposal.
             name: "ObjCRuntimeToolbox",
             type: .dynamic,
             targets: ["ObjCRuntimeToolbox"]
@@ -129,7 +135,16 @@ let package = Package(
         .target(
             name: "ObjCRuntimeToolbox",
             dependencies: [
-                "OSToolbox",
+                // Macro-only on purpose — a macro target is a compile-time
+                // plugin and never enters the product's link closure. Any
+                // runtime target dependency added here becomes part of the
+                // `.dynamic` product's transitive closure, which Xcode builds
+                // as shared dynamic frameworks for the whole workspace; nested
+                // executables without an rpath (daemons, XPC helpers) then
+                // crash at dyld time. This is what broke RuntimeViewer's
+                // SMAppService daemon in 0.10.0. Guarded by
+                // `PackageTopologyGuardTests`; see the
+                // `objc-runtime-toolbox-self-contained-leaf` proposal.
                 "ObjCRuntimeToolboxMacros",
             ]
         ),

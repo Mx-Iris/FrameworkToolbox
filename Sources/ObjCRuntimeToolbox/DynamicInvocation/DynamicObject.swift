@@ -6,7 +6,7 @@
 #if canImport(ObjectiveC)
 import Foundation
 import ObjectiveC
-import OSToolbox
+import os
 
 /// Shorthand for ``DynamicObject``, so class names read as if they were
 /// namespaced: `ObjC.NSDateFormatter()`.
@@ -88,13 +88,6 @@ public typealias ObjC = DynamicObject
 ///
 /// ``RuntimeInvocation`` logs to the same subsystem and category, so one
 /// predicate covers the whole path from member access to return value.
-///
-/// > Note: `@Loggable` emits its members `private`, and private members are
-/// > excluded from the member lookup that `@dynamicMemberLookup` falls back
-/// > from. So `logger`, `_osLog`, `subsystem`, and `category` stay forwardable
-/// > to Objective-C from outside this type, while `#log` still resolves
-/// > `Self.logger` inside it.
-@Loggable(subsystem: "ObjCRuntimeToolbox", category: "DynamicInvocation")
 @dynamicCallable
 @dynamicMemberLookup
 public class DynamicObject: CustomDebugStringConvertible {
@@ -126,7 +119,7 @@ public class DynamicObject: CustomDebugStringConvertible {
         self.object = object as AnyObject?
         self.memberName = memberName
 
-        #log(.debug, "wrap object \(String(describing: object ?? "<nil>")) member \(memberName ?? "<none>", privacy: .public)")
+        os_log(.debug, log: dynamicInvocationLog, "wrap object %@ member %{public}@", String(describing: object ?? "<nil>"), memberName ?? "<none>")
     }
 
     /// Wraps the class registered under `className`, or `nil` if the runtime
@@ -135,7 +128,7 @@ public class DynamicObject: CustomDebugStringConvertible {
         self.object = NSClassFromString(className)
         self.memberName = nil
 
-        #log(.debug, "wrap class \(className, privacy: .public)")
+        os_log(.debug, log: dynamicInvocationLog, "wrap class %{public}@", className)
     }
 
     // MARK: - Member Lookup
@@ -198,7 +191,7 @@ public class DynamicObject: CustomDebugStringConvertible {
     // MARK: - Properties
 
     private func property(named propertyName: String) -> DynamicObject {
-        #log(.debug, "get \(self.debugDescription).\(propertyName, privacy: .public)")
+        os_log(.debug, log: dynamicInvocationLog, "get %@.%{public}@", debugDescription, propertyName)
 
         let resolved = resolve()
 
@@ -211,7 +204,7 @@ public class DynamicObject: CustomDebugStringConvertible {
 
     private func setProperty<Value>(named propertyName: String, to value: Value?) {
         let setterName = Self.setterName(forProperty: propertyName)
-        #log(.debug, "set \(self.debugDescription).\(propertyName, privacy: .public) via \(setterName, privacy: .public)")
+        os_log(.debug, log: dynamicInvocationLog, "set %@.%{public}@ via %{public}@", debugDescription, propertyName, setterName)
 
         let resolved = resolve()
         DynamicObject(resolved, memberName: setterName)(value)
@@ -236,7 +229,7 @@ public class DynamicObject: CustomDebugStringConvertible {
     private func callMethod(named selectorName: String, with arguments: [Any?] = []) {
         guard var target = object as? NSObject, !isError else { return }
 
-        #log(.debug, "call [\(String(describing: type(of: target)), privacy: .public) \(selectorName, privacy: .public)]")
+        os_log(.debug, log: dynamicInvocationLog, "call [%{public}@ %{public}@]", String(describing: type(of: target)), selectorName)
 
         // `init` has to be preceded by `alloc`, since the class object cannot
         // receive it directly.
@@ -262,9 +255,13 @@ public class DynamicObject: CustomDebugStringConvertible {
         // end of the array, so refuse the call instead.
         let expectedCount = invocation.numberOfDeclaredArguments
         guard arguments.count >= expectedCount else {
-            #log(
+            os_log(
                 .error,
-                "'\(selectorName, privacy: .public)' takes \(expectedCount) argument(s) but \(arguments.count) were provided"
+                log: dynamicInvocationLog,
+                "'%{public}@' takes %ld argument(s) but %ld were provided",
+                selectorName,
+                expectedCount,
+                arguments.count
             )
             self.error = RuntimeInvocationError.argumentCountMismatch(
                 selectorName: selectorName,
