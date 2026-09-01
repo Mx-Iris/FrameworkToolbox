@@ -17,6 +17,8 @@
 - [0001 —— 把 dyld interposing 抽成独立的 DyldToolbox](Evolutions/0001-dyld-toolbox-extraction.md)（Implemented）
 - [0002 —— 仿 `@Loggable` / `#log` 实现 os_signpost](Evolutions/0002-signpost-macros.md)（Implemented）
   新增 `@Signpostable` 与 `#signpost`，三种调用形态；顺带修 `#log` 带插值时依赖调用方 `import Foundation` 的缺陷。
+- [0003 —— 把 `ObjCRuntimeToolbox` 恢复为自包含的 `.dynamic` 叶子](Evolutions/0003-objc-runtime-toolbox-self-contained-leaf.md)（Implemented）
+  0.10.0 给它加的 `OSToolbox` 运行时依赖让 Xcode 把传递闭包整体建成共享动态 framework，压垮了 RuntimeViewer 无 rpath 的嵌套 daemon；解除依赖并加 dump-package 守卫测试。
 
 ## 专题说明
 
@@ -33,11 +35,17 @@
   **代码位置已变更**：这套东西已由提案 [0001](Evolutions/0001-dyld-toolbox-extraction.md) 从 `SwiftStdlibToolbox` 迁至独立的 `DyldToolbox`；这篇设计文档描述的机制不变，但里面写的文件路径是旧的。
 - **Dynamic 移植（DynamicObject）**（2026-08-06）—— [设计](Specs/2026-08-06-dynamic-invocation-design.md)
   基于 `NSInvocation` 的 `@dynamicMemberLookup` + `@dynamicCallable` 调用无头文件的类与方法。**含一条要命的约定**：对象返回值必须写成 `AnyObject?`，写成 `Any?` 能编译但会破坏内存。
+  **日志实现已变更**：文中的 `@Loggable` / `#log` 方案（含「`#log` 要写显式 `self.`」一节）已由提案
+  [0003](Evolutions/0003-objc-runtime-toolbox-self-contained-leaf.md) 改为共享的手写 `dynamicInvocationLog` 常量 + `os_log` ——
+  `ObjCRuntimeToolbox` 不得在运行时依赖 `OSToolbox`。`@Loggable` 与 `@dynamicMemberLookup` 相容性的实测结论仍然成立，只是本模块不再是它的用例。
 - **OSToolbox 抽取**（2026-08-06）—— [设计](Specs/2026-08-06-ostoolbox-extraction-design.md)
   分层与 re-export 链的调整。`@_exported import` 会把宏声明及其插件一并带过传递依赖，这是宏能下沉一层而不破坏调用点的原因。
   **守卫位置已变更**：文中的 `Sources/OSToolboxClient/LoggableWithoutFoundation.swift` 已由提案 [0002](Evolutions/0002-signpost-macros.md)
   移入独占的 `OSToolboxNoFoundationClient` target —— 它原先与一个 `import Foundation` 的 `main.swift` 同 target，
   而 Swift 的 conformance 查找是模块级的，那个守卫因此并不成立。
+  **拓扑已再次变更**：文中「让 `ObjCRuntimeToolbox` 用上 OSToolbox」的一步已由提案
+  [0003](Evolutions/0003-objc-runtime-toolbox-self-contained-leaf.md) 撤销 ——
+  `.dynamic` 产品的运行时 target 依赖会被 Xcode 连同传递闭包一起建成共享动态 framework。
 - **`@RuntimeClassHook` / `@RuntimeClassProxy`**（2026-08-05）—— [设计](Specs/2026-08-05-runtime-class-hook-design.md)
 - **`ObjCRuntimeToolbox`**（2026-06-26）—— [设计](Specs/2026-06-26-objc-runtime-toolbox-design.md)
 - **`@Keychain` 宏**（2026-06-24）—— [设计](Specs/2026-06-24-keychain-macro-design.md)
