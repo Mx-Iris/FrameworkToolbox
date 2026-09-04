@@ -28,10 +28,25 @@ struct LoggableMacroTests {
                     "MyService"
                 }
 
-                private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                private nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -39,12 +54,18 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -69,10 +90,25 @@ struct LoggableMacroTests {
                     "MyService"
                 }
 
-                private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                private nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -80,12 +116,18 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -110,10 +152,25 @@ struct LoggableMacroTests {
                     "MyService"
                 }
 
-                public nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                public nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                public nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                public nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated var logger: os.Logger {
@@ -121,12 +178,18 @@ struct LoggableMacroTests {
                 }
 
                 public nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -151,10 +214,25 @@ struct LoggableMacroTests {
                     "MyService"
                 }
 
-                nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 nonisolated var logger: os.Logger {
@@ -162,12 +240,18 @@ struct LoggableMacroTests {
                 }
 
                 nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -194,10 +278,25 @@ struct LoggableMacroTests {
                     "MyService"
                 }
 
-                private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                private nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -205,12 +304,18 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -235,10 +340,25 @@ struct LoggableMacroTests {
                     "MyEvent"
                 }
 
-                private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                private nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -246,12 +366,18 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -276,10 +402,25 @@ struct LoggableMacroTests {
                     "MyActor"
                 }
 
-                private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                private nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -287,12 +428,18 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -317,10 +464,25 @@ struct LoggableMacroTests {
                     "MyService"
                 }
 
-                fileprivate nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                fileprivate nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                fileprivate nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                fileprivate nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                fileprivate nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                fileprivate nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 fileprivate nonisolated var logger: os.Logger {
@@ -328,12 +490,18 @@ struct LoggableMacroTests {
                 }
 
                 fileprivate nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 fileprivate nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -358,10 +526,25 @@ struct LoggableMacroTests {
                     "MyService"
                 }
 
-                package nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                package nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                package nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                package nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                package nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                package nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 package nonisolated var logger: os.Logger {
@@ -369,12 +552,18 @@ struct LoggableMacroTests {
                 }
 
                 package nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 package nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -401,10 +590,25 @@ struct LoggableMacroTests {
                     "com.example.app"
                 }
 
-                private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                private nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -412,12 +616,18 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -442,10 +652,25 @@ struct LoggableMacroTests {
                     "MyService"
                 }
 
-                private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                private nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -453,12 +678,18 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -483,10 +714,25 @@ struct LoggableMacroTests {
                     "com.example.app"
                 }
 
-                private nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                private nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                private nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                private nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated var logger: os.Logger {
@@ -494,12 +740,18 @@ struct LoggableMacroTests {
                 }
 
                 private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -524,10 +776,25 @@ struct LoggableMacroTests {
                     "com.example.app"
                 }
 
-                public nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                public nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                public nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                public nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                public nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                public nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated var logger: os.Logger {
@@ -535,12 +802,18 @@ struct LoggableMacroTests {
                 }
 
                 public nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -565,10 +838,25 @@ struct LoggableMacroTests {
                     "com.example.app"
                 }
 
-                nonisolated static let _osLog = os.OSLog(subsystem: subsystem, category: category)
+                nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                nonisolated static let logger = os.Logger(subsystem: subsystem, category: category)
+                nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledLogger
+                }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 nonisolated var logger: os.Logger {
@@ -576,12 +864,18 @@ struct LoggableMacroTests {
                 }
 
                 nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -633,12 +927,18 @@ struct LoggableMacroTests {
                 }
 
                 nonisolated static var _osLog: os.OSLog {
-                    LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 nonisolated static var logger: os.Logger {
-                    LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
@@ -647,12 +947,18 @@ struct LoggableMacroTests {
                 }
 
                 nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -702,12 +1008,18 @@ struct LoggableMacroTests {
                 }
 
                 public nonisolated static var _osLog: os.OSLog {
-                    LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated static var logger: os.Logger {
-                    LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
@@ -716,12 +1028,18 @@ struct LoggableMacroTests {
                 }
 
                 public nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -748,12 +1066,18 @@ struct LoggableMacroTests {
                 }
 
                 nonisolated static var _osLog: os.OSLog {
-                    LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 nonisolated static var logger: os.Logger {
-                    LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
@@ -762,12 +1086,18 @@ struct LoggableMacroTests {
                 }
 
                 nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -794,12 +1124,18 @@ struct LoggableMacroTests {
                 }
 
                 public nonisolated static var _osLog: os.OSLog {
-                    LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated static var logger: os.Logger {
-                    LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
@@ -808,12 +1144,18 @@ struct LoggableMacroTests {
                 }
 
                 public nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """
@@ -863,12 +1205,18 @@ struct LoggableMacroTests {
                 }
 
                 public nonisolated static var _osLog: os.OSLog {
-                    LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated static var logger: os.Logger {
-                    LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
@@ -877,12 +1225,18 @@ struct LoggableMacroTests {
                 }
 
                 public nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
                 public nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                    LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
                 }
             }
             """

@@ -42,6 +42,12 @@ import FrameworkToolbox
 ///     default), requirements are emitted so conforming types may override them.
 ///     When `false`, only the default-implementation extension is emitted and the
 ///     members are effectively frozen for all conformers.
+///   - isEnabled: Whether this type emits signposts at all. Defaults to `true`,
+///     and behaves exactly as `@Loggable`'s parameter of the same name: the
+///     literal `false` is a compile-time kill switch producing
+///     `OSLog.disabled` / `OSSignposter.disabled` constants, any other
+///     expression is evaluated per call site and combined with
+///     ``SignpostingControl``'s runtime switches.
 ///   - subsystem: The subsystem string literal. Defaults to `nil`, which uses
 ///     `"<TypeName>"`. As with `@Loggable`, there is no bundle-identifier
 ///     fallback on purpose: deriving one would name `Bundle` in the expansion,
@@ -69,26 +75,39 @@ import FrameworkToolbox
 ///     // struct SyncService {
 ///     //     private nonisolated static var signpostCategory: String { "SyncService" }
 ///     //     private nonisolated static var signpostSubsystem: String { "SyncService" }
-///     //     private nonisolated static let _signpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+///     //     private nonisolated static let _enabledSignpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+///     //     private nonisolated static var _signpostLog: os.OSLog {
+///     //         SignpostableMacro._isEnabled(category: signpostCategory) ? _enabledSignpostLog : .disabled
+///     //     }
 ///     //     @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-///     //     private nonisolated static let signposter = os.OSSignposter(logHandle: _signpostLog)
+///     //     private nonisolated static let _enabledSignposter = os.OSSignposter(logHandle: _enabledSignpostLog)
+///     //     @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+///     //     private nonisolated static var signposter: os.OSSignposter {
+///     //         SignpostableMacro._isEnabled(category: signpostCategory) ? _enabledSignposter : .disabled
+///     //     }
 ///     //     …
 ///     // }
-@attached(member, names: named(_signpostLog), named(signpostCategory), named(signpostSubsystem), named(signposter), named(makeSignpostID))
-@attached(extension, names: named(_signpostLog), named(signpostCategory), named(signpostSubsystem), named(signposter), named(makeSignpostID))
+///
+/// On a **generic type** — or a type nested inside one — the two `static let`
+/// caches are replaced by the metatype-keyed runtime cache the protocol branch
+/// uses, since Swift allows no static stored properties in a generic type.
+@attached(member, names: named(_signpostLog), named(_enabledSignpostLog), named(signpostCategory), named(signpostSubsystem), named(signposter), named(_enabledSignposter), named(makeSignpostID))
+@attached(extension, names: named(_signpostLog), named(_enabledSignpostLog), named(signpostCategory), named(signpostSubsystem), named(signposter), named(_enabledSignposter), named(makeSignpostID))
 public macro Signpostable(
     _ accessLevel: AccessLevel = .private,
+    isEnabled: Bool = true,
     subsystem: StaticString? = nil,
     category: StaticString? = nil
 ) = #externalMacro(module: "OSToolboxMacros", type: "SignpostableMacro")
 
 /// Overload of `@Signpostable` that exposes the `asProtocolRequirement` switch
 /// (see the parameter documentation on the main `@Signpostable` declaration).
-@attached(member, names: named(_signpostLog), named(signpostCategory), named(signpostSubsystem), named(signposter), named(makeSignpostID))
-@attached(extension, names: named(_signpostLog), named(signpostCategory), named(signpostSubsystem), named(signposter), named(makeSignpostID))
+@attached(member, names: named(_signpostLog), named(_enabledSignpostLog), named(signpostCategory), named(signpostSubsystem), named(signposter), named(_enabledSignposter), named(makeSignpostID))
+@attached(extension, names: named(_signpostLog), named(_enabledSignpostLog), named(signpostCategory), named(signpostSubsystem), named(signposter), named(_enabledSignposter), named(makeSignpostID))
 public macro Signpostable(
     _ accessLevel: AccessLevel = .private,
     asProtocolRequirement: Bool,
+    isEnabled: Bool = true,
     subsystem: StaticString? = nil,
     category: StaticString? = nil
 ) = #externalMacro(module: "OSToolboxMacros", type: "SignpostableMacro")

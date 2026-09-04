@@ -28,10 +28,25 @@ struct SignpostableMacroTests {
                     "SyncService"
                 }
 
-                private nonisolated static let _signpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+                private nonisolated static let _enabledSignpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+
+                private nonisolated static var _signpostLog: os.OSLog {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignpostLog
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-                private nonisolated static let signposter = os.OSSignposter(logHandle: _signpostLog)
+                private nonisolated static let _enabledSignposter = os.OSSignposter(logHandle: _enabledSignpostLog)
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                private nonisolated static var signposter: os.OSSignposter {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignposter
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 private nonisolated var signposter: os.OSSignposter {
@@ -39,12 +54,18 @@ struct SignpostableMacroTests {
                 }
 
                 private nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 private nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 private nonisolated static func makeSignpostID() -> os.OSSignpostID {
@@ -77,10 +98,25 @@ struct SignpostableMacroTests {
                     "SyncService"
                 }
 
-                public nonisolated static let _signpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+                public nonisolated static let _enabledSignpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+
+                public nonisolated static var _signpostLog: os.OSLog {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignpostLog
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-                public nonisolated static let signposter = os.OSSignposter(logHandle: _signpostLog)
+                public nonisolated static let _enabledSignposter = os.OSSignposter(logHandle: _enabledSignpostLog)
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                public nonisolated static var signposter: os.OSSignposter {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignposter
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 public nonisolated var signposter: os.OSSignposter {
@@ -88,12 +124,18 @@ struct SignpostableMacroTests {
                 }
 
                 public nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 public nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 public nonisolated static func makeSignpostID() -> os.OSSignpostID {
@@ -126,10 +168,25 @@ struct SignpostableMacroTests {
                     "SyncService"
                 }
 
-                nonisolated static let _signpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+                nonisolated static let _enabledSignpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+
+                nonisolated static var _signpostLog: os.OSLog {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignpostLog
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-                nonisolated static let signposter = os.OSSignposter(logHandle: _signpostLog)
+                nonisolated static let _enabledSignposter = os.OSSignposter(logHandle: _enabledSignpostLog)
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                nonisolated static var signposter: os.OSSignposter {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignposter
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 nonisolated var signposter: os.OSSignposter {
@@ -137,12 +194,18 @@ struct SignpostableMacroTests {
                 }
 
                 nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 nonisolated static func makeSignpostID() -> os.OSSignpostID {
@@ -177,10 +240,25 @@ struct SignpostableMacroTests {
                     "com.example.app"
                 }
 
-                nonisolated static let _signpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+                nonisolated static let _enabledSignpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+
+                nonisolated static var _signpostLog: os.OSLog {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignpostLog
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-                nonisolated static let signposter = os.OSSignposter(logHandle: _signpostLog)
+                nonisolated static let _enabledSignposter = os.OSSignposter(logHandle: _enabledSignpostLog)
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                nonisolated static var signposter: os.OSSignposter {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignposter
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 nonisolated var signposter: os.OSSignposter {
@@ -188,12 +266,18 @@ struct SignpostableMacroTests {
                 }
 
                 nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 nonisolated static func makeSignpostID() -> os.OSSignpostID {
@@ -228,10 +312,25 @@ struct SignpostableMacroTests {
                     "Launch"
                 }
 
-                private nonisolated static let _signpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+                private nonisolated static let _enabledSignpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+
+                private nonisolated static var _signpostLog: os.OSLog {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignpostLog
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-                private nonisolated static let signposter = os.OSSignposter(logHandle: _signpostLog)
+                private nonisolated static let _enabledSignposter = os.OSSignposter(logHandle: _enabledSignpostLog)
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                private nonisolated static var signposter: os.OSSignposter {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignposter
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 private nonisolated var signposter: os.OSSignposter {
@@ -239,12 +338,18 @@ struct SignpostableMacroTests {
                 }
 
                 private nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 private nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 private nonisolated static func makeSignpostID() -> os.OSSignpostID {
@@ -279,10 +384,25 @@ struct SignpostableMacroTests {
                     "SyncService"
                 }
 
-                private nonisolated static let _signpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+                private nonisolated static let _enabledSignpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+
+                private nonisolated static var _signpostLog: os.OSLog {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignpostLog
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-                private nonisolated static let signposter = os.OSSignposter(logHandle: _signpostLog)
+                private nonisolated static let _enabledSignposter = os.OSSignposter(logHandle: _enabledSignpostLog)
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                private nonisolated static var signposter: os.OSSignposter {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignposter
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 private nonisolated var signposter: os.OSSignposter {
@@ -290,12 +410,18 @@ struct SignpostableMacroTests {
                 }
 
                 private nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 private nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 private nonisolated static func makeSignpostID() -> os.OSSignpostID {
@@ -328,10 +454,25 @@ struct SignpostableMacroTests {
                     "SyncService"
                 }
 
-                private nonisolated static let _signpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+                private nonisolated static let _enabledSignpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+
+                private nonisolated static var _signpostLog: os.OSLog {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignpostLog
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-                private nonisolated static let signposter = os.OSSignposter(logHandle: _signpostLog)
+                private nonisolated static let _enabledSignposter = os.OSSignposter(logHandle: _enabledSignpostLog)
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                private nonisolated static var signposter: os.OSSignposter {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignposter
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 private nonisolated var signposter: os.OSSignposter {
@@ -339,12 +480,18 @@ struct SignpostableMacroTests {
                 }
 
                 private nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 private nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 private nonisolated static func makeSignpostID() -> os.OSSignpostID {
@@ -377,10 +524,25 @@ struct SignpostableMacroTests {
                     "SyncService"
                 }
 
-                private nonisolated static let _signpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+                private nonisolated static let _enabledSignpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+
+                private nonisolated static var _signpostLog: os.OSLog {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignpostLog
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-                private nonisolated static let signposter = os.OSSignposter(logHandle: _signpostLog)
+                private nonisolated static let _enabledSignposter = os.OSSignposter(logHandle: _enabledSignpostLog)
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                private nonisolated static var signposter: os.OSSignposter {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignposter
+                }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 private nonisolated var signposter: os.OSSignposter {
@@ -388,12 +550,18 @@ struct SignpostableMacroTests {
                 }
 
                 private nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 private nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 private nonisolated static func makeSignpostID() -> os.OSSignpostID {
@@ -453,12 +621,18 @@ struct SignpostableMacroTests {
                 }
 
                 nonisolated static var _signpostLog: os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(for: self, subsystem: signpostSubsystem, category: signpostCategory)
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(for: self, subsystem: signpostSubsystem, category: signpostCategory)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 nonisolated static var signposter: os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(for: self, subsystem: signpostSubsystem, category: signpostCategory)
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(for: self, subsystem: signpostSubsystem, category: signpostCategory)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
@@ -467,12 +641,18 @@ struct SignpostableMacroTests {
                 }
 
                 nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 nonisolated static func makeSignpostID() -> os.OSSignpostID {
@@ -530,12 +710,18 @@ struct SignpostableMacroTests {
                 }
 
                 public nonisolated static var _signpostLog: os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(for: self, subsystem: signpostSubsystem, category: signpostCategory)
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(for: self, subsystem: signpostSubsystem, category: signpostCategory)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 public nonisolated static var signposter: os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(for: self, subsystem: signpostSubsystem, category: signpostCategory)
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(for: self, subsystem: signpostSubsystem, category: signpostCategory)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
@@ -544,12 +730,18 @@ struct SignpostableMacroTests {
                 }
 
                 public nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 public nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 public nonisolated static func makeSignpostID() -> os.OSSignpostID {
@@ -584,12 +776,18 @@ struct SignpostableMacroTests {
                 }
 
                 nonisolated static var _signpostLog: os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(for: self, subsystem: signpostSubsystem, category: signpostCategory)
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(for: self, subsystem: signpostSubsystem, category: signpostCategory)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 nonisolated static var signposter: os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(for: self, subsystem: signpostSubsystem, category: signpostCategory)
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(for: self, subsystem: signpostSubsystem, category: signpostCategory)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
@@ -598,12 +796,18 @@ struct SignpostableMacroTests {
                 }
 
                 nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-                    SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
                 nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
-                    SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
                 }
 
                 nonisolated static func makeSignpostID() -> os.OSSignpostID {

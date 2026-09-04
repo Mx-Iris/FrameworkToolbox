@@ -30,6 +30,16 @@ import FrameworkToolbox
 ///     extension is emitted — conforming types cannot override, and all call
 ///     sites resolve statically to the default implementation. Use the latter
 ///     when you want the logging properties to be "frozen" for all conformers.
+///   - isEnabled: Whether this type logs at all. Defaults to `true`.
+///     Passing the literal `false` is a compile-time kill switch: the generated
+///     handles become `OSLog.disabled` / `Logger.disabled` constants, nothing
+///     runtime can turn them back on, and the optimizer can drop the whole
+///     logging path. Passing any other expression is evaluated at each call
+///     site and combined with ``LoggingControl``'s runtime switches, so a flag
+///     of your own can gate a type without recompiling its call sites. Either
+///     way this silences `#log` *and* hand-written `Self.logger.debug(…)`,
+///     since the switch lives on the handle rather than the call site — and a
+///     disabled handle never evaluates a message's interpolation arguments.
 ///   - subsystem: The subsystem string literal. Defaults to `nil`, which uses
 ///     `"<TypeName>"` — the same string the category defaults to. There is no
 ///     bundle-identifier fallback on purpose: deriving one would put `Bundle`
@@ -54,12 +64,25 @@ import FrameworkToolbox
 ///     // struct MyService {
 ///     //     static var category: String { "MyService" }
 ///     //     static var subsystem: String { "MyService" }
-///     //     static let _osLog = OSLog(subsystem: subsystem, category: category)
+///     //     static let _enabledOSLog = OSLog(subsystem: subsystem, category: category)
+///     //     static var _osLog: OSLog {
+///     //         LoggableMacro._isEnabled(category: category) ? _enabledOSLog : .disabled
+///     //     }
 ///     //     @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-///     //     static let logger = os.Logger(subsystem: subsystem, category: category)
+///     //     static let _enabledLogger = os.Logger(_enabledOSLog)
+///     //     @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+///     //     static var logger: os.Logger {
+///     //         LoggableMacro._isEnabled(category: category) ? _enabledLogger : .disabled
+///     //     }
 ///     //     @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 ///     //     var logger: os.Logger { Self.logger }
 ///     // }
+///
+/// On a **generic type** — or a type nested inside one — the two `static let`
+/// caches above are replaced by the same metatype-keyed runtime cache the
+/// protocol branch uses, because Swift does not allow static stored properties
+/// in a generic type. That is what lets `@Loggable` be applied to a generic type
+/// directly instead of going through a protocol.
 ///
 /// Example — protocol:
 ///
@@ -99,21 +122,23 @@ import FrameworkToolbox
 ///             #log(.info, category: .persistence, "records saved")
 ///         }
 ///     }
-@attached(member, names: named(_osLog), named(category), named(subsystem), named(logger))
-@attached(extension, names: named(_osLog), named(category), named(subsystem), named(logger))
+@attached(member, names: named(_osLog), named(_enabledOSLog), named(category), named(subsystem), named(logger), named(_enabledLogger))
+@attached(extension, names: named(_osLog), named(_enabledOSLog), named(category), named(subsystem), named(logger), named(_enabledLogger))
 public macro Loggable(
     _ accessLevel: AccessLevel = .private,
+    isEnabled: Bool = true,
     subsystem: StaticString? = nil,
     category: StaticString? = nil
 ) = #externalMacro(module: "OSToolboxMacros", type: "LoggableMacro")
 
 /// Overload of `@Loggable` that exposes the `asProtocolRequirement` switch
 /// (see the parameter documentation on the main `@Loggable` declaration).
-@attached(member, names: named(_osLog), named(category), named(subsystem), named(logger))
-@attached(extension, names: named(_osLog), named(category), named(subsystem), named(logger))
+@attached(member, names: named(_osLog), named(_enabledOSLog), named(category), named(subsystem), named(logger), named(_enabledLogger))
+@attached(extension, names: named(_osLog), named(_enabledOSLog), named(category), named(subsystem), named(logger), named(_enabledLogger))
 public macro Loggable(
     _ accessLevel: AccessLevel = .private,
     asProtocolRequirement: Bool,
+    isEnabled: Bool = true,
     subsystem: StaticString? = nil,
     category: StaticString? = nil
 ) = #externalMacro(module: "OSToolboxMacros", type: "LoggableMacro")

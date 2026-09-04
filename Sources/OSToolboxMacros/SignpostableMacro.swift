@@ -6,7 +6,8 @@ import SwiftDiagnostics
 
 /// Implementation of `@Signpostable`. Structurally the same as `LoggableMacro` —
 /// same attribute grammar, same concrete/protocol split, same access-level
-/// handling — differing only in which members it emits.
+/// handling, same three shapes for the generated handles — differing only in
+/// which members it emits.
 public struct SignpostableMacro: MemberMacro, ExtensionMacro {
 
     /// The floor for `OSSignposter` and everything reachable through it.
@@ -31,7 +32,16 @@ public struct SignpostableMacro: MemberMacro, ExtensionMacro {
             }
             return buildSignpostProtocolRequirements()
         }
-        return buildSignpostConcreteMembers(node: node, declaration: declaration)
+        return buildSignpostConcreteMembers(
+            node: node,
+            declaration: declaration,
+            // A generic context forbids static stored properties, so the live
+            // handles have to come from the runtime cache instead.
+            usesRuntimeCache: isInGenericContext(
+                declaration: declaration,
+                lexicalContext: context.lexicalContext
+            )
+        )
     }
 
     // MARK: - ExtensionMacro
@@ -65,12 +75,14 @@ public struct SignpostableMacro: MemberMacro, ExtensionMacro {
 
 private func buildSignpostConcreteMembers(
     node: AttributeSyntax,
-    declaration: some DeclGroupSyntax
+    declaration: some DeclGroupSyntax,
+    usesRuntimeCache: Bool
 ) -> [DeclSyntax] {
     let accessLevel = extractAccessLevel(from: node)
     let accessPrefix = accessLevel == "internal" ? "" : "\(accessLevel) "
     let customSubsystem = extractStringLiteral(labeled: "subsystem", from: node)
     let customCategory = extractStringLiteral(labeled: "category", from: node)
+    let enablement = extractEnablement(from: node)
 
     let typeNameLiteral = quoteString(staticTypeName(from: declaration))
     let categoryBody = customCategory ?? typeNameLiteral
@@ -82,18 +94,89 @@ private func buildSignpostConcreteMembers(
     var members: [DeclSyntax] = [
         "\(raw: accessPrefix)nonisolated static var signpostCategory: String { \(raw: categoryBody) }",
         "\(raw: accessPrefix)nonisolated static var signpostSubsystem: String { \(raw: subsystemBody) }",
-        "\(raw: accessPrefix)nonisolated static let _signpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)",
-        """
-        \(raw: availability)
-        \(raw: accessPrefix)nonisolated static let signposter = os.OSSignposter(logHandle: _signpostLog)
-        """,
-        """
-        \(raw: availability)
-        \(raw: accessPrefix)nonisolated var signposter: os.OSSignposter { Self.signposter }
-        """,
     ]
-    members.append(contentsOf: buildSignpostCategoryAccessorMembers(accessPrefix: accessPrefix))
+    members.append(contentsOf: buildSignpostHandleMembers(
+        accessPrefix: accessPrefix,
+        enablement: enablement,
+        usesRuntimeCache: usesRuntimeCache
+    ))
+    members.append("""
+    \(raw: availability)
+    \(raw: accessPrefix)nonisolated var signposter: os.OSSignposter { Self.signposter }
+    """)
+    members.append(contentsOf: buildSignpostCategoryAccessorMembers(
+        accessPrefix: accessPrefix,
+        enablement: enablement
+    ))
     members.append(contentsOf: buildSignpostIdentifierFactories(accessPrefix: accessPrefix))
+    return members
+}
+
+/// The type-level `_signpostLog` / `signposter` pair, in whichever of three
+/// shapes the attribute and the surrounding context call for — the same three
+/// `@Loggable` uses, for the same reasons.
+///
+/// - `isEnabled: false` — `.disabled` constants, no storage emitted.
+/// - `usesRuntimeCache` — a generic context or a protocol's default
+///   implementations, where no static stored property is allowed.
+/// - otherwise — the live handle cached in a `static let`.
+private func buildSignpostHandleMembers(
+    accessPrefix: String,
+    enablement: EnablementConfiguration,
+    usesRuntimeCache: Bool
+) -> [DeclSyntax] {
+    let availability = SignpostableMacro.signposterAvailability
+    let condition = enablement.condition(
+        switchEntryPoint: "SignpostableMacro._isEnabled",
+        categoryExpression: "signpostCategory"
+    )
+
+    guard let condition else {
+        return [
+            "\(raw: accessPrefix)nonisolated static var _signpostLog: os.OSLog { .disabled }",
+            """
+            \(raw: availability)
+            \(raw: accessPrefix)nonisolated static var signposter: os.OSSignposter { .disabled }
+            """,
+        ]
+    }
+
+    let liveSignpostLogExpression = usesRuntimeCache
+        ? "SignpostableMacro._sharedSignpostLog(for: self, subsystem: signpostSubsystem, category: signpostCategory)"
+        : "_enabledSignpostLog"
+    let liveSignposterExpression = usesRuntimeCache
+        ? "SignpostableMacro._sharedSignposter(for: self, subsystem: signpostSubsystem, category: signpostCategory)"
+        : "_enabledSignposter"
+
+    var members: [DeclSyntax] = []
+    if enablement.needsEnabledHandleStorage, !usesRuntimeCache {
+        members.append(
+            "\(raw: accessPrefix)nonisolated static let _enabledSignpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)"
+        )
+    }
+    members.append("""
+    \(raw: accessPrefix)nonisolated static var _signpostLog: os.OSLog {
+        guard \(raw: condition) else {
+            return .disabled
+        }
+        return \(raw: liveSignpostLogExpression)
+    }
+    """)
+    if enablement.needsEnabledHandleStorage, !usesRuntimeCache {
+        members.append("""
+        \(raw: availability)
+        \(raw: accessPrefix)nonisolated static let _enabledSignposter = os.OSSignposter(logHandle: _enabledSignpostLog)
+        """)
+    }
+    members.append("""
+    \(raw: availability)
+    \(raw: accessPrefix)nonisolated static var signposter: os.OSSignposter {
+        guard \(raw: condition) else {
+            return .disabled
+        }
+        return \(raw: liveSignposterExpression)
+    }
+    """)
     return members
 }
 
@@ -101,18 +184,51 @@ private func buildSignpostConcreteMembers(
 /// Categories are values of the library's `LogCategory` struct — the same ones
 /// `@Loggable` uses, since the system models signposts as riding on logging's
 /// subsystem/category pairs. The subsystem stays the annotated type's own.
-private func buildSignpostCategoryAccessorMembers(accessPrefix: String) -> [DeclSyntax] {
+///
+/// The switches are consulted against the call site's category, which is what
+/// makes `SignpostingControl.setEnabled(false, for:)` reach here.
+private func buildSignpostCategoryAccessorMembers(
+    accessPrefix: String,
+    enablement: EnablementConfiguration
+) -> [DeclSyntax] {
     let availability = SignpostableMacro.signposterAvailability
+    let condition = enablement.condition(
+        switchEntryPoint: "SignpostableMacro._isEnabled",
+        categoryExpression: "category.name"
+    )
+
+    guard let condition else {
+        return [
+            """
+            \(raw: accessPrefix)nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
+                .disabled
+            }
+            """,
+            """
+            \(raw: availability)
+            \(raw: accessPrefix)nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
+                .disabled
+            }
+            """,
+        ]
+    }
+
     return [
         """
         \(raw: accessPrefix)nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
-            SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+            guard \(raw: condition) else {
+                return .disabled
+            }
+            return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
         }
         """,
         """
         \(raw: availability)
         \(raw: accessPrefix)nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
-            SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+            guard \(raw: condition) else {
+                return .disabled
+            }
+            return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
         }
         """,
     ]
@@ -124,6 +240,9 @@ private func buildSignpostCategoryAccessorMembers(accessPrefix: String) -> [Decl
 /// `OSSignposter.makeSignpostID()` so they need no `@available` gate — the
 /// initializer has been there since macOS 10.14, and both routes produce an
 /// identifier unique within the process.
+///
+/// They read `_signpostLog`, so while signposting is off they hand back the ID
+/// a disabled handle generates. Harmless: nothing is emitted under it either.
 private func buildSignpostIdentifierFactories(accessPrefix: String) -> [DeclSyntax] {
     return [
         """
@@ -144,6 +263,10 @@ private func buildSignpostIdentifierFactories(accessPrefix: String) -> [DeclSynt
 /// Protocol-internal declarations carry no access modifier, no `nonisolated`,
 /// and no body — they're plain requirements conforming types may satisfy with
 /// their own storage or computed properties.
+///
+/// As with `@Loggable`, the `isEnabled:` switch adds no requirement here — it is
+/// resolved inside the default implementations, so existing conformers keep
+/// compiling unchanged.
 private func buildSignpostProtocolRequirements() -> [DeclSyntax] {
     let availability = SignpostableMacro.signposterAvailability
     return [
@@ -174,6 +297,7 @@ private func buildSignpostProtocolDefaultImplementations(
     let accessPrefix = accessLevel == "internal" ? "" : "\(accessLevel) "
     let customSubsystem = extractStringLiteral(labeled: "subsystem", from: node)
     let customCategory = extractStringLiteral(labeled: "category", from: node)
+    let enablement = extractEnablement(from: node)
 
     let typeNameExpression = "String(describing: self)"
     let categoryBody = customCategory ?? typeNameExpression
@@ -183,23 +307,20 @@ private func buildSignpostProtocolDefaultImplementations(
     var members: [DeclSyntax] = [
         "\(raw: accessPrefix)nonisolated static var signpostCategory: String { \(raw: categoryBody) }",
         "\(raw: accessPrefix)nonisolated static var signpostSubsystem: String { \(raw: subsystemBody) }",
-        """
-        \(raw: accessPrefix)nonisolated static var _signpostLog: os.OSLog {
-            SignpostableMacro._sharedSignpostLog(for: self, subsystem: signpostSubsystem, category: signpostCategory)
-        }
-        """,
-        """
-        \(raw: availability)
-        \(raw: accessPrefix)nonisolated static var signposter: os.OSSignposter {
-            SignpostableMacro._sharedSignposter(for: self, subsystem: signpostSubsystem, category: signpostCategory)
-        }
-        """,
-        """
-        \(raw: availability)
-        \(raw: accessPrefix)nonisolated var signposter: os.OSSignposter { Self.signposter }
-        """,
     ]
-    members.append(contentsOf: buildSignpostCategoryAccessorMembers(accessPrefix: accessPrefix))
+    members.append(contentsOf: buildSignpostHandleMembers(
+        accessPrefix: accessPrefix,
+        enablement: enablement,
+        usesRuntimeCache: true
+    ))
+    members.append("""
+    \(raw: availability)
+    \(raw: accessPrefix)nonisolated var signposter: os.OSSignposter { Self.signposter }
+    """)
+    members.append(contentsOf: buildSignpostCategoryAccessorMembers(
+        accessPrefix: accessPrefix,
+        enablement: enablement
+    ))
     members.append(contentsOf: buildSignpostIdentifierFactories(accessPrefix: accessPrefix))
     return members
 }
