@@ -19,11 +19,15 @@
   新增 `@Signpostable` 与 `#signpost`，三种调用形态；顺带修 `#log` 带插值时依赖调用方 `import Foundation` 的缺陷。
 - [0003 —— 把 `ObjCRuntimeToolbox` 恢复为自包含的 `.dynamic` 叶子](Evolutions/0003-objc-runtime-toolbox-self-contained-leaf.md)（Implemented）
   0.10.0 给它加的 `OSToolbox` 运行时依赖让 Xcode 把传递闭包整体建成共享动态 framework，压垮了 RuntimeViewer 无 rpath 的嵌套 daemon；解除依赖并加 dump-package 守卫测试。
+- [0004 —— 给 `@Loggable` / `@Signpostable` 加启用开关，并解除泛型类型的限制](Evolutions/0004-logging-enable-switch.md)（Implemented）
+  新增 `isEnabled:` 宏参数与 `LoggingControl` / `SignpostingControl` 运行时入口，关闭状态用 `OSLog.disabled` 一族的空句柄表达；
+  同批次去掉泛型支的 static 存储属性，泛型类型不必再绕协议。
 
 ## 专题说明
 
 - [`LogCategory` 与 `#log(category:)` 多 Category 支持](LoggableCategories.md) —— `@Loggable` / `#log` 从「一个类型一个 category」扩展为支持多 category 的经过。
 - [`@Signpostable` 与 `#signpost` 用法契约与实现决策](SignpostMacros.md) —— 三种调用形态怎么选、区间凭据为什么要自带 log handle、为什么防 Foundation 依赖的守卫必须独占一个 target。
+- [关掉日志与埋点 —— `isEnabled:` 与运行时开关](LoggingSwitches.md) —— 三层开关怎么用、关掉之后为什么连插值都不求值、泛型限制怎么顺带解除的。
 - [存储层重构与 `@UserDefault` 宏](StorageLayer.md) —— `@Keychain` 宏发布后，运行时与编码协议都是 Keychain 专用的；这篇记录如何把存储层抽象出来以容纳 `@UserDefault`。
 
 ## 设计文档（Specs，归档）
