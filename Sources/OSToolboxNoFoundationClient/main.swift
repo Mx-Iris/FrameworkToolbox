@@ -53,3 +53,60 @@ do {
 } catch {
     print("scoped throwing threw as expected, interval still closed")
 }
+
+// MARK: - Generic contexts (see `GenericContexts.swift`)
+
+GenericBox(element: 1).emit()
+GenericOutcome<Int, String>.succeeded(1).emit()
+ConstrainedGenericStore<String, Int>().emit()
+
+let genericCache = GenericCache<String, Int>()
+genericCache.emit()
+print("generic-class interval:", genericCache.measure())
+
+OuterGenericContainer<Int>.NestedNonGenericService().emit()
+OuterGenericContainer<Int>.NestedDualAnnotated().emit()
+OuterGenericContainer<Int>.NestedNamespace.DeeplyNestedService().emit()
+OuterGenericContainer<Int>.ServiceInsideGenericExtension().emit()
+OuterNonGenericContainer.ServiceInsideNonGenericExtension().emit()
+
+// MARK: - Enablement switches (see `EnablementSwitches.swift`)
+
+SilentService().emit()
+UnmeasuredService().emit()
+print("statically-off interval:", UnmeasuredService().measure())
+FullySilentService().emit()
+SilentGenericService<Int>().emit()
+
+ConditionallyLoggingService().emit()
+print("gated interval:", ConditionallyMeasuredService().measure())
+EitherFlagService().emit()
+ConditionallyLoggingGenericService<Int>().emit()
+
+ExplicitlyEnabledService().emit()
+SilentCustomisedService().emit()
+PublicConditionallyMeasuredService().emit()
+
+ConformsToSilentlyLogging().emit()
+ConformsToConditionallyLogging().emit()
+ConformsToFrozenSilentlyLogging().emit()
+
+// The runtime switches, exercised end to end. Nothing here can assert on what
+// the system did with the messages — that is what `LoggingControlTests` is for —
+// but it does pin that the control surface compiles and runs from a module with
+// no Foundation import.
+LoggingControl.isEnabled = false
+ServiceWithoutFoundation().emit()
+LoggingControl.isEnabled = true
+
+LoggingControl.setEnabled(false, for: .startup)
+interpolating.emitUnderACategory(count: 5)
+LoggingControl.enableAllCategories()
+
+SignpostingControl.isEnabled = false
+signpostGuard.emitEvent()
+SignpostingControl.isEnabled = true
+
+// An actor's members are isolated, so this one needs an await — top-level code
+// provides the async context.
+await GenericCoordinator<Int>().emit()
