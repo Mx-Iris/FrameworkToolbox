@@ -74,7 +74,12 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", "509.1.0" ..< "604.0.0"),
+        // Floor is 600.0.0 because `@Loggable` / `@Signpostable` read
+        // `MacroExpansionContext.lexicalContext` to detect a type nested inside a
+        // generic one, and that API landed in 600.0.0 — neither 509.1.0 nor 510.0.3
+        // has it. Costs nothing in practice: this package's tools version is 6.2, so
+        // the old floor was only ever nominal.
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", "600.0.0" ..< "604.0.0"),
         .package(url: "https://github.com/pointfreeco/swift-macro-testing.git", from: "0.6.5"),
     ],
     targets: [

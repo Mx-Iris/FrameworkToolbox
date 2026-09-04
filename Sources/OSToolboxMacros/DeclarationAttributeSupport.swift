@@ -98,3 +98,140 @@ func extractBoolLiteral(labeled label: String, from node: AttributeSyntax) -> Bo
     }
     return nil
 }
+
+/// Extracts an argument by its label as raw source text, whatever expression it
+/// is. Unlike ``extractStringLiteral(labeled:from:)`` and
+/// ``extractBoolLiteral(labeled:from:)`` this does not require a literal — the
+/// text is transplanted into the expansion and re-type-checked there.
+func extractExpression(labeled label: String, from node: AttributeSyntax) -> ExprSyntax? {
+    guard let arguments = node.arguments,
+          case let .argumentList(argumentList) = arguments else {
+        return nil
+    }
+    for argument in argumentList where argument.label?.text == label {
+        return argument.expression
+    }
+    return nil
+}
+
+// MARK: - The `isEnabled:` switch
+
+/// How an `isEnabled:` argument resolves at expansion time.
+///
+/// The three cases are what let one spelling serve both a compile-time kill
+/// switch and a runtime flag: a literal collapses to a constant the optimizer
+/// can act on, anything else is left as an expression evaluated per call site.
+enum EnablementConfiguration {
+    /// No argument, or the literal `true`. The runtime switches decide alone.
+    case runtimeControlled
+
+    /// The literal `false`. The generated handles become `.disabled` constants
+    /// and no runtime switch can turn them back on.
+    case alwaysDisabled
+
+    /// Any other expression, kept as source text and combined with the runtime
+    /// switches by `&&`.
+    case conditional(String)
+}
+
+func extractEnablement(from node: AttributeSyntax) -> EnablementConfiguration {
+    guard let expression = extractExpression(labeled: "isEnabled", from: node) else {
+        return .runtimeControlled
+    }
+    if let booleanLiteral = expression.as(BooleanLiteralExprSyntax.self) {
+        return booleanLiteral.literal.text == "true" ? .runtimeControlled : .alwaysDisabled
+    }
+    return .conditional(expression.trimmedDescription)
+}
+
+extension EnablementConfiguration {
+    /// The condition a generated accessor tests before handing back a live
+    /// handle, or `nil` when the answer is statically "never".
+    ///
+    /// - Parameters:
+    ///   - switchEntryPoint: the runtime helper to consult, e.g.
+    ///     `"LoggableMacro._isEnabled"`.
+    ///   - categoryExpression: what to pass it as the category.
+    func condition(switchEntryPoint: String, categoryExpression: String) -> String? {
+        let runtimeCheck = "\(switchEntryPoint)(category: \(categoryExpression))"
+        switch self {
+        case .runtimeControlled:
+            return runtimeCheck
+        case .alwaysDisabled:
+            return nil
+        case let .conditional(expression):
+            return "(\(expression)) && \(runtimeCheck)"
+        }
+    }
+
+    /// Whether a `static let` holding the live handle is worth emitting at all.
+    var needsEnabledHandleStorage: Bool {
+        switch self {
+        case .runtimeControlled, .conditional:
+            return true
+        case .alwaysDisabled:
+            return false
+        }
+    }
+}
+
+// MARK: - Generic context
+
+/// Whether the declaration sits somewhere Swift forbids static stored
+/// properties — inside a generic type, at any depth.
+///
+/// This is what decides between the two shapes of the concrete branch: caching
+/// the live handle in a `static let` (cheapest, but illegal in a generic type)
+/// or resolving it through the metatype-keyed runtime cache the protocol branch
+/// already uses. Note that nesting a *non-generic* type inside a generic one is
+/// enough to trigger the restriction:
+///
+///     struct Box<Element> {
+///         struct Inner {
+///             static let stored = 1  // error: static stored properties not
+///                                    // supported in generic types
+///         }
+///     }
+///
+/// The declaration's own syntax tree cannot show that, which is why the
+/// enclosing declarations have to come from `MacroExpansionContext`.
+func isInGenericContext(
+    declaration: some DeclGroupSyntax,
+    lexicalContext: [Syntax]
+) -> Bool {
+    if genericParameterClause(of: declaration) != nil {
+        return true
+    }
+    return lexicalContext.contains { enclosingSyntax in
+        // An `extension` cannot be resolved from syntax alone: `extension Box`
+        // says nothing about whether `Box` is generic. Assume the restricting
+        // case — a needless runtime cache lookup costs a few nanoseconds, a
+        // wrong `static let` costs a compile error in the caller's file.
+        if enclosingSyntax.is(ExtensionDeclSyntax.self) {
+            return true
+        }
+        if let enclosingDeclaration = enclosingSyntax.asProtocol(DeclGroupSyntax.self) {
+            return genericParameterClause(of: enclosingDeclaration) != nil
+        }
+        if let enclosingFunction = enclosingSyntax.as(FunctionDeclSyntax.self) {
+            return enclosingFunction.genericParameterClause != nil
+        }
+        return false
+    }
+}
+
+/// The generic parameter list of a type declaration, if it has one.
+/// Protocols are excluded on purpose — they carry `associatedtype`s rather than
+/// generic parameters, and nothing can be nested inside them anyway.
+private func genericParameterClause(of declaration: some DeclGroupSyntax) -> GenericParameterClauseSyntax? {
+    if let structDeclaration = declaration.as(StructDeclSyntax.self) {
+        return structDeclaration.genericParameterClause
+    } else if let classDeclaration = declaration.as(ClassDeclSyntax.self) {
+        return classDeclaration.genericParameterClause
+    } else if let enumDeclaration = declaration.as(EnumDeclSyntax.self) {
+        return enumDeclaration.genericParameterClause
+    } else if let actorDeclaration = declaration.as(ActorDeclSyntax.self) {
+        return actorDeclaration.genericParameterClause
+    }
+    return nil
+}
