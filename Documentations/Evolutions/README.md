@@ -26,5 +26,7 @@ SPM library product，使用方以源码依赖并重新编译，未开启 librar
 | [0002](0002-signpost-macros.md) | 仿 @Loggable / #log 实现 os_signpost：@Signpostable 与 #signpost | Implemented |
 | [0003](0003-objc-runtime-toolbox-self-contained-leaf.md) | 把 ObjCRuntimeToolbox 恢复为自包含的 .dynamic 叶子 | Implemented |
 | [0004](0004-logging-enable-switch.md) | 给 @Loggable / @Signpostable 加启用开关，并解除泛型类型的限制 | Implemented |
+| [draft](draft-objective-c-typed-collections.md) | 给被类型擦除的 NS 集合类补回 Swift 泛型 | Implemented |
+| [draft](draft-inline-mutex-raw-layout.md) | 用 `@_rawLayout` 把 Mutex 的锁与值内联（暂不采纳） | Deferred |
 
 `Specs/` 与 `Plans/` 是提案制确立前的产物，见[上级索引](../README.md)，保持原样不迁移。
