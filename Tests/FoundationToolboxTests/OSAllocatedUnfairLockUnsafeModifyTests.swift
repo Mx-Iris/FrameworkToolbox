@@ -10,7 +10,7 @@ import os
 struct OSAllocatedUnfairLockUnsafeModifyTests {
 
     @Test func unsafeLockExposesLivePointer() throws {
-        guard #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) else {
+        guard #available(SwiftStdlib 5.7, *) else {
             return
         }
         let lock = OSAllocatedUnfairLock<Int>(initialState: 41)
@@ -24,7 +24,7 @@ struct OSAllocatedUnfairLockUnsafeModifyTests {
     }
 
     @Test func unsafeModifyPairingSerialisesConcurrentWriters() async throws {
-        guard #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) else {
+        guard #available(SwiftStdlib 5.7, *) else {
             return
         }
         let lock = OSAllocatedUnfairLock<Int>(initialState: 0)
@@ -47,7 +47,7 @@ struct OSAllocatedUnfairLockUnsafeModifyTests {
     }
 
     @Test func unsafeModifyMutatesReferenceTypeInPlace() throws {
-        guard #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) else {
+        guard #available(SwiftStdlib 5.7, *) else {
             return
         }
         let lock = OSAllocatedUnfairLock<[String]>(initialState: [])

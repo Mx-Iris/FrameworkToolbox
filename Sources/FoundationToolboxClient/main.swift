@@ -4,7 +4,7 @@ import FoundationToolbox
 
 // MARK: - OSAllocatedUnfairLock macro verification
 
-@available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+@available(SwiftStdlib 5.7, *)
 final class UnfairLockClassDecl: Sendable {
     @OSAllocatedUnfairLock
     private var property: String!
@@ -20,7 +20,7 @@ final class UnfairLockClassDecl: Sendable {
     }
 }
 
-if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
+if #available(SwiftStdlib 5.7, *) {
     _ = UnfairLockClassDecl(property: "test")
 }
 

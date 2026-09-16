@@ -9,6 +9,10 @@ extension FrameworkToolbox<String> {
     public var decodeByBase64: String? { Data(base64Encoded: base).flatMap { String(data: $0, encoding: .utf8) } }
 
     @inlinable
+    // Spelled out rather than `SwiftStdlib 5.7`: an availability macro is a per-target
+    // compiler setting, and an `@inlinable` body is recompiled in the *caller's* module,
+    // where it is not set. The compiler rejects the combination outright — `availability
+    // macro cannot be used in an '@inlinable' function`.
     public var filePathURL: URL {
         if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
             return .init(filePath: base)

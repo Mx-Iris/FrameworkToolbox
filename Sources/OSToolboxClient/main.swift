@@ -27,7 +27,7 @@ _ = MutexHolder(name: "test")
 
 // MARK: - OSAllocatedUnfairLock macro
 
-@available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+@available(SwiftStdlib 5.7, *)
 final class UnfairLockHolder: Sendable {
     @OSAllocatedUnfairLock
     private var name: String!
@@ -40,7 +40,7 @@ final class UnfairLockHolder: Sendable {
     }
 }
 
-if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
+if #available(SwiftStdlib 5.7, *) {
     _ = UnfairLockHolder(name: "test")
 }
 

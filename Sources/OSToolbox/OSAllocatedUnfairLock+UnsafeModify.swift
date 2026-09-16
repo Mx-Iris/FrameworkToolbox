@@ -15,7 +15,7 @@ import os
 // This is intentionally gated behind a disabled-by-default package trait: it
 // depends on implementation details of Apple's `os` framework that could change
 // in a future Swift or OS release.
-@available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+@available(SwiftStdlib 5.7, *)
 extension OSAllocatedUnfairLock {
     @inline(__always)
     public func _unsafeLock() -> UnsafeMutablePointer<State> {
