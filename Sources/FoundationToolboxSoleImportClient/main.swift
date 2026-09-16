@@ -39,3 +39,5 @@ struct GuardedService {
 }
 
 GuardedService().run()
+
+exerciseTypedCollectionHandles()
