@@ -28,5 +28,6 @@ SPM library product，使用方以源码依赖并重新编译，未开启 librar
 | [0004](0004-logging-enable-switch.md) | 给 @Loggable / @Signpostable 加启用开关，并解除泛型类型的限制 | Implemented |
 | [draft](draft-objective-c-typed-collections.md) | 给被类型擦除的 NS 集合类补回 Swift 泛型 | Implemented |
 | [draft](draft-inline-mutex-raw-layout.md) | 用 `@_rawLayout` 把 Mutex 的锁与值内联（暂不采纳） | Deferred |
+| [draft](draft-availability-macros.md) | 引入 SwiftStdlib 可用性宏，收掉四平台长写法 | Implemented |
 
 `Specs/` 与 `Plans/` 是提案制确立前的产物，见[上级索引](../README.md)，保持原样不迁移。

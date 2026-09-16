@@ -28,6 +28,9 @@
   标准库 `Synchronization.Mutex` 靠 `@_rawLayout` 做到零堆分配，本库的 `Mutex` 每个实例一次 `malloc`。
   移植实测可行、布局与标准库逐字节一致，但要绑定三个无 Swift Evolution 提案的实验性编译器特性；
   当前全代码库只有一个 `Mutex` 实例，收益不抵代价。文内留有性能实测数据与翻案条件。
+- [draft —— 引入 SwiftStdlib 可用性宏，收掉四平台长写法](Evolutions/draft-availability-macros.md)（Implemented）
+  `@available(SwiftStdlib 5.7, *)` 取代四平台长写法，定义表照搬上游以保持同义。
+  两个禁区：`@inlinable` 函数体（编译器当场拒绝）与宏展开结果（编译器**不给任何诊断**，炸在下游）。
 
 ## 专题说明
 
