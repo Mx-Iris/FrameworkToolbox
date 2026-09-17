@@ -25,3 +25,21 @@ internal func exerciseTypedCollectionHandles() {
 
     print(names.count, verifiedNames?.count ?? 0, tempos.count, tags.count)
 }
+
+// The macro half of the same guard. `@ObjectiveCBridgeable` expands to code naming
+// `_ObjectiveCBridgeable` and whatever class the caller wrote on `rawValue` — so this pins
+// that a caller with only `import FoundationToolbox` can both apply the macro and compile
+// what it produces. The expansion reaching for a module the caller never imported is the
+// defect class CLAUDE.md records, and it has bitten this package more than once.
+@ObjectiveCBridgeable
+struct GuardedCollectionHandle: ObjectiveCCollectionHandle {
+    let rawValue: NSArray
+
+    init(rawValue: NSArray) { self.rawValue = rawValue }
+
+    init() { self.init(rawValue: NSArray()) }
+
+    static func containsOnlyExpectedElementTypes(in rawValue: NSArray) -> Bool {
+        rawValue.allSatisfy { $0 is NSString }
+    }
+}
