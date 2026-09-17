@@ -56,7 +56,7 @@ import Foundation
         named(_conditionallyBridgeFromObjectiveC(_:result:)),
         named(_unconditionallyBridgeFromObjectiveC(_:))
 )
-public macro ObjectiveCBridgeable() = #externalMacro(
+public macro ObjectiveCBridgeable(inlinable: Bool = false) = #externalMacro(
     module: "FoundationToolboxMacros",
     type: "ObjectiveCBridgeableMacro"
 )

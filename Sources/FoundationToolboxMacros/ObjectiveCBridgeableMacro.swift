@@ -50,6 +50,10 @@ public struct ObjectiveCBridgeableMacro: ExtensionMacro {
         }
 
         let accessLevel = accessLevelPrefix(of: declaration)
+        // The trailing indentation is the *stripped* indentation of the literal below (four
+        // spaces inside the extension), not the indentation as written: interpolated text is
+        // inserted verbatim and does not participate in multi-line-literal stripping.
+        let inlinable = isInlinableRequested(in: node, context: context) ? "@inlinable\n    " : ""
 
         let extensionDeclaration = try ExtensionDeclSyntax(
             """
@@ -58,19 +62,19 @@ public struct ObjectiveCBridgeableMacro: ExtensionMacro {
 
                 // Paired with `bridgeFromObjectiveC` below; the optimizer eliminates a round
                 // trip only when it recognises both halves.
-                @_semantics("convertToObjectiveC")
+                \(raw: inlinable)@_semantics("convertToObjectiveC")
                 \(raw: accessLevel)func _bridgeToObjectiveC() -> ObjectiveCRepresentation {
                     makeObjectiveCRepresentation()
                 }
 
-                \(raw: accessLevel)static func _forceBridgeFromObjectiveC(
+                \(raw: inlinable)\(raw: accessLevel)static func _forceBridgeFromObjectiveC(
                     _ source: ObjectiveCRepresentation,
                     result: inout Self?
                 ) {
                     result = Self(uncheckedObjectiveCRepresentation: source)
                 }
 
-                @discardableResult
+                \(raw: inlinable)@discardableResult
                 \(raw: accessLevel)static func _conditionallyBridgeFromObjectiveC(
                     _ source: ObjectiveCRepresentation,
                     result: inout Self?
@@ -83,7 +87,11 @@ public struct ObjectiveCBridgeableMacro: ExtensionMacro {
                     return true
                 }
 
-                @_semantics("bridgeFromObjectiveC")
+                \(raw: inlinable)@_semantics("bridgeFromObjectiveC")
+                // `@_effects` blocks inlining unconditionally — the inliner bails on
+                // `hasEffectsKind()` before it looks at anything else — so `inlinable:`
+                // does not reach this one. Kept because the effects information is still
+                // what lets the optimizer reason about the call it does emit.
                 @_effects(readonly)
                 \(raw: accessLevel)static func _unconditionallyBridgeFromObjectiveC(
                     _ source: ObjectiveCRepresentation?
@@ -98,6 +106,30 @@ public struct ObjectiveCBridgeableMacro: ExtensionMacro {
         )
 
         return [extensionDeclaration]
+    }
+
+    /// Whether `inlinable: true` was passed.
+    ///
+    /// Only a boolean literal is accepted: `@inlinable` is an attribute, so the answer has
+    /// to exist at expansion time — there is nothing to defer it to.
+    private static func isInlinableRequested(
+        in node: AttributeSyntax,
+        context: some MacroExpansionContext
+    ) -> Bool {
+        guard let arguments = node.arguments?.as(LabeledExprListSyntax.self),
+              let argument = arguments.first(where: { $0.label?.text == "inlinable" })
+        else { return false }
+
+        guard let literal = argument.expression.as(BooleanLiteralExprSyntax.self) else {
+            context.diagnose(
+                Diagnostic(
+                    node: argument.expression,
+                    message: ObjectiveCBridgeableMacroError.inlinableIsNotALiteral
+                )
+            )
+            return false
+        }
+        return literal.literal.text == "true"
     }
 
     /// Mirrors the attached type's access level onto the generated members.
@@ -121,6 +153,7 @@ public struct ObjectiveCBridgeableMacro: ExtensionMacro {
 
 public enum ObjectiveCBridgeableMacroError: Error, CustomStringConvertible, DiagnosticMessage {
     case notAValueType
+    case inlinableIsNotALiteral
 
     public var description: String {
         switch self {
@@ -132,13 +165,24 @@ public enum ObjectiveCBridgeableMacroError: Error, CustomStringConvertible, Diag
                 `_ObjectiveCBridgeable` is only consulted for value types — a class is always \
                 bridged verbatim, so the conformance would never be used.
                 """
+        case .inlinableIsNotALiteral:
+            return """
+                `inlinable:` must be a boolean literal. `@inlinable` is an attribute, so \
+                whether to emit it is decided while the macro expands — there is no runtime \
+                for a computed value to be evaluated in.
+                """
         }
     }
 
     public var message: String { description }
 
     public var diagnosticID: MessageID {
-        MessageID(domain: "ObjectiveCBridgeableMacro", id: "notAValueType")
+        switch self {
+        case .notAValueType:
+            MessageID(domain: "ObjectiveCBridgeableMacro", id: "notAValueType")
+        case .inlinableIsNotALiteral:
+            MessageID(domain: "ObjectiveCBridgeableMacro", id: "inlinableIsNotALiteral")
+        }
     }
 
     public var severity: DiagnosticSeverity { .error }
