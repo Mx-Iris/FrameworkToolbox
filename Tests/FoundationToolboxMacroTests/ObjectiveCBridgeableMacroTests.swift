@@ -6,126 +6,184 @@ import Testing
 @Suite(.macros(["ObjectiveCBridgeable": ObjectiveCBridgeableMacro.self]))
 struct ObjectiveCBridgeableMacroTests {
 
-    // The two `@_semantics` strings and `@_effects(readonly)` are the entire reason this
-    // macro exists rather than a protocol extension: the round-trip elimination needs both
-    // halves annotated *and* the witnesses on the concrete type. Dropping one is silent, so
-    // the expansion is pinned literally.
-    @Test func generatesBridgingWitnessesOntoTheConcreteType() {
+    // The two `@_semantics` strings and `@_effects(readonly)` are the entire reason this is
+    // a macro rather than a protocol extension: the round-trip elimination needs both halves
+    // annotated *and* the witnesses on the concrete type. Dropping one is silent — the build
+    // stays green and the optimization goes to zero — so the expansion is pinned literally.
+    @Test func generatesWitnessesThatForwardToTheProtocol() {
         assertMacro {
             """
             @ObjectiveCBridgeable
-            public struct NSArrayOf<Element> {
-                public let rawValue: NSArray
+            public struct Coordinate: ObjectiveCRepresentable {
+                public var latitude: Double
             }
             """
         } expansion: {
             """
-            public struct NSArrayOf<Element> {
-                public let rawValue: NSArray
+            public struct Coordinate: ObjectiveCRepresentable {
+                public var latitude: Double
             }
 
-            extension NSArrayOf: _ObjectiveCBridgeable {
-                public typealias _ObjectiveCType = NSArray
+            extension Coordinate: _ObjectiveCBridgeable {
+                public typealias _ObjectiveCType = ObjectiveCRepresentation
 
-                // Paired with `bridgeFromObjectiveC` below; the optimizer's round-trip
-                // elimination only fires when it recognises both halves.
+                // Paired with `bridgeFromObjectiveC` below; the optimizer eliminates a round
+                // trip only when it recognises both halves.
                 @_semantics("convertToObjectiveC")
-                public func _bridgeToObjectiveC() -> NSArray {
-                    rawValue
+                public func _bridgeToObjectiveC() -> ObjectiveCRepresentation {
+                    makeObjectiveCRepresentation()
                 }
 
-                // This direction is allowed to defer element checking — it is what lets
-                // `as!` skip the walk — so it does not validate.
                 public static func _forceBridgeFromObjectiveC(
-                    _ source: NSArray,
+                    _ source: ObjectiveCRepresentation,
                     result: inout Self?
                 ) {
-                    result = Self(rawValue: source)
+                    result = Self(uncheckedObjectiveCRepresentation: source)
                 }
 
                 @discardableResult
                 public static func _conditionallyBridgeFromObjectiveC(
-                    _ source: NSArray,
+                    _ source: ObjectiveCRepresentation,
                     result: inout Self?
                 ) -> Bool {
-                    guard Self.containsOnlyExpectedElementTypes(in: source) else {
+                    guard let value = Self(objectiveCRepresentation: source) else {
                         result = nil
                         return false
                     }
-                    result = Self(rawValue: source)
+                    result = value
                     return true
                 }
 
                 @_semantics("bridgeFromObjectiveC")
                 @_effects(readonly)
                 public static func _unconditionallyBridgeFromObjectiveC(
-                    _ source: NSArray?
+                    _ source: ObjectiveCRepresentation?
                 ) -> Self {
                     guard let source else {
-                        return Self()
+                        return Self.substituteForMissingObjectiveCRepresentation
                     }
-                    return Self(rawValue: source)
+                    return Self(uncheckedObjectiveCRepresentation: source)
                 }
             }
             """
         }
     }
 
-    @Test func readsTheObjectiveCTypeFromRawValueAndKeepsEveryGenericParameter() {
+    // Nothing about the expansion depends on the attached type's shape: no stored property is
+    // read, and the Objective-C class is never named — `_ObjectiveCType` is spelled as the
+    // protocol's associated type and resolved in the concrete type's context.
+    @Test func namesNoObjectiveCClassAndReadsNoStoredProperty() {
         assertMacro {
             """
             @ObjectiveCBridgeable
-            public struct NSMutableDictionaryOf<Key, Value> {
-                public let rawValue: NSMutableDictionary
+            public struct WrapsNothing: ObjectiveCRepresentable {
             }
             """
         } expansion: {
             """
-            public struct NSMutableDictionaryOf<Key, Value> {
-                public let rawValue: NSMutableDictionary
+            public struct WrapsNothing: ObjectiveCRepresentable {
             }
 
-            extension NSMutableDictionaryOf: _ObjectiveCBridgeable {
-                public typealias _ObjectiveCType = NSMutableDictionary
+            extension WrapsNothing: _ObjectiveCBridgeable {
+                public typealias _ObjectiveCType = ObjectiveCRepresentation
 
-                // Paired with `bridgeFromObjectiveC` below; the optimizer's round-trip
-                // elimination only fires when it recognises both halves.
+                // Paired with `bridgeFromObjectiveC` below; the optimizer eliminates a round
+                // trip only when it recognises both halves.
                 @_semantics("convertToObjectiveC")
-                public func _bridgeToObjectiveC() -> NSMutableDictionary {
-                    rawValue
+                public func _bridgeToObjectiveC() -> ObjectiveCRepresentation {
+                    makeObjectiveCRepresentation()
                 }
 
-                // This direction is allowed to defer element checking — it is what lets
-                // `as!` skip the walk — so it does not validate.
                 public static func _forceBridgeFromObjectiveC(
-                    _ source: NSMutableDictionary,
+                    _ source: ObjectiveCRepresentation,
                     result: inout Self?
                 ) {
-                    result = Self(rawValue: source)
+                    result = Self(uncheckedObjectiveCRepresentation: source)
                 }
 
                 @discardableResult
                 public static func _conditionallyBridgeFromObjectiveC(
-                    _ source: NSMutableDictionary,
+                    _ source: ObjectiveCRepresentation,
                     result: inout Self?
                 ) -> Bool {
-                    guard Self.containsOnlyExpectedElementTypes(in: source) else {
+                    guard let value = Self(objectiveCRepresentation: source) else {
                         result = nil
                         return false
                     }
-                    result = Self(rawValue: source)
+                    result = value
                     return true
                 }
 
                 @_semantics("bridgeFromObjectiveC")
                 @_effects(readonly)
                 public static func _unconditionallyBridgeFromObjectiveC(
-                    _ source: NSMutableDictionary?
+                    _ source: ObjectiveCRepresentation?
                 ) -> Self {
                     guard let source else {
-                        return Self()
+                        return Self.substituteForMissingObjectiveCRepresentation
                     }
-                    return Self(rawValue: source)
+                    return Self(uncheckedObjectiveCRepresentation: source)
+                }
+            }
+            """
+        }
+    }
+
+    @Test func worksOnAnEnumSinceBridgingCoversEveryValueType() {
+        assertMacro {
+            """
+            @ObjectiveCBridgeable
+            public enum Direction: ObjectiveCRepresentable {
+                case north
+                case south
+            }
+            """
+        } expansion: {
+            """
+            public enum Direction: ObjectiveCRepresentable {
+                case north
+                case south
+            }
+
+            extension Direction: _ObjectiveCBridgeable {
+                public typealias _ObjectiveCType = ObjectiveCRepresentation
+
+                // Paired with `bridgeFromObjectiveC` below; the optimizer eliminates a round
+                // trip only when it recognises both halves.
+                @_semantics("convertToObjectiveC")
+                public func _bridgeToObjectiveC() -> ObjectiveCRepresentation {
+                    makeObjectiveCRepresentation()
+                }
+
+                public static func _forceBridgeFromObjectiveC(
+                    _ source: ObjectiveCRepresentation,
+                    result: inout Self?
+                ) {
+                    result = Self(uncheckedObjectiveCRepresentation: source)
+                }
+
+                @discardableResult
+                public static func _conditionallyBridgeFromObjectiveC(
+                    _ source: ObjectiveCRepresentation,
+                    result: inout Self?
+                ) -> Bool {
+                    guard let value = Self(objectiveCRepresentation: source) else {
+                        result = nil
+                        return false
+                    }
+                    result = value
+                    return true
+                }
+
+                @_semantics("bridgeFromObjectiveC")
+                @_effects(readonly)
+                public static func _unconditionallyBridgeFromObjectiveC(
+                    _ source: ObjectiveCRepresentation?
+                ) -> Self {
+                    guard let source else {
+                        return Self.substituteForMissingObjectiveCRepresentation
+                    }
+                    return Self(uncheckedObjectiveCRepresentation: source)
                 }
             }
             """
@@ -136,57 +194,53 @@ struct ObjectiveCBridgeableMacroTests {
         assertMacro {
             """
             @ObjectiveCBridgeable
-            struct InternalHandle {
-                let rawValue: NSArray
+            struct InternalValue: ObjectiveCRepresentable {
             }
             """
         } expansion: {
             """
-            struct InternalHandle {
-                let rawValue: NSArray
+            struct InternalValue: ObjectiveCRepresentable {
             }
 
-            extension InternalHandle: _ObjectiveCBridgeable {
-                typealias _ObjectiveCType = NSArray
+            extension InternalValue: _ObjectiveCBridgeable {
+                typealias _ObjectiveCType = ObjectiveCRepresentation
 
-                // Paired with `bridgeFromObjectiveC` below; the optimizer's round-trip
-                // elimination only fires when it recognises both halves.
+                // Paired with `bridgeFromObjectiveC` below; the optimizer eliminates a round
+                // trip only when it recognises both halves.
                 @_semantics("convertToObjectiveC")
-                func _bridgeToObjectiveC() -> NSArray {
-                    rawValue
+                func _bridgeToObjectiveC() -> ObjectiveCRepresentation {
+                    makeObjectiveCRepresentation()
                 }
 
-                // This direction is allowed to defer element checking — it is what lets
-                // `as!` skip the walk — so it does not validate.
                 static func _forceBridgeFromObjectiveC(
-                    _ source: NSArray,
+                    _ source: ObjectiveCRepresentation,
                     result: inout Self?
                 ) {
-                    result = Self(rawValue: source)
+                    result = Self(uncheckedObjectiveCRepresentation: source)
                 }
 
                 @discardableResult
                 static func _conditionallyBridgeFromObjectiveC(
-                    _ source: NSArray,
+                    _ source: ObjectiveCRepresentation,
                     result: inout Self?
                 ) -> Bool {
-                    guard Self.containsOnlyExpectedElementTypes(in: source) else {
+                    guard let value = Self(objectiveCRepresentation: source) else {
                         result = nil
                         return false
                     }
-                    result = Self(rawValue: source)
+                    result = value
                     return true
                 }
 
                 @_semantics("bridgeFromObjectiveC")
                 @_effects(readonly)
                 static func _unconditionallyBridgeFromObjectiveC(
-                    _ source: NSArray?
+                    _ source: ObjectiveCRepresentation?
                 ) -> Self {
                     guard let source else {
-                        return Self()
+                        return Self.substituteForMissingObjectiveCRepresentation
                     }
-                    return Self(rawValue: source)
+                    return Self(uncheckedObjectiveCRepresentation: source)
                 }
             }
             """
@@ -197,57 +251,15 @@ struct ObjectiveCBridgeableMacroTests {
         assertMacro {
             """
             @ObjectiveCBridgeable
-            public class ReferenceHandle {
-                public let rawValue: NSArray = NSArray()
+            public class ReferenceValue: ObjectiveCRepresentable {
             }
             """
         } diagnostics: {
             """
             @ObjectiveCBridgeable
             ┬────────────────────
-            ╰─ 🛑 @ObjectiveCBridgeable can only be applied to a struct. `_ObjectiveCBridgeable` is only consulted for value types — a class is always bridged verbatim, so the conformance would never be used.
-            public class ReferenceHandle {
-                public let rawValue: NSArray = NSArray()
-            }
-            """
-        }
-    }
-
-    @Test func rejectsATypeWithNoRawValueToReadTheObjectiveCTypeFrom() {
-        assertMacro {
-            """
-            @ObjectiveCBridgeable
-            public struct WithoutRawValue {
-                public let storage: NSArray
-            }
-            """
-        } diagnostics: {
-            """
-            @ObjectiveCBridgeable
-            ┬────────────────────
-            ╰─ 🛑 @ObjectiveCBridgeable requires a stored `rawValue` property with an explicit type annotation naming the Objective-C class to bridge to, for example `let rawValue: NSArray`.
-            public struct WithoutRawValue {
-                public let storage: NSArray
-            }
-            """
-        }
-    }
-
-    @Test func ignoresAComputedRawValueSinceTheBridgeNeedsStorage() {
-        assertMacro {
-            """
-            @ObjectiveCBridgeable
-            public struct ComputedRawValue {
-                public var rawValue: NSArray { NSArray() }
-            }
-            """
-        } diagnostics: {
-            """
-            @ObjectiveCBridgeable
-            ┬────────────────────
-            ╰─ 🛑 @ObjectiveCBridgeable requires a stored `rawValue` property with an explicit type annotation naming the Objective-C class to bridge to, for example `let rawValue: NSArray`.
-            public struct ComputedRawValue {
-                public var rawValue: NSArray { NSArray() }
+            ╰─ 🛑 @ObjectiveCBridgeable can only be applied to a struct or an enum. `_ObjectiveCBridgeable` is only consulted for value types — a class is always bridged verbatim, so the conformance would never be used.
+            public class ReferenceValue: ObjectiveCRepresentable {
             }
             """
         }
