@@ -1,35 +1,44 @@
 #if canImport(ObjectiveC)
 import Foundation
 
-/// A typed handle over one of the Objective-C collection classes whose
-/// lightweight generic parameters Swift erases on import.
+/// A typed handle over one of the Objective-C collection classes whose lightweight generic
+/// parameters Swift erases on import.
 ///
 /// ## Why the parameters are missing in the first place
 ///
-/// Not because the importer cannot represent them. `shouldSuppressGenericParamsImport`
-/// in the compiler's `lib/ClangImporter/ImportDecl.cpp` drops the generic parameters of
+/// Not because the importer cannot represent them. `shouldSuppressGenericParamsImport` in
+/// the compiler's `lib/ClangImporter/ImportDecl.cpp` drops the generic parameters of
 /// `NSArray`, `NSDictionary`, `NSSet`, `NSOrderedSet`, `NSEnumerator` and `NSMeasurement`
 /// — and of every subclass of theirs — on purpose, and Foundation's API notes pair
 /// `SwiftBridge:` with `SwiftImportAsNonGeneric: true` on exactly those classes. The
-/// element type is not lost, it *moves*: an Objective-C `NSArray<NSString *> *` arrives
-/// in Swift as `[String]`, carrying the parameter with it.
+/// element type is not lost, it *moves*: an Objective-C `NSArray<NSString *> *` arrives in
+/// Swift as `[String]`, carrying the parameter with it.
 ///
 /// It only goes missing when the bridge is the thing you must avoid — when reference
 /// semantics, object identity or key-value observing are the point and the `NSArray`
 /// instance itself has to be what you hold, rather than a Swift copy of its contents.
 /// That is what these handles are for.
 ///
+/// ## This protocol describes the shape; ``ObjectiveCBridgeable`` emits the bridge
+///
+/// The four `_ObjectiveCBridgeable` methods are deliberately **not** default implementations
+/// here. They are generated onto each concrete type by `@ObjectiveCBridgeable`, because a
+/// witness living in a protocol extension has an opaque `Self`, is therefore passed
+/// indirectly, and is consequently invisible to the optimizer pass that eliminates bridging
+/// round trips. Keeping a default implementation around would also mean that a type which
+/// forgot the macro still compiled — just slower, with nothing to say so.
+///
 /// ## A conforming type must be a struct
 ///
 /// `_ObjectiveCBridgeable` is only ever consulted for value types, so wrapping the
 /// collection in a generic *class* would have the protocol skipped entirely:
 ///
-/// - `tryCastFromObjCBridgeableToClass` in the runtime's `DynamicCast.cpp` only runs
-///   when the source is a struct or an enum.
+/// - `tryCastFromObjCBridgeableToClass` in the runtime's `DynamicCast.cpp` only runs when
+///   the source is a struct or an enum.
 /// - `tryCastFromClassToObjCBridgeable`, the other direction, only runs when the
 ///   destination is.
-/// - `_bridgeAnythingToObjectiveC` documents that a class type "is always bridged
-///   verbatim, the function returns `x`".
+/// - `_bridgeAnythingToObjectiveC` documents that a class type "is always bridged verbatim,
+///   the function returns `x`".
 ///
 /// ## Reference semantics
 ///
@@ -37,27 +46,29 @@ import Foundation
 /// underlying object. On the mutable handles the mutating operations are therefore
 /// deliberately *not* `mutating`, matching `NSMutableArray` itself: a handle held in a
 /// `let` can still add elements, and nothing in the API suggests value semantics.
-public protocol ObjectiveCCollectionHandle: _ObjectiveCBridgeable where _ObjectiveCType: NSObject {
+public protocol ObjectiveCCollectionHandle {
+    /// The Objective-C collection class this handle puts an element type back onto.
+    associatedtype ObjectiveCCollection: NSObject
+
     /// Wraps `rawValue` without copying it — the handle and the collection share identity.
-    init(rawValue: _ObjectiveCType)
+    init(rawValue: ObjectiveCCollection)
 
     /// An empty collection of the wrapped class.
     ///
-    /// Only needed so that `_unconditionallyBridgeFromObjectiveC` has something to return
-    /// for the `nil` source the protocol admits: an Objective-C method declared `nonnull`
-    /// that returned `nil` anyway.
+    /// Needed so that `_unconditionallyBridgeFromObjectiveC` has something to return for the
+    /// `nil` source the protocol admits: an Objective-C method declared `nonnull` that
+    /// returned `nil` anyway.
     init()
 
     /// The wrapped Objective-C collection. Bridging hands this exact object back, which is
     /// what keeps object identity — and therefore key-value observing — intact.
-    var rawValue: _ObjectiveCType { get }
+    var rawValue: ObjectiveCCollection { get }
 
     /// Whether every element of `rawValue` matches this handle's element types.
     ///
-    /// Backs `as?`, which the protocol requires to complete its checking immediately
-    /// rather than defer it. Linear in the size of the collection, the same cost
-    /// `nsArray as? [String]` already pays.
-    static func containsOnlyExpectedElementTypes(in rawValue: _ObjectiveCType) -> Bool
+    /// Backs `as?` and ``init(validating:)``. Linear in the size of the collection, the same
+    /// cost `nsArray as? [String]` already pays.
+    static func containsOnlyExpectedElementTypes(in rawValue: ObjectiveCCollection) -> Bool
 }
 
 // MARK: - Validating construction
@@ -69,89 +80,16 @@ extension ObjectiveCCollectionHandle {
     ///
     /// `rawValue as? NSArrayOf<String>` reaches the same validation at runtime — pinned by
     /// the bridging tests in both debug and release builds — but it is not the spelling to
-    /// reach for. When the source's static type is exactly the `_ObjectiveCType`, the
-    /// compiler classifies the cast as an unconditional bridging coercion and reports
-    /// `conditional cast from 'NSArray' to 'NSArrayOf<String>' always succeeds` at every
-    /// such call site. The diagnostic is wrong about what happens, and right that the
-    /// language promises nothing here. This initializer is ordinary Swift with no cast
-    /// machinery in it, so it is warning-free and its behaviour is not at the mercy of how
-    /// a future compiler classifies the cast.
-    public init?(validating rawValue: _ObjectiveCType) {
+    /// reach for. When the source's static type is exactly the wrapped class, the compiler
+    /// classifies the cast as an unconditional bridging coercion and reports `conditional
+    /// cast from 'NSArray' to 'NSArrayOf<String>' always succeeds` at every such call site.
+    /// The diagnostic is wrong about what happens, and right that the language promises
+    /// nothing here. This initializer is ordinary Swift with no cast machinery in it, so it
+    /// is warning-free and its behaviour is not at the mercy of how a future compiler
+    /// classifies the cast.
+    public init?(validating rawValue: ObjectiveCCollection) {
         guard Self.containsOnlyExpectedElementTypes(in: rawValue) else { return nil }
         self.init(rawValue: rawValue)
-    }
-}
-
-// MARK: - Bridging
-
-extension ObjectiveCCollectionHandle {
-    // The two `@_semantics` strings here and below are the matched pair that
-    // `objc-bridging-optimization` looks for (`SwiftCompilerSources/Sources/Optimizer/
-    // FunctionPasses/ObjCBridgingOptimization.swift`): it rewrites "bridge to Swift, then
-    // straight back to Objective-C" into a reuse of the original object, and fires only when
-    // it recognises *both* halves. The claim they make is true here, and more strictly than
-    // it is for `Array` — a handle wraps the object it was given, so
-    // `Handle(rawValue: x)._bridgeToObjectiveC()` is `x` itself, not merely equal to it.
-    //
-    // **They do not currently fire, and the reason is structural.** Checked by reading the
-    // optimized SIL of a round trip: the attributes are attached and survive serialization
-    // (`sil [readonly] [_semantics "bridgeFromObjectiveC"]`), but the pass also requires
-    // `arguments.count == 2` and a `.directGuaranteed` first argument, and a default
-    // implementation in a protocol extension has an opaque `Self`, so it is passed
-    // indirectly — `@out` on the way back, `@in_guaranteed` on the way in. Those conditions
-    // were written for `String` and `Array`, which are concrete at the call site.
-    //
-    // They stay because the claim is true, they cost nothing, and the structure may change.
-    // If the goal is the optimization itself, `@inlinable` is the effective lever and a
-    // bigger one: with it the round trip collapses to a single `struct_extract` and both
-    // bridging calls disappear, no pass involved (also measured). That is an API commitment
-    // about the bodies, so it is a separate decision rather than something to slip in here.
-    //
-    // `bridgeFromObjectiveC` is deliberately not in the compiler's `SemanticAttrs.def`:
-    // `hasSemanticsAttribute` takes an arbitrary string, and only names the compiler
-    // references as constants get registered. Foundation has adopted neither, which is why
-    // the pass still carries hardcoded mangled names for `String` and `Array` as a
-    // fallback.
-    @_semantics("convertToObjectiveC")
-    public func _bridgeToObjectiveC() -> _ObjectiveCType {
-        rawValue
-    }
-
-    public static func _forceBridgeFromObjectiveC(_ source: _ObjectiveCType, result: inout Self?) {
-        // The protocol explicitly allows this direction to defer element checking — it is
-        // what lets `nsArray as! [String]` avoid a walk — so no validation here.
-        result = Self(rawValue: source)
-    }
-
-    @discardableResult
-    public static func _conditionallyBridgeFromObjectiveC(
-        _ source: _ObjectiveCType,
-        result: inout Self?
-    ) -> Bool {
-        guard containsOnlyExpectedElementTypes(in: source) else {
-            result = nil
-            return false
-        }
-        result = Self(rawValue: source)
-        return true
-    }
-
-    // `@_effects(readonly)` matches the protocol requirement, which already declares it, so
-    // callers are entitled to that assumption whether or not it is restated here.
-    //
-    // One consequence is worth knowing, because it does not apply to the standard library's
-    // value-type conformances: `readonly` lets the optimizer merge two calls that share an
-    // argument. For a non-`nil` source that is harmless — both results wrap the same object,
-    // which is exactly what a handle is. For a `nil` source the merged result is one shared
-    // empty collection, and on the mutable handles that is observable. It takes an
-    // Objective-C method declared `nonnull` returning `nil` twice in one scope to get there,
-    // which is a contract violation before it is ever our problem, but it is the reason this
-    // note exists rather than nothing.
-    @_semantics("bridgeFromObjectiveC")
-    @_effects(readonly)
-    public static func _unconditionallyBridgeFromObjectiveC(_ source: _ObjectiveCType?) -> Self {
-        guard let source else { return Self() }
-        return Self(rawValue: source)
     }
 }
 #endif

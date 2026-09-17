@@ -18,6 +18,7 @@ import Foundation
 ///
 /// Deliberately not `Hashable`: the contents can change under a stored hash, which would
 /// quietly corrupt any `Set` or dictionary key holding it. ``NSArrayOf`` is `Hashable`.
+@ObjectiveCBridgeable
 public struct NSMutableArrayOf<Element> {
     public let rawValue: NSMutableArray
 
@@ -37,8 +38,6 @@ public struct NSMutableArrayOf<Element> {
 // MARK: - ObjectiveCCollectionHandle
 
 extension NSMutableArrayOf: ObjectiveCCollectionHandle {
-    public typealias _ObjectiveCType = NSMutableArray
-
     public static func containsOnlyExpectedElementTypes(in rawValue: NSMutableArray) -> Bool {
         everyObjectMatches(rawValue.objectEnumerator(), as: Element.self)
     }

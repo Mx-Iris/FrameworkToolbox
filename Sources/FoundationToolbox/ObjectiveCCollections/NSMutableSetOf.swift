@@ -6,6 +6,7 @@ import Foundation
 /// As with ``NSMutableArrayOf``, the mutating operations are deliberately not `mutating`
 /// — this handle has reference semantics. Also deliberately not `Hashable`, since the
 /// contents can change under a stored hash.
+@ObjectiveCBridgeable
 public struct NSMutableSetOf<Element> {
     public let rawValue: NSMutableSet
 
@@ -25,8 +26,6 @@ public struct NSMutableSetOf<Element> {
 // MARK: - ObjectiveCCollectionHandle
 
 extension NSMutableSetOf: ObjectiveCCollectionHandle {
-    public typealias _ObjectiveCType = NSMutableSet
-
     public static func containsOnlyExpectedElementTypes(in rawValue: NSMutableSet) -> Bool {
         everyObjectMatches(rawValue.objectEnumerator(), as: Element.self)
     }
