@@ -118,15 +118,17 @@ items[0]                    // 正常取回，Swift 侧往返是安全的
 
 它们仍然是 `Equatable`，走 `NSArray.isEqual(_:)` 比内容，是纯读操作。
 
-## 给自己的 ObjC 集合类做同样的封装
+## 给自己的集合类做同样的封装
 
-`@ObjectiveCBridgeable` 是公开的。拿它贴在任何「用 `rawValue` 包住一个 ObjC 对象」的
-struct 上，就能得到完整的 `_ObjectiveCBridgeable` 实现：
+`@ObjectiveCBridgeable` 与 `ObjectiveCRepresentable` 都是公开的，
+拿它们可以给第三方 ObjC 库的泛型集合类、或是本批没做的 `NSOrderedSet` / `NSCountedSet`
+做同样的封装：
 
 ```swift
 @ObjectiveCBridgeable
 public struct NSOrderedSetOf<Element>: ObjectiveCCollectionHandle {
-    public let rawValue: NSOrderedSet                 // 宏从这行读出 _ObjectiveCType
+    public typealias ObjectiveCRepresentation = NSOrderedSet   // 见下方说明，这行不能省
+    public let rawValue: NSOrderedSet
 
     public init(rawValue: NSOrderedSet) { self.rawValue = rawValue }
     public init() { self.init(rawValue: NSOrderedSet()) }
@@ -137,25 +139,13 @@ public struct NSOrderedSetOf<Element>: ObjectiveCCollectionHandle {
 }
 ```
 
-要求三条，遵循 `ObjectiveCCollectionHandle` 就等于让编译器替你检查：
-**必须是 struct**（class 会让整个协议被绕过）、**必须有带类型标注的存储属性 `rawValue`**
-（宏按语法读它，展开期没有类型检查器可以推断）、
-**必须提供 `init(rawValue:)`、`init()` 和 `containsOnlyExpectedElementTypes(in:)`**。
+遵循 `ObjectiveCCollectionHandle` 就拿到了全部四个转换成员的默认实现，
+只需提供 `rawValue`、两个 `init` 和元素校验。**`typealias` 那行不能省**：
+转换成员来自协议扩展，泛型默认实现里没有具体类型可供推断关联类型。
 
-### 为什么这四个方法是逐类型生成的，而不是写一次
-
-因为写在协议扩展里会让优化整个失效。实测三种配置：
-
-| witness 位置 | `@_semantics` | 桥接往返 |
-|---|---|---|
-| 协议扩展默认实现 | 有 | 不消除 |
-| 具体类型 | 无 | 不消除 |
-| 具体类型 | 有 | **消除** |
-
-协议扩展里的 `Self` 是不透明泛型参数，只能按地址传递，而消除往返的优化 pass 要求参数
-直接传递；而光把方法挪到具体类型、不带 `@_semantics`，pass 又认不出它们是桥接函数。
-两个条件缺一不可，且**漏掉任何一个都没有任何提示** —— 编译照过，只是优化悄悄归零。
-把这件事交给宏，就是为了不让它依赖人每次都记得。
+不是集合、不包装对象的类型，直接遵循 `ObjectiveCRepresentable` 自定义转换 ——
+两个协议、宏的契约、以及为什么这些 witness 必须逐类型生成，
+都在[让自己的类型参与 Swift ↔ Objective-C 桥接](ObjectiveCBridging.md)。
 
 ## 两条实现决策
 

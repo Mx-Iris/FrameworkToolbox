@@ -37,6 +37,7 @@
 - [`LogCategory` 与 `#log(category:)` 多 Category 支持](LoggableCategories.md) —— `@Loggable` / `#log` 从「一个类型一个 category」扩展为支持多 category 的经过。
 - [`@Signpostable` 与 `#signpost` 用法契约与实现决策](SignpostMacros.md) —— 三种调用形态怎么选、区间凭据为什么要自带 log handle、为什么防 Foundation 依赖的守卫必须独占一个 target。
 - [关掉日志与埋点 —— `isEnabled:` 与运行时开关](LoggingSwitches.md) —— 三层开关怎么用、关掉之后为什么连插值都不求值、泛型限制怎么顺带解除的。
+- [让自己的类型参与 Swift ↔ Objective-C 桥接](ObjectiveCBridging.md) —— `ObjectiveCRepresentable` 协议与 `@ObjectiveCBridgeable` 宏；四条契约，以及为什么那四个 witness 必须逐类型生成而不能写进协议扩展。
 - [类型化的 NS 集合句柄 —— 用法契约与实现决策](TypedObjectiveCCollections.md) —— 六个泛型 struct 给 `NSArray` / `NSDictionary` / `NSSet` 一族补回元素类型；引用语义、变更方法为什么不是 `mutating`、为什么用 `init(validating:)` 而不是 `as?`。
 - [存储层重构与 `@UserDefault` 宏](StorageLayer.md) —— `@Keychain` 宏发布后，运行时与编码协议都是 Keychain 专用的；这篇记录如何把存储层抽象出来以容纳 `@UserDefault`。
 

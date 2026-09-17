@@ -251,6 +251,49 @@ mangled name 作为兜底。）
 展开结果由 `ObjectiveCBridgeableMacroTests` 的六条快照逐字钉住——
 包括三个属性的位置，这是防止它们被顺手删掉的唯一手段。
 
+### 宏与协议再拆一层：转换逻辑归用户，宏只管 witness
+
+第一版宏把集合语义焊死在了里面——它读 `rawValue`、调用
+`containsOnlyExpectedElementTypes(in:)`、拿 `Self()` 兜底 nil，
+也就是说它只能给「包着一个 ObjC 集合的 struct」用。这不对：
+`_ObjectiveCBridgeable` 跟集合毫无关系。
+
+拆成两层：
+
+- **`ObjectiveCRepresentable`（新增，公开）** —— 转换逻辑住在这里，是普通的、
+  有文档的、不带下划线的 API。两个必须实现的成员
+  （`makeObjectiveCRepresentation()` 与 `init?(objectiveCRepresentation:)`）
+  加两个带默认实现的（`init(uncheckedObjectiveCRepresentation:)` 走完整校验，
+  `substituteForMissingObjectiveCRepresentation` 默认 trap）。
+  **不假设包装、不假设集合、不假设有存储属性**：
+  实现者可以现造一个 ObjC 对象、回来时解析它，也可以像句柄那样原样包住。
+- **`@ObjectiveCBridgeable`（改造）** —— 现在对被贴的类型零假设：
+  不读属性、不需要被告知 ObjC 类是什么（`_ObjectiveCType` 直接写成协议的关联类型
+  `ObjectiveCRepresentation`，由编译器在具体类型上下文里解析），
+  四个生成的方法全部只是转发。它唯一贡献的东西是**优化器能看穿的 witness**，
+  也就是前一节测出来的那件协议扩展做不到的事。顺带支持 enum——
+  `_ObjectiveCBridgeable` 对所有值类型生效，第一版限定 struct 是没必要的。
+
+`ObjectiveCCollectionHandle` 随之变成 `ObjectiveCRepresentable` 的 refinement，
+把四个转换成员在自己的扩展里填好（包括覆盖 `init(unchecked:)` 走廉价路径——
+元素校验是 O(n)，而 `as!` 本就获准推迟）。六个类型一行没改。
+
+**重新测过 SIL，优化仍然生效**（`return %0`）。多出来的这层转发不影响：
+那个 pass 基于 `@_semantics` 属性做信任，根本不看函数体。
+
+### 关联类型推断会在协议扩展处断链
+
+改造后六个类型全部编译失败：`protocol requires nested type 'ObjectiveCRepresentation'`。
+
+原因值得记一笔：Swift 从**直接满足协议要求的成员**推断关联类型，
+而这六个类型的转换成员全部来自 `ObjectiveCCollectionHandle` 的扩展，
+泛型默认实现里没有任何具体类型可供推断。于是必须显式写
+`typealias ObjectiveCRepresentation = NSArray`。
+
+直接遵循 `ObjectiveCRepresentable` 的类型不受影响——
+`makeObjectiveCRepresentation() -> NSString` 是直接 witness，推断照常工作。
+`ObjectiveCRepresentableTests` 里那个非集合类型就故意不写 typealias，钉住这个差别。
+
 ## 决策日志
 
 | 日期 | 决定 | 理由 |
@@ -274,3 +317,7 @@ mangled name 作为兜底。）
 | 2026-09-17 | 用宏生成而非手写六份 | 正确性系于三个下划线属性，漏标一个则优化静默归零且无任何诊断；六处靠人保持一致不可持续 |
 | 2026-09-17 | 协议删去 `_ObjectiveCBridgeable` refine 与全部桥接默认实现 | 保留默认实现意味着「忘记贴宏」仍能编译、只是悄悄变慢，正是要消除的静默失效 |
 | 2026-09-17 | `@ObjectiveCBridgeable` 对外公开 | 使用方可用它封装第三方 ObjC 泛型集合类；后续补 `NSOrderedSet` / `NSCountedSet` 也只需贴一行 |
+| 2026-09-17 | 拆出 `ObjectiveCRepresentable`，宏对被贴类型零假设 | 第一版宏把集合语义焊死（读 `rawValue`、调元素校验、`Self()` 兜底），而 `_ObjectiveCBridgeable` 与集合无关；转换逻辑应归用户，宏只贡献优化器能看穿的 witness |
+| 2026-09-17 | 宏同时支持 enum | `_ObjectiveCBridgeable` 对所有值类型生效，第一版限定 struct 属于无谓收窄 |
+| 2026-09-17 | 六个句柄显式声明 `typealias ObjectiveCRepresentation` | 关联类型推断只看直接 witness；这些类型的转换成员来自协议扩展，泛型默认实现无具体类型可推 |
+| 2026-09-17 | 改造后重测 SIL 确认优化未失效 | 多一层协议转发不影响：pass 基于 `@_semantics` 信任，不分析函数体 |
