@@ -188,6 +188,39 @@ public init?(validating rawValue: _ObjectiveCType)
 `NSCopying` / KVC 代理在所有 Apple 平台都存在，`canImport(ObjectiveC)` 在六个平台上一律为真。
 但没验证就是没验证，装上组件后应当补跑。
 
+### 桥接方法补上标准库那三个属性，但优化并未因此生效
+
+标准库在自己的 `_ObjectiveCBridgeable` 实现上带 `@_semantics("convertToObjectiveC")`
+与 `@_effects(readonly)`，本批照做，并补上了**配对的第三个**
+`@_semantics("bridgeFromObjectiveC")` —— 少了它前一个就是死标记：
+消费这些标记的 `objc-bridging-optimization` pass 要同时认出往返的两半才会动手，
+其作用是把「桥到 Swift 又立刻桥回 Objective-C」改写成直接复用原对象。
+
+（`bridgeFromObjectiveC` 没有登记在编译器的 `SemanticAttrs.def` 里，
+那里只收编译器自己以常量形式引用的名字，而 `hasSemanticsAttribute` 接受任意字符串。
+Foundation 至今两个都没标注，所以那个 pass 还硬编码着 `String` 和 `Array` 的
+mangled name 作为兜底。）
+
+**读优化后的 SIL 核对了结果，分两半：**
+
+- **属性确实附上了**，且跨模块序列化后仍在：
+  `sil [readonly] [_semantics "bridgeFromObjectiveC"] @…`。
+- **但那个 pass 不会触发**，原因是结构性的。pass 要求
+  `arguments.count == 2` 且首参约定为 `.directGuaranteed`，
+  而协议扩展里的默认实现其 `Self` 是不透明泛型参数，只能按地址传递
+  —— 实测得到的是 `@out` 与 `@in_guaranteed`，三个参数。
+  那两个条件是照着 `String` / `Array` 这类在调用点已具体化的类型写的。
+
+**`@_effects(readonly)` 不受此影响**，它不经过那个 pass，是通用的 effects 信息，
+优化器直接使用。
+
+保留这三个属性的理由是：它们陈述的事实为真（而且比对 `Array` 更严格——句柄包的就是
+交给它的那个对象），零成本，且结构将来可能变。
+
+**若目标就是那个优化本身，`@inlinable` 才是有效杠杆，且力度大得多。** 同样实测过：
+加上之后整个往返塌缩成一次 `struct_extract`，两个桥接调用全部消失，不经过任何 pass。
+但它把函数体变成兼容性承诺，属于独立的 API 决策，未在本批采纳。
+
 ## 决策日志
 
 | 日期 | 决定 | 理由 |
@@ -204,3 +237,6 @@ public init?(validating rawValue: _ObjectiveCType)
 | 2026-09-16 | 新增 `init?(validating:)`，作为取代 `as?` 的推荐入口 | 编译器对 `as?` 报 “always succeeds”，会落到每个使用方的调用点上；且语言未承诺这种 cast 走条件路径 |
 | 2026-09-16 | 不新建 `Documentations/Glossary.md` | 本次只引入「类型化句柄」一个概念，提案与配套指南里都已完整解释，为它单开一份术语表不划算 |
 | 2026-09-16 | 状态置为 Implemented | 六个类型、守卫与 37 个测试全部落地；完整测试套件原始退出码 0，构建零警告 |
+| 2026-09-17 | 桥接方法补上 `@_semantics("convertToObjectiveC")` / `@_semantics("bridgeFromObjectiveC")` / `@_effects(readonly)` | 与标准库实现对齐；前两个必须成对，只标一个则完全无效 |
+| 2026-09-17 | 如实记录那个 pass 当前不触发，而非默认它生效 | 读优化后 SIL 核对：属性在，但协议扩展默认实现的 `Self` 按地址传递，不满足 pass 的参数个数与约定条件 |
+| 2026-09-17 | 不在本批采纳 `@inlinable` | 实测它能真正消除往返且优于那个 pass，但它把函数体变成兼容性承诺，属于独立的 API 决策 |

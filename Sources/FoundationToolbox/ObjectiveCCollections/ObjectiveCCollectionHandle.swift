@@ -85,6 +85,34 @@ extension ObjectiveCCollectionHandle {
 // MARK: - Bridging
 
 extension ObjectiveCCollectionHandle {
+    // The two `@_semantics` strings here and below are the matched pair that
+    // `objc-bridging-optimization` looks for (`SwiftCompilerSources/Sources/Optimizer/
+    // FunctionPasses/ObjCBridgingOptimization.swift`): it rewrites "bridge to Swift, then
+    // straight back to Objective-C" into a reuse of the original object, and fires only when
+    // it recognises *both* halves. The claim they make is true here, and more strictly than
+    // it is for `Array` — a handle wraps the object it was given, so
+    // `Handle(rawValue: x)._bridgeToObjectiveC()` is `x` itself, not merely equal to it.
+    //
+    // **They do not currently fire, and the reason is structural.** Checked by reading the
+    // optimized SIL of a round trip: the attributes are attached and survive serialization
+    // (`sil [readonly] [_semantics "bridgeFromObjectiveC"]`), but the pass also requires
+    // `arguments.count == 2` and a `.directGuaranteed` first argument, and a default
+    // implementation in a protocol extension has an opaque `Self`, so it is passed
+    // indirectly — `@out` on the way back, `@in_guaranteed` on the way in. Those conditions
+    // were written for `String` and `Array`, which are concrete at the call site.
+    //
+    // They stay because the claim is true, they cost nothing, and the structure may change.
+    // If the goal is the optimization itself, `@inlinable` is the effective lever and a
+    // bigger one: with it the round trip collapses to a single `struct_extract` and both
+    // bridging calls disappear, no pass involved (also measured). That is an API commitment
+    // about the bodies, so it is a separate decision rather than something to slip in here.
+    //
+    // `bridgeFromObjectiveC` is deliberately not in the compiler's `SemanticAttrs.def`:
+    // `hasSemanticsAttribute` takes an arbitrary string, and only names the compiler
+    // references as constants get registered. Foundation has adopted neither, which is why
+    // the pass still carries hardcoded mangled names for `String` and `Array` as a
+    // fallback.
+    @_semantics("convertToObjectiveC")
     public func _bridgeToObjectiveC() -> _ObjectiveCType {
         rawValue
     }
@@ -108,6 +136,19 @@ extension ObjectiveCCollectionHandle {
         return true
     }
 
+    // `@_effects(readonly)` matches the protocol requirement, which already declares it, so
+    // callers are entitled to that assumption whether or not it is restated here.
+    //
+    // One consequence is worth knowing, because it does not apply to the standard library's
+    // value-type conformances: `readonly` lets the optimizer merge two calls that share an
+    // argument. For a non-`nil` source that is harmless — both results wrap the same object,
+    // which is exactly what a handle is. For a `nil` source the merged result is one shared
+    // empty collection, and on the mutable handles that is observable. It takes an
+    // Objective-C method declared `nonnull` returning `nil` twice in one scope to get there,
+    // which is a contract violation before it is ever our problem, but it is the reason this
+    // note exists rather than nothing.
+    @_semantics("bridgeFromObjectiveC")
+    @_effects(readonly)
     public static func _unconditionallyBridgeFromObjectiveC(_ source: _ObjectiveCType?) -> Self {
         guard let source else { return Self() }
         return Self(rawValue: source)
