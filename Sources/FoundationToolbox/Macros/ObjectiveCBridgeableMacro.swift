@@ -1,51 +1,51 @@
 #if canImport(ObjectiveC)
 import Foundation
 
-/// Generates the `_ObjectiveCBridgeable` conformance for a struct that wraps an Objective-C
-/// object in a `rawValue` property.
+/// Generates the `_ObjectiveCBridgeable` conformance for a type that conforms to
+/// ``ObjectiveCRepresentable``.
 ///
 /// ```swift
 /// @ObjectiveCBridgeable
-/// public struct NSArrayOf<Element>: ObjectiveCCollectionHandle {
-///     public let rawValue: NSArray
-///     public init(rawValue: NSArray) { self.rawValue = rawValue }
-///     public init() { self.init(rawValue: NSArray()) }
+/// public struct Coordinate: ObjectiveCRepresentable {
+///     public var latitude: Double
+///     public var longitude: Double
 ///
-///     public static func containsOnlyExpectedElementTypes(in rawValue: NSArray) -> Bool {
-///         everyObjectMatches(rawValue.objectEnumerator(), as: Element.self)
-///     }
+///     public func makeObjectiveCRepresentation() -> NSValue { ... }
+///     public init?(objectiveCRepresentation source: NSValue) { ... }
 /// }
 /// ```
 ///
-/// expands to a `_ObjectiveCBridgeable` extension carrying `typealias _ObjectiveCType =
-/// NSArray` and the four bridging methods, with `@_semantics("convertToObjectiveC")`,
-/// `@_semantics("bridgeFromObjectiveC")` and `@_effects(readonly)` in the right places.
-/// Generated members take the attached type's access level.
+/// The macro assumes nothing about the attached type beyond that conformance. It does not
+/// read its properties, does not need to be told the Objective-C class, and every member it
+/// writes forwards to an ``ObjectiveCRepresentable`` member — `_ObjectiveCType` is spelled
+/// as the protocol's own `ObjectiveCRepresentation`, which the compiler resolves in the
+/// concrete type's context. The conversion is yours to define in ordinary, non-underscored
+/// API; the macro contributes exactly one thing, and it is not convenience.
 ///
-/// ## Requirements
+/// Generated members take the attached type's access level. The type must be a **struct or
+/// an enum** — `_ObjectiveCBridgeable` is only consulted for value types, so on a class
+/// every generated member would sit unused.
 ///
-/// The attached type must be a **struct** — `_ObjectiveCBridgeable` is only consulted for
-/// value types, and a class would have it skipped entirely — and must provide:
+/// For the common case of wrapping an Objective-C collection without copying it, conform to
+/// ``ObjectiveCCollectionHandle`` instead: it refines ``ObjectiveCRepresentable`` and fills
+/// in all four conversion members for you.
 ///
-/// - `var rawValue: <an Objective-C class>`, stored, with an explicit type annotation. The
-///   macro reads that annotation syntactically; it becomes `_ObjectiveCType`.
-/// - `init(rawValue:)`, and `init()` for the `nil` source the protocol admits.
-/// - `static func containsOnlyExpectedElementTypes(in:) -> Bool`, which backs `as?`.
+/// ## The one thing the macro contributes
 ///
-/// Conforming to ``ObjectiveCCollectionHandle`` has the compiler check all four up front,
-/// rather than surfacing them as errors inside an expansion.
+/// Witnesses the optimizer can see through — which no protocol extension can provide.
+/// Measured by reading optimized SIL of a bridge-to-Swift-and-straight-back round trip:
 ///
-/// ## Why the witnesses are generated per type instead of written once
+/// | Witness lives in | `@_semantics` | Round trip |
+/// |---|---|---|
+/// | protocol extension | present | **not** eliminated |
+/// | concrete type | absent | **not** eliminated |
+/// | concrete type | present | eliminated, down to `return %0` |
 ///
-/// Because a shared default implementation in a protocol extension silently costs the whole
-/// optimization. `objc-bridging-optimization` eliminates a bridge-to-Swift-and-back round
-/// trip only when it matches both halves, and it requires a `.directGuaranteed` first
-/// argument — which an opaque `Self` in a protocol extension cannot be, since it travels
-/// indirectly. Emitting onto the concrete type fixes the calling convention, and the
-/// `@_semantics` pair is what makes the pass recognise the functions at all. Both are
-/// required: dropping either one returns the round trip to two full calls, with nothing
-/// reported anywhere. Verified by reading optimized SIL; see the
-/// `objective-c-typed-collections` proposal for the three-way comparison.
+/// `objc-bridging-optimization` needs `arguments.count == 2` with a `.directGuaranteed`
+/// first argument — an opaque `Self` in a protocol extension travels indirectly and never
+/// matches — and it needs both halves annotated to recognise them as a pair. Break either
+/// condition and the optimization silently returns to zero with the build still green, which
+/// is why this is generated rather than written out once per type.
 @attached(
     extension,
     conformances: _ObjectiveCBridgeable,
