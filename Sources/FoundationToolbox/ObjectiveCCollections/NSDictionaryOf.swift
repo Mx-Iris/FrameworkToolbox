@@ -10,14 +10,16 @@ import Foundation
 /// `hash` / `isEqual:` pair on the bridged key object, not through Swift hashing. The
 /// conversions to and from `[Key: Value]` do require it, and live in a constrained
 /// extension.
-@ObjectiveCBridgeable
+@ObjectiveCBridgeable(inlinable: true)
 public struct NSDictionaryOf<Key, Value> {
     public let rawValue: NSDictionary
 
+    @inlinable
     public init(rawValue: NSDictionary) {
         self.rawValue = rawValue
     }
 
+    @inlinable
     public init() {
         self.init(rawValue: NSDictionary())
     }
@@ -41,6 +43,7 @@ public struct NSDictionaryOf<Key, Value> {
 extension NSDictionaryOf: ObjectiveCCollectionHandle {
     public typealias ObjectiveCRepresentation = NSDictionary
 
+    @inlinable
     public static func containsOnlyExpectedElementTypes(in rawValue: NSDictionary) -> Bool {
         everyKeyAndValueMatches(in: rawValue, keyType: Key.self, valueType: Value.self)
     }

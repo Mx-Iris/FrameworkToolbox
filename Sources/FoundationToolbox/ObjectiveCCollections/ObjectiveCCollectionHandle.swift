@@ -57,10 +57,12 @@ where ObjectiveCRepresentation: NSObject {
 
 extension ObjectiveCCollectionHandle {
     /// Hands back the wrapped object itself, so identity survives the round trip.
+    @inlinable
     public func makeObjectiveCRepresentation() -> ObjectiveCRepresentation {
         rawValue
     }
 
+    @inlinable
     public init?(objectiveCRepresentation source: ObjectiveCRepresentation) {
         guard Self.containsOnlyExpectedElementTypes(in: source) else { return nil }
         self.init(rawValue: source)
@@ -69,10 +71,12 @@ extension ObjectiveCCollectionHandle {
     /// Wraps without validating, which is the point of this direction: the element check is
     /// linear, and the bridge explicitly allows `as!` to defer it — the same latitude
     /// `nsArray as! [String]` takes.
+    @inlinable
     public init(uncheckedObjectiveCRepresentation source: ObjectiveCRepresentation) {
         self.init(rawValue: source)
     }
 
+    @inlinable
     public static var substituteForMissingObjectiveCRepresentation: Self {
         Self()
     }
@@ -94,6 +98,7 @@ extension ObjectiveCCollectionHandle {
     /// nothing here. This initializer is ordinary Swift with no cast machinery in it, so it
     /// is warning-free and its behaviour is not at the mercy of how a future compiler
     /// classifies the cast.
+    @inlinable
     public init?(validating rawValue: ObjectiveCRepresentation) {
         self.init(objectiveCRepresentation: rawValue)
     }

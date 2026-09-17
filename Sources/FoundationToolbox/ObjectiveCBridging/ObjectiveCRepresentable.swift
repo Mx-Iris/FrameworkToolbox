@@ -67,6 +67,7 @@ extension ObjectiveCRepresentable {
     ///
     /// Correct for every conforming type, and the cheapest thing to write; override it when
     /// the full check is expensive and the deferral is worth having.
+    @inlinable
     public init(uncheckedObjectiveCRepresentation source: ObjectiveCRepresentation) {
         guard let value = Self(objectiveCRepresentation: source) else {
             preconditionFailure(
@@ -80,6 +81,7 @@ extension ObjectiveCRepresentable {
         self = value
     }
 
+    @inlinable
     public static var substituteForMissingObjectiveCRepresentation: Self {
         preconditionFailure(
             """

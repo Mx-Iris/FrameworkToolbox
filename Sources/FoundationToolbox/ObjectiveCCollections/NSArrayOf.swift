@@ -21,14 +21,16 @@ import Foundation
 ///
 /// See ``ObjectiveCCollectionHandle`` for why Swift erases the element type to begin
 /// with, and why this is a struct rather than a generic class.
-@ObjectiveCBridgeable
+@ObjectiveCBridgeable(inlinable: true)
 public struct NSArrayOf<Element> {
     public let rawValue: NSArray
 
+    @inlinable
     public init(rawValue: NSArray) {
         self.rawValue = rawValue
     }
 
+    @inlinable
     public init() {
         self.init(rawValue: NSArray())
     }
@@ -51,6 +53,7 @@ public struct NSArrayOf<Element> {
 extension NSArrayOf: ObjectiveCCollectionHandle {
     public typealias ObjectiveCRepresentation = NSArray
 
+    @inlinable
     public static func containsOnlyExpectedElementTypes(in rawValue: NSArray) -> Bool {
         everyObjectMatches(rawValue.objectEnumerator(), as: Element.self)
     }

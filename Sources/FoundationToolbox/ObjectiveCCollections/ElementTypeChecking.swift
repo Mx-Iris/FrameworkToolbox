@@ -63,11 +63,13 @@ internal func expectedDictionaryKey<Key>(
 /// Whether a type parameter is `Any`, in which case every element matches it and the
 /// validation walk can be skipped entirely.
 @inline(__always)
+@inlinable
 internal func matchesEveryElement<Expected>(_ expectedType: Expected.Type) -> Bool {
     expectedType == Any.self
 }
 
 /// Whether every object the enumerator yields is an `Expected`.
+@inlinable
 internal func everyObjectMatches<Expected>(
     _ enumerator: NSEnumerator,
     as expectedType: Expected.Type
@@ -83,6 +85,7 @@ internal func everyObjectMatches<Expected>(
 ///
 /// Walks the key enumerator rather than `enumerateKeysAndObjects(_:)` so that the early
 /// exit needs no escaping-closure bookkeeping.
+@inlinable
 internal func everyKeyAndValueMatches<ExpectedKey, ExpectedValue>(
     in dictionary: NSDictionary,
     keyType: ExpectedKey.Type,

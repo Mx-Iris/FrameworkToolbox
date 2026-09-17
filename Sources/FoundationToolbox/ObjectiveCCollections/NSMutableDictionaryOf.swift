@@ -7,14 +7,16 @@ import Foundation
 /// and the subscript setter is `nonmutating` — this handle has reference semantics, and
 /// pretending otherwise would be the lie. Also deliberately not `Hashable`, since the
 /// contents can change under a stored hash.
-@ObjectiveCBridgeable
+@ObjectiveCBridgeable(inlinable: true)
 public struct NSMutableDictionaryOf<Key, Value> {
     public let rawValue: NSMutableDictionary
 
+    @inlinable
     public init(rawValue: NSMutableDictionary) {
         self.rawValue = rawValue
     }
 
+    @inlinable
     public init() {
         self.init(rawValue: NSMutableDictionary())
     }
@@ -33,6 +35,7 @@ public struct NSMutableDictionaryOf<Key, Value> {
 extension NSMutableDictionaryOf: ObjectiveCCollectionHandle {
     public typealias ObjectiveCRepresentation = NSMutableDictionary
 
+    @inlinable
     public static func containsOnlyExpectedElementTypes(in rawValue: NSMutableDictionary) -> Bool {
         everyKeyAndValueMatches(in: rawValue, keyType: Key.self, valueType: Value.self)
     }

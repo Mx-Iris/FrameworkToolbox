@@ -8,14 +8,16 @@ import Foundation
 ///
 /// `Element` carries no `Hashable` requirement: membership goes through the Objective-C
 /// `hash` / `isEqual:` pair on the bridged element, not through Swift hashing.
-@ObjectiveCBridgeable
+@ObjectiveCBridgeable(inlinable: true)
 public struct NSSetOf<Element> {
     public let rawValue: NSSet
 
+    @inlinable
     public init(rawValue: NSSet) {
         self.rawValue = rawValue
     }
 
+    @inlinable
     public init() {
         self.init(rawValue: NSSet())
     }
@@ -35,6 +37,7 @@ public struct NSSetOf<Element> {
 extension NSSetOf: ObjectiveCCollectionHandle {
     public typealias ObjectiveCRepresentation = NSSet
 
+    @inlinable
     public static func containsOnlyExpectedElementTypes(in rawValue: NSSet) -> Bool {
         everyObjectMatches(rawValue.objectEnumerator(), as: Element.self)
     }
