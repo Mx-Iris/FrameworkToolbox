@@ -26,6 +26,8 @@ public struct NSMutableSetOf<Element> {
 // MARK: - ObjectiveCCollectionHandle
 
 extension NSMutableSetOf: ObjectiveCCollectionHandle {
+    public typealias ObjectiveCRepresentation = NSMutableSet
+
     public static func containsOnlyExpectedElementTypes(in rawValue: NSMutableSet) -> Bool {
         everyObjectMatches(rawValue.objectEnumerator(), as: Element.self)
     }

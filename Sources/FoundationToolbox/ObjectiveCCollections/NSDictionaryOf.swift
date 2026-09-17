@@ -39,6 +39,8 @@ public struct NSDictionaryOf<Key, Value> {
 // MARK: - ObjectiveCCollectionHandle
 
 extension NSDictionaryOf: ObjectiveCCollectionHandle {
+    public typealias ObjectiveCRepresentation = NSDictionary
+
     public static func containsOnlyExpectedElementTypes(in rawValue: NSDictionary) -> Bool {
         everyKeyAndValueMatches(in: rawValue, keyType: Key.self, valueType: Value.self)
     }

@@ -33,6 +33,8 @@ public struct NSSetOf<Element> {
 // MARK: - ObjectiveCCollectionHandle
 
 extension NSSetOf: ObjectiveCCollectionHandle {
+    public typealias ObjectiveCRepresentation = NSSet
+
     public static func containsOnlyExpectedElementTypes(in rawValue: NSSet) -> Bool {
         everyObjectMatches(rawValue.objectEnumerator(), as: Element.self)
     }

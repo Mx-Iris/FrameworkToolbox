@@ -33,6 +33,11 @@ internal func exerciseTypedCollectionHandles() {
 // defect class CLAUDE.md records, and it has bitten this package more than once.
 @ObjectiveCBridgeable
 struct GuardedCollectionHandle: ObjectiveCCollectionHandle {
+    // Spelled out rather than inferred. The conversion members come from
+    // `ObjectiveCCollectionHandle`'s extension, and a generic default implementation carries
+    // no concrete type for the compiler to infer the associated type from.
+    typealias ObjectiveCRepresentation = NSArray
+
     let rawValue: NSArray
 
     init(rawValue: NSArray) { self.rawValue = rawValue }

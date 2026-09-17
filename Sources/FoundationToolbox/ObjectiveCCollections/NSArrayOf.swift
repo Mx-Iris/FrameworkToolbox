@@ -49,6 +49,8 @@ public struct NSArrayOf<Element> {
 // MARK: - ObjectiveCCollectionHandle
 
 extension NSArrayOf: ObjectiveCCollectionHandle {
+    public typealias ObjectiveCRepresentation = NSArray
+
     public static func containsOnlyExpectedElementTypes(in rawValue: NSArray) -> Bool {
         everyObjectMatches(rawValue.objectEnumerator(), as: Element.self)
     }

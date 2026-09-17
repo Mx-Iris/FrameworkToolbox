@@ -38,6 +38,8 @@ public struct NSMutableArrayOf<Element> {
 // MARK: - ObjectiveCCollectionHandle
 
 extension NSMutableArrayOf: ObjectiveCCollectionHandle {
+    public typealias ObjectiveCRepresentation = NSMutableArray
+
     public static func containsOnlyExpectedElementTypes(in rawValue: NSMutableArray) -> Bool {
         everyObjectMatches(rawValue.objectEnumerator(), as: Element.self)
     }
