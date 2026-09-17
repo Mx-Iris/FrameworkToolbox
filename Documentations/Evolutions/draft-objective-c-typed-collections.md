@@ -294,6 +294,45 @@ mangled name 作为兜底。）
 `makeObjectiveCRepresentation() -> NSString` 是直接 witness，推断照常工作。
 `ObjectiveCRepresentableTests` 里那个非集合类型就故意不写 typealias，钉住这个差别。
 
+### `@inlinable`：宏参数 + 整条链
+
+`@_semantics` 那套只管「桥过去又桥回来」的往返消除。**单向桥接**——
+把句柄交给一个 ObjC API，或者从 ObjC 拿到对象包成句柄——不在那个 pass 的射程内，
+实测是一次实打实的跨模块函数调用。
+
+给宏加 `inlinable:` 参数（默认 `false`，只接受布尔字面量，
+因为 `@inlinable` 是属性、必须在展开期定死），六个句柄开启，
+并把桥接链上的每一环都标上：协议扩展的四个转换成员、
+句柄的 `init(rawValue:)` / `init()` / 元素校验，以及校验用到的 internal 辅助函数。
+
+**内联是链式的**，漏标一环就断在那一环——这不是推测，是中途只标了协议扩展那一层时
+实测到的：调用方看到的 `_bridgeToObjectiveC` 不可内联，它内部调什么都无所谓。
+
+实测结果（读优化后的 SIL）：
+
+| 场景 | 优化后 |
+|------|--------|
+| `handle as NSArray` | 一条 `struct_extract` |
+| `NSArrayOf(rawValue: x)` | 直接 `return`，构造被内联 |
+| 往返 | `return %0`（与之前一致，没被破坏） |
+
+默认关闭是因为 `@inlinable` 把函数体变成兼容性承诺，
+这种决定不该由宏替使用方做。
+
+**两条从编译器源码读出来的规则，一条与直觉相反：**
+
+- `@_effects` **无条件**阻止内联（`PerformanceInlinerUtils.cpp` 里
+  `if (… || Callee->hasEffectsKind()) return nullptr;`），
+  所以带 `@_effects(readonly)` 的 `_unconditionallyBridgeFromObjectiveC`
+  标了 `@inlinable` 也不会被内联。属性仍然保留——effects 信息对那次真实调用仍有价值——
+  生成的代码里写明了原因。
+- `@_semantics` **不**阻止内联。`getSemanticFunctionLevel` 只把 array 与
+  fixed_storage 语义判为 `Fundamental`，其余一律 `Transient`，不触发提前返回。
+  实测也确认带 `@_semantics` 的 witness 照样被内联。
+
+过程中有一次假阴性值得记下来：第一次测「宏生成的 witness 加 `@inlinable`」时结论是无效，
+实为 swiftmodule 构建缓存未更新。**读 SIL 前要确认产物是新的。**
+
 ## 决策日志
 
 | 日期 | 决定 | 理由 |
@@ -321,3 +360,6 @@ mangled name 作为兜底。）
 | 2026-09-17 | 宏同时支持 enum | `_ObjectiveCBridgeable` 对所有值类型生效，第一版限定 struct 属于无谓收窄 |
 | 2026-09-17 | 六个句柄显式声明 `typealias ObjectiveCRepresentation` | 关联类型推断只看直接 witness；这些类型的转换成员来自协议扩展，泛型默认实现无具体类型可推 |
 | 2026-09-17 | 改造后重测 SIL 确认优化未失效 | 多一层协议转发不影响：pass 基于 `@_semantics` 信任，不分析函数体 |
+| 2026-09-17 | 宏加 `inlinable:` 参数，默认 `false`，只接受布尔字面量 | `@inlinable` 把函数体变成兼容性承诺，不该由宏替使用方决定；而属性必须在展开期定死，表达式无处求值 |
+| 2026-09-17 | 六个句柄开启，并标注桥接链上每一环 | 内联是链式的，只标一层时实测无效；全链标注后单向桥接塌缩成一条 `struct_extract` |
+| 2026-09-17 | 带 `@_effects(readonly)` 的 witness 仍标 `@inlinable`，并注明其不生效 | `@_effects` 无条件阻止内联（编译器源码），但 effects 信息对真实调用仍有价值；不注明就会变成又一个「看着像优化实则无效」的标注 |

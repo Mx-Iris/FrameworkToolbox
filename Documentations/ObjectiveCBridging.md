@@ -80,6 +80,59 @@ typealias ObjectiveCRepresentation = NSArray
 报错信息是 `protocol requires nested type 'ObjectiveCRepresentation'`，
 照着补一行即可。
 
+## `inlinable:` —— 想让桥接被内联时
+
+默认关闭。打开后宏给四个 witness 加上 `@inlinable`：
+
+```swift
+@ObjectiveCBridgeable(inlinable: true)
+public struct NSArrayOf<Element>: ObjectiveCCollectionHandle { … }
+```
+
+只接受**布尔字面量**：`@inlinable` 是个属性，要不要发射必须在宏展开时定死，
+传表达式会直接报错而不是被忽略。
+
+默认关是因为 `@inlinable` 把函数体变成兼容性承诺 —— 调用方模块会内联进去，
+以后再改这几行就是源码层面的变更。这不该由宏替所有人决定。
+本库自己的六个句柄开了。
+
+### 内联是链式的，少标一环就断在那一环
+
+`@inlinable` 只让**被标注的那一层**函数体跨模块可见。桥接的调用链是：
+
+```
+调用方  handle as NSArray
+  └─ _bridgeToObjectiveC()             ← 宏生成，靠 inlinable: true
+       └─ makeObjectiveCRepresentation()  ← 协议扩展，要自己标
+            └─ rawValue                   ← 存储属性，不用标
+```
+
+反方向还要经过 `init(rawValue:)`、`init()`、`containsOnlyExpectedElementTypes(in:)`，
+以及后者调用到的 internal 辅助函数（internal 函数标 `@inlinable` 即可，
+它自带跨模块可见性）。**漏标任何一环，内联就停在那一环。**
+
+本库这六个句柄整条链都标了，实测结果：
+
+| 场景 | 优化后 |
+|------|--------|
+| `handle as NSArray` | 一条 `struct_extract`，跨模块调用消失 |
+| `NSArrayOf(rawValue: x)` | 直接 `return`，构造被内联 |
+| 桥过去再桥回来 | `return %0`，往返整个消失 |
+
+### 一个标了也不生效的位置
+
+`_unconditionallyBridgeFromObjectiveC` 带着 `@_effects(readonly)`，
+而 `@_effects` **无条件**阻止内联 —— 内联器在
+`PerformanceInlinerUtils.cpp` 里的判断是
+`if (… || Callee->hasEffectsKind()) return nullptr;`，走到别的条件之前就退出了。
+所以这一个方法无论怎么标都不会被内联；宏仍然给它标上属性，
+因为 effects 信息对优化器分析那次真实调用仍然有用，
+生成的代码里也写明了这件事。
+
+**但 `@_semantics` 不阻止内联**，这点与直觉相反：同一份代码里
+`getSemanticFunctionLevel` 只把 array 与 fixed_storage 语义当作 `Fundamental`，
+`convertToObjectiveC` 属于 `Transient`，不触发那条提前返回。
+
 ## 宏到底做了什么
 
 只做一件事：**把四个 `_ObjectiveCBridgeable` witness 放到具体类型上，并带上三个下划线属性。**
