@@ -118,6 +118,45 @@ items[0]                    // 正常取回，Swift 侧往返是安全的
 
 它们仍然是 `Equatable`，走 `NSArray.isEqual(_:)` 比内容，是纯读操作。
 
+## 给自己的 ObjC 集合类做同样的封装
+
+`@ObjectiveCBridgeable` 是公开的。拿它贴在任何「用 `rawValue` 包住一个 ObjC 对象」的
+struct 上，就能得到完整的 `_ObjectiveCBridgeable` 实现：
+
+```swift
+@ObjectiveCBridgeable
+public struct NSOrderedSetOf<Element>: ObjectiveCCollectionHandle {
+    public let rawValue: NSOrderedSet                 // 宏从这行读出 _ObjectiveCType
+
+    public init(rawValue: NSOrderedSet) { self.rawValue = rawValue }
+    public init() { self.init(rawValue: NSOrderedSet()) }
+
+    public static func containsOnlyExpectedElementTypes(in rawValue: NSOrderedSet) -> Bool {
+        rawValue.allSatisfy { $0 is Element }
+    }
+}
+```
+
+要求三条，遵循 `ObjectiveCCollectionHandle` 就等于让编译器替你检查：
+**必须是 struct**（class 会让整个协议被绕过）、**必须有带类型标注的存储属性 `rawValue`**
+（宏按语法读它，展开期没有类型检查器可以推断）、
+**必须提供 `init(rawValue:)`、`init()` 和 `containsOnlyExpectedElementTypes(in:)`**。
+
+### 为什么这四个方法是逐类型生成的，而不是写一次
+
+因为写在协议扩展里会让优化整个失效。实测三种配置：
+
+| witness 位置 | `@_semantics` | 桥接往返 |
+|---|---|---|
+| 协议扩展默认实现 | 有 | 不消除 |
+| 具体类型 | 无 | 不消除 |
+| 具体类型 | 有 | **消除** |
+
+协议扩展里的 `Self` 是不透明泛型参数，只能按地址传递，而消除往返的优化 pass 要求参数
+直接传递；而光把方法挪到具体类型、不带 `@_semantics`，pass 又认不出它们是桥接函数。
+两个条件缺一不可，且**漏掉任何一个都没有任何提示** —— 编译照过，只是优化悄悄归零。
+把这件事交给宏，就是为了不让它依赖人每次都记得。
+
 ## 两条实现决策
 
 **为什么是 struct 而不是泛型 class。** `_ObjectiveCBridgeable` 在运行时只对值类型生效：

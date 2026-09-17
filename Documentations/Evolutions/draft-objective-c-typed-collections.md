@@ -188,7 +188,7 @@ public init?(validating rawValue: _ObjectiveCType)
 `NSCopying` / KVC 代理在所有 Apple 平台都存在，`canImport(ObjectiveC)` 在六个平台上一律为真。
 但没验证就是没验证，装上组件后应当补跑。
 
-### 桥接方法补上标准库那三个属性，但优化并未因此生效
+### 桥接方法补上标准库那三个属性，但优化并未因此生效（已由下一节解决）
 
 标准库在自己的 `_ObjectiveCBridgeable` 实现上带 `@_semantics("convertToObjectiveC")`
 与 `@_effects(readonly)`，本批照做，并补上了**配对的第三个**
@@ -221,6 +221,36 @@ mangled name 作为兜底。）
 加上之后整个往返塌缩成一次 `struct_extract`，两个桥接调用全部消失，不经过任何 pass。
 但它把函数体变成兼容性承诺，属于独立的 API 决策，未在本批采纳。
 
+### 把 witness 从协议默认实现挪到具体类型，优化才真正生效
+
+上一节的结论是「属性标对了，pass 仍不触发」。补了一组对照实验，三种配置读优化后的 SIL：
+
+| witness 位置 | `@_semantics` | 往返是否消除 |
+|---|---|---|
+| 协议扩展默认实现 | 有 | **否** |
+| 具体类型 | 无 | **否** |
+| 具体类型 | 有 | **是**，塌缩成 `return %0` |
+
+**两个条件缺一不可**，这是本批最值得记住的一条。协议扩展里的 `Self` 是不透明泛型参数，
+只能按地址传递（`@out` / `@in_guaranteed`），而 pass 要求 `.directGuaranteed`；
+挪到具体类型修好了调用约定，但没有 `@_semantics`，pass 根本不认识这两个函数是桥接函数。
+
+于是四个 witness 必须逐类型生成。**用宏，不手写**：六个类型 × 四个方法，
+正确性全落在三个下划线属性上，漏标一个则优化静默归零，编译器不给任何提示。
+这正是宏该干的活。新增 `@ObjectiveCBridgeable`（公开），
+从 `rawValue` 的类型标注读出 `_ObjectiveCType`，生成 typealias 与四个带属性的方法，
+访问级别跟随被贴的类型。
+
+**协议随之改形**：`ObjectiveCCollectionHandle` 不再 refine `_ObjectiveCBridgeable`，
+也不再提供任何桥接默认实现——留着的话，某个类型忘了贴宏仍然能编译，
+只是悄悄退回没有优化的版本。现在协议只描述形状（`rawValue` / 两个 `init` /
+元素校验），宏负责性能敏感的具体 witness，一份实现，没有二义。
+
+宏对外公开，使用方可以拿它包第三方 ObjC 库的泛型集合类，
+`NSOrderedSet` / `NSCountedSet` 将来也只是贴一行的事。
+展开结果由 `ObjectiveCBridgeableMacroTests` 的六条快照逐字钉住——
+包括三个属性的位置，这是防止它们被顺手删掉的唯一手段。
+
 ## 决策日志
 
 | 日期 | 决定 | 理由 |
@@ -240,3 +270,7 @@ mangled name 作为兜底。）
 | 2026-09-17 | 桥接方法补上 `@_semantics("convertToObjectiveC")` / `@_semantics("bridgeFromObjectiveC")` / `@_effects(readonly)` | 与标准库实现对齐；前两个必须成对，只标一个则完全无效 |
 | 2026-09-17 | 如实记录那个 pass 当前不触发，而非默认它生效 | 读优化后 SIL 核对：属性在，但协议扩展默认实现的 `Self` 按地址传递，不满足 pass 的参数个数与约定条件 |
 | 2026-09-17 | 不在本批采纳 `@inlinable` | 实测它能真正消除往返且优于那个 pass，但它把函数体变成兼容性承诺，属于独立的 API 决策 |
+| 2026-09-17 | 四个桥接 witness 改为逐类型生成，不再走协议默认实现 | 对照实验：协议扩展的 `Self` 按地址传递，永远不满足 pass 的 `.directGuaranteed` 要求；挪到具体类型后往返被完全消除 |
+| 2026-09-17 | 用宏生成而非手写六份 | 正确性系于三个下划线属性，漏标一个则优化静默归零且无任何诊断；六处靠人保持一致不可持续 |
+| 2026-09-17 | 协议删去 `_ObjectiveCBridgeable` refine 与全部桥接默认实现 | 保留默认实现意味着「忘记贴宏」仍能编译、只是悄悄变慢，正是要消除的静默失效 |
+| 2026-09-17 | `@ObjectiveCBridgeable` 对外公开 | 使用方可用它封装第三方 ObjC 泛型集合类；后续补 `NSOrderedSet` / `NSCountedSet` 也只需贴一行 |
