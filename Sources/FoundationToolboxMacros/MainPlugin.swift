@@ -8,5 +8,6 @@ struct MainPlugin: CompilerPlugin {
         SelectorMacro.self,
         KeychainMacro.self,
         UserDefaultMacro.self,
+        ObjectiveCBridgeableMacro.self,
     ]
 }
