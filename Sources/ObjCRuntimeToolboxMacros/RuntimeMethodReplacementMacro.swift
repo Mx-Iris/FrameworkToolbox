@@ -108,11 +108,17 @@ private func buildCallOriginalDeclaration(
     let returnClauseText = shape.returnTypeText.map { " -> \($0)" } ?? ""
     let returnKeyword = shape.isVoid ? "" : "return "
 
-    // @discardableResult so a replacement can forward to the host purely for
+    // `@discardableResult` so a replacement can forward to the host purely for
     // its side effects without the compiler objecting to the ignored value.
+    //
+    // Omitted for a `Void` method: there is nothing to discard, and the
+    // compiler then reports `'@discardableResult' declared on a function
+    // returning 'Void' is unnecessary` — against generated code the caller
+    // never wrote and cannot silence.
+    let discardableResultAttribute = shape.isVoid ? "" : "@discardableResult\n"
+
     return """
-    @discardableResult
-    func callOriginal(\(parameterListText))\(returnClauseText) {
+    \(discardableResultAttribute)func callOriginal(\(parameterListText))\(returnClauseText) {
         let dispatchFunction = unsafeBitCast(self.originalImplementation, to: (\(conventionSignatureText)).self)
         \(returnKeyword)dispatchFunction(\(callArgumentList))
     }

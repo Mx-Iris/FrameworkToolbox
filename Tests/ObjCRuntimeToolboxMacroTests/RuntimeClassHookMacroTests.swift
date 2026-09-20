@@ -381,7 +381,6 @@ struct RuntimeClassHookExpansionTests {
             """
             struct TileHooks {
                 func setReplacementAppImage(_ image: AnyObject?, usesIconServices: Bool) {
-                    @discardableResult
                     func callOriginal(_ argument0: AnyObject?, _ argument1: Bool) {
                         let dispatchFunction = unsafeBitCast(self.originalImplementation, to: (@convention(c) (AnyObject, Selector, AnyObject?, Bool) -> Void).self)
                         dispatchFunction(self.host, NSSelectorFromString("setReplacementAppImage:usesIconServices:"), argument0, argument1)
@@ -558,7 +557,6 @@ struct RuntimeClassHookExpansionTests {
             """
             struct TileHooks {
                 func setTileSize(_ size: CGSize) {
-                    @discardableResult
                     func callOriginal(_ argument0: CGSize) {
                         let dispatchFunction = unsafeBitCast(self.originalImplementation, to: (@convention(c) (AnyObject, Selector, CGSize) -> Void).self)
                         dispatchFunction(self.host, NSSelectorFromString("setTileSize:"), argument0)
@@ -684,7 +682,6 @@ struct RuntimeClassHookExpansionTests {
             """
             struct TileHooks {
                 func setImage(_ image: AnyObject?) {
-                    @discardableResult
                     func callOriginal(_ argument0: AnyObject?) {
                         let dispatchFunction = unsafeBitCast(self.originalImplementation, to: (@convention(c) (AnyObject, Selector, AnyObject?) -> Void).self)
                         dispatchFunction(self.host, NSSelectorFromString("setImage:"), argument0)
