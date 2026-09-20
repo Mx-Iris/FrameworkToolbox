@@ -14,5 +14,11 @@ struct MainPlugin: CompilerPlugin {
         AddAsyncMacro.self,
         AddAsyncAllMembersMacro.self,
         AddCompletionHandlerMacro.self,
+        BijectionMacro.self,
+        CaseTagMacro.self,
+        MirroredCasesMacro.self,
+        DefaultedCasesMacro.self,
+        ProjectionMacro.self,
+        ProjectionFunctionMacro.self,
     ]
 }
