@@ -29,5 +29,8 @@ SPM library product，使用方以源码依赖并重新编译，未开启 librar
 | [draft](draft-objective-c-typed-collections.md) | 给被类型擦除的 NS 集合类补回 Swift 泛型 | Implemented |
 | [draft](draft-inline-mutex-raw-layout.md) | 用 `@_rawLayout` 把 Mutex 的锁与值内联（暂不采纳） | Deferred |
 | [draft](draft-availability-macros.md) | 引入 SwiftStdlib 可用性宏，收掉四平台长写法 | Implemented |
+| [draft](draft-lexic-enum-macros.md) | 把 lexic 的五个枚举宏并入 SwiftStdlibToolbox | Implemented |
+| [draft](draft-projection-multi-payload.md) | 让 @Projection 支持多关联值的 case，并修掉展开出的 unreachable default | Implemented |
+| [draft](draft-projection-marker-macro.md) | 把 @Projection 的字符串参数换成标记宏 | Implemented |
 
 `Specs/` 与 `Plans/` 是提案制确立前的产物，见[上级索引](../README.md)，保持原样不迁移。

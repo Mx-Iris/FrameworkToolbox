@@ -31,6 +31,18 @@
 - [draft —— 引入 SwiftStdlib 可用性宏，收掉四平台长写法](Evolutions/draft-availability-macros.md)（Implemented）
   `@available(SwiftStdlib 5.7, *)` 取代四平台长写法，定义表照搬上游以保持同义。
   两个禁区：`@inlinable` 函数体（编译器当场拒绝）与宏展开结果（编译器**不给任何诊断**，炸在下游）。
+- [draft —— 把 lexic 的五个枚举宏并入 `SwiftStdlibToolbox`](Evolutions/draft-lexic-enum-macros.md)（Implemented）
+  从 [ordo-one/lexic](https://github.com/ordo-one/lexic) 搬入五个枚举宏：`@Bijection`、`@CaseTag`、`@MirroredCases`、`@DefaultedCases`、`@Projection`
+  （后三个是上游 `@Discriminated` / `@Discriminant` / `@ambient` 的改名，原名是不可读的类型论术语）。
+  顺带把上游那套宏参数解码机制放进 `MacroToolbox`。不新增 target，不改包拓扑。
+- [draft —— 让 `@Projection` 支持多关联值的 case，并修掉展开出的 unreachable default](Evolutions/draft-projection-multi-payload.md)（Implemented）
+  投影匹配从「恰好一个关联值」放开到任意个数（含零个）；同批次修掉无条件生成 `default: nil` 导致的
+  `default will never be executed` —— 那一行在调用方源码里并不存在，上游的测试数据恰好每个都留了一个
+  无 payload 的 case，把它盖住了。
+- [draft —— 把 `@Projection` 的字符串参数换成标记宏](Evolutions/draft-projection-marker-macro.md)（Implemented）
+  `@Projection(through: "id")` 换成 `@Projection` + 贴在函数上的 `@ProjectionFunction`，魔法字符串消失。
+  文内留有「为什么不能改成闭包或函数引用」的实测结论：引用宿主成员会 circular reference，泛型函数不能当函数值传，
+  且即使传得进去宏也只能拿到名字。
 
 ## 专题说明
 
@@ -39,6 +51,7 @@
 - [关掉日志与埋点 —— `isEnabled:` 与运行时开关](LoggingSwitches.md) —— 三层开关怎么用、关掉之后为什么连插值都不求值、泛型限制怎么顺带解除的。
 - [让自己的类型参与 Swift ↔ Objective-C 桥接](ObjectiveCBridging.md) —— `ObjectiveCRepresentable` 协议与 `@ObjectiveCBridgeable` 宏；四条契约，以及为什么那四个 witness 必须逐类型生成而不能写进协议扩展。
 - [类型化的 NS 集合句柄 —— 用法契约与实现决策](TypedObjectiveCCollections.md) —— 六个泛型 struct 给 `NSArray` / `NSDictionary` / `NSSet` 一族补回元素类型；引用语义、变更方法为什么不是 `mutating`、为什么用 `init(validating:)` 而不是 `as?`。
+- [五个枚举宏 —— 用法契约与实现决策](EnumMacros.md) —— `@Bijection` / `@CaseTag` / `@MirroredCases` / `@DefaultedCases` / `@Projection` 各自的契约与陷阱；为什么宏只认 `Int?` 不认 `Optional<Int>`，`@Bijection` 的 `borrowing` 与条件性 `copy` 绕的是哪个编译器崩溃，以及 `.recurring` 在没有期待类型时为什么有歧义。
 - [存储层重构与 `@UserDefault` 宏](StorageLayer.md) —— `@Keychain` 宏发布后，运行时与编码协议都是 Keychain 专用的；这篇记录如何把存储层抽象出来以容纳 `@UserDefault`。
 
 ## 设计文档（Specs，归档）
