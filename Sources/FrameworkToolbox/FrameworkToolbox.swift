@@ -24,9 +24,14 @@ extension FrameworkToolboxCompatible {
         get { FrameworkToolbox<Self>.self }
     }
 
+    /// The setter has to write back, or every `mutating` method reached through
+    /// `.box` is silently a no-op: the getter hands out a fresh
+    /// `FrameworkToolbox` value, the method mutates that temporary, and an empty
+    /// setter drops it on the floor. Nothing fails to compile and no warning is
+    /// emitted — `value.box.clamp(max: 10)` simply leaves `value` untouched.
     @inlinable
     public var box: FrameworkToolbox<Self> {
-        set {}
+        set { self = newValue.base }
         get { FrameworkToolbox(self) }
     }
 }
@@ -79,6 +84,11 @@ extension FrameworkToolboxCompatible where Self: AnyObject {
         get { FrameworkToolbox<Self>.self }
     }
 
+    /// Unlike the value-type overload above, this setter stays empty on purpose:
+    /// a protocol-extension setter is not `mutating`, so `self` cannot be
+    /// assigned here. It is also not needed — under reference semantics the box
+    /// wraps the same object, so mutating through it is already visible to every
+    /// other reference.
     @inlinable
     public var box: FrameworkToolbox<Self> {
         set {}
@@ -116,6 +126,21 @@ extension FrameworkToolboxDynamicMemberLookup where Self: AnyObject, Self: Frame
     }
 }
 
+/// Copies `FrameworkToolboxCompatible`'s default implementations into a protocol
+/// extension, so every type conforming to that protocol gains the `box` namespace.
+///
+/// - Parameters:
+///   - accessLevel: The access level to emit the generated members at. Defaults
+///     to `public`.
+///   - referenceSemantics: Pass `true` when extending a class-bound protocol.
+///     The generated `box` setter then stays empty — a setter in a class-bound
+///     protocol's extension is not `mutating` and cannot assign `self`, and the
+///     compiler crashes in SILGen rather than diagnosing it. Under reference
+///     semantics nothing is lost: the box wraps the same object. Has to be a
+///     boolean literal, since it is read at expansion time.
 @attached(member, names: arbitrary)
-public macro FrameworkToolboxExtension(_ accessLevel: AccessLevel? = nil) =
+public macro FrameworkToolboxExtension(
+    _ accessLevel: AccessLevel? = nil,
+    referenceSemantics: Bool = false
+) =
     #externalMacro(module: "FrameworkToolboxMacros", type: "FrameworkToolboxCompatibleMacro")
