@@ -43,6 +43,11 @@
   `@Projection(through: "id")` 换成 `@Projection` + 贴在函数上的 `@ProjectionFunction`，魔法字符串消失。
   文内留有「为什么不能改成闭包或函数引用」的实测结论：引用宿主成员会 circular reference，泛型函数不能当函数值传，
   且即使传得进去宏也只能拿到名字。
+- [draft —— 让序列比较可以指定用哪一套排序定义](Evolutions/draft-sequence-comparison-selection.md)（Implemented）
+  `ComparableBuildable` 目前一个类型只有一套排序规则；本提案让调用点选规则 ——
+  `sorted(using: \.byAge)` 选类型上的具名定义，`sorted(by: \.age, .descending)` 直接按属性排。
+  含一条不写对就慢 5.7 倍、却不产生任何诊断的实现约束：keyPath 必须在比较闭包内部应用。
+  顺带修 `FrameworkToolboxCompatible.box` 的空 setter —— 它让所有经 `.box` 的 mutating 方法静默无效。
 
 ## 专题说明
 
@@ -52,6 +57,7 @@
 - [让自己的类型参与 Swift ↔ Objective-C 桥接](ObjectiveCBridging.md) —— `ObjectiveCRepresentable` 协议与 `@ObjectiveCBridgeable` 宏；四条契约，以及为什么那四个 witness 必须逐类型生成而不能写进协议扩展。
 - [类型化的 NS 集合句柄 —— 用法契约与实现决策](TypedObjectiveCCollections.md) —— 六个泛型 struct 给 `NSArray` / `NSDictionary` / `NSSet` 一族补回元素类型；引用语义、变更方法为什么不是 `mutating`、为什么用 `init(validating:)` 而不是 `as?`。
 - [五个枚举宏 —— 用法契约与实现决策](EnumMacros.md) —— `@Bijection` / `@CaseTag` / `@MirroredCases` / `@DefaultedCases` / `@Projection` 各自的契约与陷阱；为什么宏只认 `Int?` 不认 `Optional<Int>`，`@Bijection` 的 `borrowing` 与条件性 `copy` 绕的是哪个编译器崩溃，以及 `.recurring` 在没有期待类型时为什么有歧义。
+- [指定排序定义 —— 用法契约与陷阱](ComparisonSelection.md) —— 一个类型怎么带多套排序规则、调用点怎么选；为什么必须是 `static var`、什么时候写裸 keyPath、`by:` 与 `using:` 的分工。
 - [存储层重构与 `@UserDefault` 宏](StorageLayer.md) —— `@Keychain` 宏发布后，运行时与编码协议都是 Keychain 专用的；这篇记录如何把存储层抽象出来以容纳 `@UserDefault`。
 
 ## 设计文档（Specs，归档）

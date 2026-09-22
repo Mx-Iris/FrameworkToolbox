@@ -236,6 +236,42 @@ where Element.T == T {
 
 @resultBuilder
 public struct ComparableBuilder<T> {
+    /// Lets a step be written as a bare key path — `\.age` rather than
+    /// `compare(\.age)`.
+    ///
+    /// The `compare(_:)` family lives on `extension ComparableBuildable`, so a
+    /// type that does not conform to that protocol cannot reach it. Naming the
+    /// step type by hand is not a way out either: `KeyPathComparisonStep(\.age)`
+    /// fails with `cannot infer key path type from context`, because the
+    /// initializer's generic parameters have to come from the key path and the
+    /// key path's root has to come from them. Spelling the root out
+    /// (`KeyPathComparisonStep(\Reading.timestamp)`) works but is noise.
+    @inlinable
+    @inline(__always)
+    public static func buildExpression<Value: Comparable>(
+        _ keyPath: KeyPath<T, Value>
+    ) -> KeyPathComparisonStep<T, Value> {
+        return KeyPathComparisonStep(keyPath)
+    }
+
+    @inlinable
+    @inline(__always)
+    public static func buildExpression<Value: Comparable>(
+        _ keyPath: KeyPath<T, Value?>
+    ) -> OptionalKeyPathComparisonStep<T, Value> {
+        return OptionalKeyPathComparisonStep(keyPath)
+    }
+
+    /// Declaring any `buildExpression` overload replaces the implicit
+    /// pass-through, so this one has to exist for ordinary step expressions —
+    /// everything `compare(_:)` and friends return — to keep compiling.
+    @inlinable
+    @inline(__always)
+    public static func buildExpression<Step: ComparisonStep>(_ step: Step) -> Step
+    where Step.T == T {
+        return step
+    }
+
     @inlinable
     @inline(__always)
     public static func buildBlock() -> EmptyComparisonStep<T> {

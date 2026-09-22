@@ -34,6 +34,41 @@ private struct BenchTripleBuildableVar: ComparableBuildable {
         compare(\.b)
         compare(\.c)
     }
+
+    /// A second definition, selected at the call site via `sorted(using:)`.
+    @ComparableBuilder<BenchTripleBuildableVar>
+    static var byCThenBThenA: some ComparisonStep<BenchTripleBuildableVar> {
+        compare(\.c)
+        compare(\.b)
+        compare(\.a)
+    }
+}
+
+/// The hand-written counterpart of `byCThenBThenA`, so the comparison is like
+/// for like rather than against `comparableDefinition`'s field order.
+private func sortedManuallyByCThenBThenA(_ elements: [BenchTripleManual]) -> [BenchTripleManual] {
+    elements.sorted {
+        if $0.c != $1.c { return $0.c < $1.c }
+        if $0.b != $1.b { return $0.b < $1.b }
+        return $0.a < $1.a
+    }
+}
+
+/// The spelling `FrameworkToolbox.sorted(using:)` deliberately does **not** use:
+/// the step is pulled into a local, which puts the literal key paths inside it
+/// out of `KeyPathProjector::getLiteralKeyPath`'s reach once the closure
+/// captures them.
+///
+/// It compiles, it is correct, and no test can tell it apart from the real
+/// implementation — only this benchmark can. Keep it here so the gap stays
+/// visible if anyone "simplifies" the real one into this shape.
+@inline(__always)
+private func sortedWithHoistedStep<Element, Step: ComparisonStep>(
+    _ elements: [Element],
+    using definitionKeyPath: KeyPath<Element.Type, Step>
+) -> [Element] where Step.T == Element {
+    let step = Element.self[keyPath: definitionKeyPath]
+    return elements.sorted { step.compare($0, $1) == .ascending }
 }
 
 // MARK: - Fixtures: mixed Int / String / Double
@@ -253,6 +288,41 @@ struct ComparableBuildableBenchmarks {
         print("=== \(iterations) raw '<' comparisons (best of \(runs) runs) ===")
         printRow("manual",          time: manualTime,       baseline: manualTime)
         printRow("buildable (var)", time: buildableVarTime, baseline: manualTime)
+    }
+
+    // MARK: Definition selection
+
+    /// Pins the one property of `sorted(using:)` that no correctness test can
+    /// reach: applying the key path inside the comparison closure keeps the step
+    /// tree foldable, hoisting it into a local does not. Both spellings produce
+    /// the same order; only the timing tells them apart.
+    @Test("sorted(using:) 100k Int-triples")
+    func definitionSelection100k() {
+        let raw = makeTriples(count: 100_000)
+        let manual = raw.map { BenchTripleManual(a: $0.0, b: $0.1, c: $0.2) }
+        let buildable = raw.map { BenchTripleBuildableVar(a: $0.0, b: $0.1, c: $0.2) }
+
+        // Same ordering either way — the point is what it costs.
+        let selected = buildable.box.sorted(using: \.byCThenBThenA)
+        let hoisted = sortedWithHoistedStep(buildable, using: \.byCThenBThenA)
+        for index in selected.indices {
+            #expect(selected[index].a == hoisted[index].a)
+            #expect(selected[index].b == hoisted[index].b)
+            #expect(selected[index].c == hoisted[index].c)
+        }
+
+        _ = sortedManuallyByCThenBThenA(manual)
+
+        let runs = 3
+        let manualTime = bestOf(runs) { blackhole(sortedManuallyByCThenBThenA(manual)) }
+        let selectedTime = bestOf(runs) { blackhole(buildable.box.sorted(using: \.byCThenBThenA)) }
+        let hoistedTime = bestOf(runs) { blackhole(sortedWithHoistedStep(buildable, using: \.byCThenBThenA)) }
+
+        print("")
+        print("=== sorted(using:) 100k Int-triples (best of \(runs) runs) ===")
+        printRow("manual",             time: manualTime,   baseline: manualTime)
+        printRow("in-closure key path", time: selectedTime, baseline: manualTime)
+        printRow("hoisted key path",    time: hoistedTime,  baseline: manualTime)
     }
 }
 

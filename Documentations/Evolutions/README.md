@@ -32,5 +32,6 @@ SPM library product，使用方以源码依赖并重新编译，未开启 librar
 | [draft](draft-lexic-enum-macros.md) | 把 lexic 的五个枚举宏并入 SwiftStdlibToolbox | Implemented |
 | [draft](draft-projection-multi-payload.md) | 让 @Projection 支持多关联值的 case，并修掉展开出的 unreachable default | Implemented |
 | [draft](draft-projection-marker-macro.md) | 把 @Projection 的字符串参数换成标记宏 | Implemented |
+| [draft](draft-sequence-comparison-selection.md) | 让序列比较可以指定用哪一套排序定义 | Implemented |
 
 `Specs/` 与 `Plans/` 是提案制确立前的产物，见[上级索引](../README.md)，保持原样不迁移。
