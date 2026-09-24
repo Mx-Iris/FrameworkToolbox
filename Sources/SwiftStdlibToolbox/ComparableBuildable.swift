@@ -245,7 +245,7 @@ public struct ComparableBuilder<T> {
     /// fails with `cannot infer key path type from context`, because the
     /// initializer's generic parameters have to come from the key path and the
     /// key path's root has to come from them. Spelling the root out
-    /// (`KeyPathComparisonStep(\Reading.timestamp)`) works but is noise.
+    /// (`KeyPathComparisonStep(\Self.timestamp)`) works but is noise.
     @inlinable
     @inline(__always)
     public static func buildExpression<Value: Comparable>(

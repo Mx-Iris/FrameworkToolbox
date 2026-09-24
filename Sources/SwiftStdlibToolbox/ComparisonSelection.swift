@@ -23,8 +23,8 @@ public enum SortOrdering {
 //     struct Person: ComparableBuildable {
 //         static var comparableDefinition: some ComparisonStep<Self> { compare(\.name) }
 //
-//         @ComparableBuilder<Person>
-//         static var byAge: some ComparisonStep<Person> {
+//         @ComparableBuilder<Self>
+//         static var byAge: some ComparisonStep<Self> {
 //             compare(\.age)
 //             compare(\.name)
 //         }

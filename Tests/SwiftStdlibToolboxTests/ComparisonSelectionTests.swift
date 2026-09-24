@@ -17,14 +17,14 @@ private struct Employee: ComparableBuildable, FrameworkToolboxCompatible {
         compare(\.name)
     }
 
-    @ComparableBuilder<Employee>
-    static var bySalaryDescending: some ComparisonStep<Employee> {
+    @ComparableBuilder<Self>
+    static var bySalaryDescending: some ComparisonStep<Self> {
         compareDescending(\.salary)
         compare(\.name)
     }
 
-    @ComparableBuilder<Employee>
-    static var byDepartmentThenName: some ComparisonStep<Employee> {
+    @ComparableBuilder<Self>
+    static var byDepartmentThenName: some ComparisonStep<Self> {
         compare(\.department)
         compare(\.name)
     }
@@ -56,10 +56,10 @@ private struct SensorReading {
     var celsius: Double
     var note: String?
 
-    @ComparableBuilder<SensorReading>
-    static var byTimestampThenCelsiusDescending: some ComparisonStep<SensorReading> {
+    @ComparableBuilder<Self>
+    static var byTimestampThenCelsiusDescending: some ComparisonStep<Self> {
         \.timestamp
-        DescendingKeyPathComparisonStep(\SensorReading.celsius)
+        DescendingKeyPathComparisonStep(\Self.celsius)
         \.note
     }
 }

@@ -21,9 +21,9 @@ struct Employee: ComparableBuildable {
         compare(\.name)
     }
 
-    // 额外声明的要自己写出来
-    @ComparableBuilder<Employee>
-    static var bySalaryDescending: some ComparisonStep<Employee> {
+    // 额外声明的要自己写出来。泛型参数写 Self 即可，不必写具体类型名
+    @ComparableBuilder<Self>
+    static var bySalaryDescending: some ComparisonStep<Self> {
         compareDescending(\.salary)
         compare(\.name)
     }
@@ -80,10 +80,10 @@ struct SensorReading {                 // 不遵循任何协议
     var celsius: Double
     var note: String?
 
-    @ComparableBuilder<SensorReading>
-    static var byTimestamp: some ComparisonStep<SensorReading> {
+    @ComparableBuilder<Self>
+    static var byTimestamp: some ComparisonStep<Self> {
         \.timestamp
-        DescendingKeyPathComparisonStep(\SensorReading.celsius)
+        DescendingKeyPathComparisonStep(\Self.celsius)
         \.note
     }
 }
@@ -99,11 +99,11 @@ readings.box.sorted(using: \.byTimestamp)
 这时直接写裸 keyPath（`\.timestamp`），builder 会把它变成步骤。
 **不要**改写成 `KeyPathComparisonStep(\.timestamp)` —— 那会报
 `cannot infer key path type from context`，因为初始化器的泛型参数要从 keyPath 推，
-而 keyPath 的根类型要从泛型参数推。写全 `KeyPathComparisonStep(\SensorReading.timestamp)` 能过，
+而 keyPath 的根类型要从泛型参数推。写全 `KeyPathComparisonStep(\Self.timestamp)` 能过，
 但没必要。
 
-降序和自定义比较器没有裸写法，用 `DescendingKeyPathComparisonStep(\Type.property)` 或
-`CustomKeyPathComparisonStep(\Type.property) { … }`，根类型要写出来。
+降序和自定义比较器没有裸写法，用 `DescendingKeyPathComparisonStep(\Self.property)` 或
+`CustomKeyPathComparisonStep(\Self.property) { … }`。根类型要写出来，但写 `Self` 就行。
 
 裸 keyPath 在遵循 `ComparableBuildable` 的类型上同样可用，和 `compare(\.x)` 等价。
 
