@@ -6,6 +6,10 @@
 这篇讲两件事：怎么给一个类型声明多套排序规则并在调用点选用，以及怎么直接按某个属性排序。
 设计过程与被否掉的方案见提案[《让序列比较可以指定用哪一套排序定义》](Evolutions/draft-sequence-comparison-selection.md)。
 
+完整的可运行示例在 [`Sources/SwiftStdlibToolboxClient/ComparisonSelection.swift`](../Sources/SwiftStdlibToolboxClient/ComparisonSelection.swift)，
+`swift run SwiftStdlibToolboxClient` 即可看到输出：同一份文件列表按 Finder「排序方式」菜单里的名称、大小、种类、
+最近打开时间各排一遍，外加一个根本不是 `Comparable` 的类型（窗口按阅读顺序排）。
+
 ## 声明额外的排序定义
 
 额外定义就是普通的 `static var`，写法和 `comparableDefinition` 一样，只多一个 builder 标注：

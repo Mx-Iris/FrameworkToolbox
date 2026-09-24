@@ -90,3 +90,9 @@ struct SignpostReExportProbeOneHop {
 }
 
 print("signpost re-export (one hop):", SignpostReExportProbeOneHop().measure())
+
+// MARK: - Comparison definition selection
+
+// Unlike the enumeration macros' playground, this one is worth running: the
+// example is the sorted output. See ComparisonSelection.swift.
+exerciseComparisonSelection()
