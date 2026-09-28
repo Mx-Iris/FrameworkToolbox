@@ -10,6 +10,22 @@ public struct LoggableMacro: MemberMacro, ExtensionMacro {
     /// which is why the generated code carries a legacy `os_log` path at all.
     static let loggerAvailability = "@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)"
 
+    /// The disabled `os.Logger` every generated handle falls back to.
+    ///
+    /// Deliberately not `Logger.disabled`. That property only exists in
+    /// `libswiftos` from the 26.4 releases (absent through macOS 26.3 and
+    /// iOS 26.3.1), but the SDK declares it with no availability of its own, so
+    /// it inherits `Logger`'s macOS 11 and the linker binds it as a required
+    /// symbol. Every caller built with Xcode 26.4 or later is then killed by
+    /// dyld at launch on any older system — before `main`, so no `#available`
+    /// check can save it.
+    ///
+    /// This spelling is the same handle, not an approximation: in macOS 26.4,
+    /// `Logger.disabled` wraps the very once-initialized global that
+    /// `OSLog.disabled` returns, and `OSLog.disabled` plus `Logger.init(_:)`
+    /// exist on every system `loggerAvailability` admits.
+    static let disabledLoggerExpression = "os.Logger(os.OSLog.disabled)"
+
     // MARK: - MemberMacro
 
     public static func expansion(
@@ -110,7 +126,7 @@ private func buildConcreteMembers(
 /// The type-level `_osLog` / `logger` pair, in whichever of three shapes the
 /// attribute and the surrounding context call for.
 ///
-/// - `isEnabled: false` — the handles are `.disabled` constants and no storage
+/// - `isEnabled: false` — the handles are disabled constants and no storage
 ///   is emitted at all, so the optimizer can drop the logging path entirely.
 /// - `usesRuntimeCache` — a generic context (or a protocol's default
 ///   implementations), where Swift permits no static stored property. The live
@@ -123,6 +139,7 @@ private func buildHandleMembers(
     usesRuntimeCache: Bool
 ) -> [DeclSyntax] {
     let availability = LoggableMacro.loggerAvailability
+    let disabledLogger = LoggableMacro.disabledLoggerExpression
     let condition = enablement.condition(
         switchEntryPoint: "LoggableMacro._isEnabled",
         categoryExpression: "category"
@@ -133,7 +150,7 @@ private func buildHandleMembers(
             "\(raw: accessPrefix)nonisolated static var _osLog: os.OSLog { .disabled }",
             """
             \(raw: availability)
-            \(raw: accessPrefix)nonisolated static var logger: os.Logger { .disabled }
+            \(raw: accessPrefix)nonisolated static var logger: os.Logger { \(raw: disabledLogger) }
             """,
         ]
     }
@@ -174,7 +191,7 @@ private func buildHandleMembers(
     \(raw: availability)
     \(raw: accessPrefix)nonisolated static var logger: os.Logger {
         guard \(raw: condition) else {
-            return .disabled
+            return \(raw: disabledLogger)
         }
         return \(raw: liveLoggerExpression)
     }
@@ -195,6 +212,7 @@ private func buildCategoryAccessorMembers(
     enablement: EnablementConfiguration
 ) -> [DeclSyntax] {
     let availability = LoggableMacro.loggerAvailability
+    let disabledLogger = LoggableMacro.disabledLoggerExpression
     let condition = enablement.condition(
         switchEntryPoint: "LoggableMacro._isEnabled",
         categoryExpression: "category.name"
@@ -210,7 +228,7 @@ private func buildCategoryAccessorMembers(
             """
             \(raw: availability)
             \(raw: accessPrefix)nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
-                .disabled
+                \(raw: disabledLogger)
             }
             """,
         ]
@@ -229,7 +247,7 @@ private func buildCategoryAccessorMembers(
         \(raw: availability)
         \(raw: accessPrefix)nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
             guard \(raw: condition) else {
-                return .disabled
+                return \(raw: disabledLogger)
             }
             return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
         }

@@ -39,7 +39,7 @@ private let disabledSignpostCategoryNames = Mutex<Set<String>>([])
 /// 3. ``isEnabled(for:)`` for the category the call site logs to.
 ///
 /// Turning any of them off swaps the generated log handle for `OSLog.disabled`
-/// / `Logger.disabled`. That is not "still runs but discards": the `os` module
+/// / a `Logger` built over it. That is not "still runs but discards": the `os` module
 /// checks the handle *before* evaluating a message's interpolation arguments —
 /// they are `@autoclosure` — so `#log(.debug, "\(self.expensiveDescription)")`
 /// does not call `expensiveDescription` at all while logging is off.

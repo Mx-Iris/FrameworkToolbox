@@ -32,7 +32,7 @@ import FrameworkToolbox
 ///     when you want the logging properties to be "frozen" for all conformers.
 ///   - isEnabled: Whether this type logs at all. Defaults to `true`.
 ///     Passing the literal `false` is a compile-time kill switch: the generated
-///     handles become `OSLog.disabled` / `Logger.disabled` constants, nothing
+///     handles become `OSLog.disabled` and a `Logger` built over it, nothing
 ///     runtime can turn them back on, and the optimizer can drop the whole
 ///     logging path. Passing any other expression is evaluated at each call
 ///     site and combined with ``LoggingControl``'s runtime switches, so a flag
@@ -72,7 +72,7 @@ import FrameworkToolbox
 ///     //     static let _enabledLogger = os.Logger(_enabledOSLog)
 ///     //     @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 ///     //     static var logger: os.Logger {
-///     //         LoggableMacro._isEnabled(category: category) ? _enabledLogger : .disabled
+///     //         LoggableMacro._isEnabled(category: category) ? _enabledLogger : os.Logger(os.OSLog.disabled)
 ///     //     }
 ///     //     @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 ///     //     var logger: os.Logger { Self.logger }

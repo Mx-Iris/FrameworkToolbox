@@ -81,6 +81,14 @@ LoggingControl.enableAllCategories()   // 撤销全部 category 级禁用，不�
 为此上一把 `os_unfair_lock` 不划算。代价是切换开关与并发日志之间没有顺序保证，
 一条已经在途的日志仍可能发出。开关的定位是启动早期、调试菜单或调试器里设置，这个区别观察不到。
 
+**4. 手写关闭态的 `Logger` 时，别写 `Logger.disabled`。**
+这个属性要到 26.4 这一轮系统才进 `libswiftos`（macOS 26.3、iOS 26.3.1 都没有），
+SDK 和 Apple 文档却标着 macOS 11 起可用。于是编译器照常放行，链接器把它当成必须存在的符号，
+用 Xcode 26.4 及以后编出来的程序在更早的系统上**一启动就被 dyld 杀掉**——发生在 `main` 之前，
+`#available` 救不了。宏生成的是 `os.Logger(os.OSLog.disabled)`，和 `Logger.disabled` 是同一个句柄，
+手写时照抄这个写法。0.12.0 与 0.13.0 的宏展开正踩了这个坑（LyricsX 1.9.0-beta.12 因此在 macOS 15 上打不开），
+升到 0.14.0 重新编译即可。
+
 ## 顺带解除的泛型限制
 
 同一批改动去掉了具体类型分支里的 `static let`，于是**泛型类型可以直接贴这两个宏了**，

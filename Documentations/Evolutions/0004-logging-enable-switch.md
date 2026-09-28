@@ -2,7 +2,7 @@
 
 - **状态**: Implemented
 - **创建日期**: 2026-09-04
-- **最后更新**: 2026-09-04
+- **最后更新**: 2026-09-28
 - **所属愿景**: 无
 - **配套文档**: [关掉日志与埋点 —— `isEnabled:` 与运行时开关](../LoggingSwitches.md)
 
@@ -255,3 +255,4 @@ swift-syntax 的区间要从 `509.1.0..<604.0.0` 收窄为 `600.0.0..<604.0.0`�
 | 2026-09-04 | 实现完成，状态置为 Implemented | 478 个测试通过；六个声明平台各构建一次通过；开关的运行时测试做过变异验证——把 `_isEnabled` 短接成恒 `true` 后 12 个断言变红，且存活的四个恰好是不该受影响的（默认值、`enableAllCategories` 自身、编译期常量那条路） |
 | 2026-09-04 | 配套写一份专题说明而非只留 CLAUDE.md | CLAUDE.md 面向维护者、提案面向决策，都不回答使用方的「我平时想关掉、调试时想打开该怎么写」。登记为 `Documentations/LoggingSwitches.md` |
 | 2026-09-04 | 未新增术语，不动术语表 | `LoggingControl` / `SignpostingControl` 是类型名不是术语；「运行时缓存分支」只在本仓库的实现说明里出现，且项目目前没有术语表 |
+| 2026-09-28 | 关闭态的 `Logger` 从 `Logger.disabled` 改为 `os.Logger(os.OSLog.disabled)` | 上文「`Logger.disabled`（macOS 11+）」照的是 SDK 标注，实际这个属性到 26.4 这一轮系统才进 `libswiftos`。宏把它展开进调用方，调用方强引用该符号，用 Xcode 26.4+ 构建的程序在更早的系统上启动即被 dyld 杀掉（LyricsX 1.9.0-beta.12 在 macOS 15 上打不开）。新写法是同一个句柄，随 0.14.0 发布；使用方须知见 `LoggingSwitches.md` 第 4 条 |
