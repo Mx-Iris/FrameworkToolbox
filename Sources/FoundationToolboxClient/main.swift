@@ -241,3 +241,74 @@ struct SignpostReExportProbeTwoHops {
 }
 
 print("signpost re-export (two hops):", SignpostReExportProbeTwoHops().measure())
+
+// MARK: - `NotificationCenter.Backport` through the public interface
+
+// The tests reach this API through `@testable import`, which would hide a
+// declaration that forgot `public`. Every shape a caller writes is spelled out
+// here against the plain import instead.
+
+final class BackportExampleDocument {}
+
+struct BackportExampleDocumentDidSave: NotificationCenter.Backport.MainActorMessage {
+    typealias Subject = BackportExampleDocument
+    var revision: Int
+}
+
+extension NotificationCenter.Backport.MessageIdentifier
+where Self == NotificationCenter.Backport.BaseMessageIdentifier<BackportExampleDocumentDidSave> {
+    static var documentDidSave: Self { .init() }
+}
+
+struct BackportExampleDownloadDidFinish: NotificationCenter.Backport.AsyncMessage {
+    typealias Subject = BackportExampleDocument
+    var byteCount: Int
+}
+
+extension NotificationCenter.Backport.MessageIdentifier
+where Self == NotificationCenter.Backport.BaseMessageIdentifier<BackportExampleDownloadDidFinish> {
+    static var downloadDidFinish: Self { .init() }
+}
+
+@MainActor
+func demonstrateNotificationCenterBackport() -> Int {
+    let center = NotificationCenter()
+    let document = BackportExampleDocument()
+    var savedRevisions: [Int] = []
+
+    let tokens: [NotificationCenter.Backport.ObservationToken] = [
+        center.addObserver(of: document, for: .documentDidSave) { message in savedRevisions.append(message.revision) },
+        center.addObserver(of: BackportExampleDocument.self, for: .documentDidSave) { _ in },
+        center.addObserver(of: document, for: BackportExampleDocumentDidSave.self) { _ in },
+        center.addObserver(of: document, for: .downloadDidFinish) { message in _ = message.byteCount },
+        center.addObserver(of: BackportExampleDocument.self, for: .downloadDidFinish) { _ in },
+        center.addObserver(for: BackportExampleDownloadDidFinish.self) { _ in },
+    ]
+
+    center.post(BackportExampleDocumentDidSave(revision: 1), subject: document)
+    center.post(BackportExampleDocumentDidSave(revision: 2))
+    center.post(BackportExampleDownloadDidFinish(byteCount: 1), subject: document)
+    center.post(BackportExampleDownloadDidFinish(byteCount: 2))
+
+    for token in tokens {
+        center.removeObserver(token)
+    }
+    return savedRevisions.count
+}
+
+// Compiled, not run: the three `messages(of:for:bufferSize:)` shapes and a
+// hand-driven iterator.
+func consumeNotificationCenterBackportMessages(from center: NotificationCenter, about document: BackportExampleDocument) async {
+    for await message in center.messages(of: document, for: .downloadDidFinish) {
+        _ = message.byteCount
+        break
+    }
+    for await message in center.messages(of: BackportExampleDocument.self, for: .downloadDidFinish, bufferSize: 1) {
+        _ = message.byteCount
+        break
+    }
+    var iterator = center.messages(for: BackportExampleDownloadDidFinish.self).makeAsyncIterator()
+    _ = await iterator.next()
+}
+
+print("NotificationCenter.Backport messages observed:", MainActor.assumeIsolated { demonstrateNotificationCenterBackport() })

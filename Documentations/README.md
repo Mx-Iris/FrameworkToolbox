@@ -48,6 +48,10 @@
   `sorted(using: \.byAge)` 选类型上的具名定义，`sorted(by: \.age, .descending)` 直接按属性排。
   含一条不写对就慢 5.7 倍、却不产生任何诊断的实现约束：keyPath 必须在比较闭包内部应用。
   顺带修 `FrameworkToolboxCompatible.box` 的空 setter —— 它让所有经 `.box` 的 mutating 方法静默无效。
+- [draft —— 把 swift-foundation 的类型化通知 API 搬到老系统：`NotificationCenter.Backport`](Evolutions/draft-notification-center-backport.md)（Implemented）
+  苹果的 `MainActorMessage` / `AsyncMessage` 一套要求 26 系统；这里把 swift-foundation 在苹果平台上的那条实现搬进 `FoundationToolbox`，
+  类型挪进 `NotificationCenter.Backport`，方法名与语义不变。四个私有入口已反汇编核对并换成公开 API；
+  有三处因自身要求新系统而必须偏离（`messages` 的返回类型、投递队列、`Deque`）。
 
 ## 专题说明
 
@@ -58,6 +62,7 @@
 - [类型化的 NS 集合句柄 —— 用法契约与实现决策](TypedObjectiveCCollections.md) —— 六个泛型 struct 给 `NSArray` / `NSDictionary` / `NSSet` 一族补回元素类型；引用语义、变更方法为什么不是 `mutating`、为什么用 `init(validating:)` 而不是 `as?`。
 - [五个枚举宏 —— 用法契约与实现决策](EnumMacros.md) —— `@Bijection` / `@CaseTag` / `@MirroredCases` / `@DefaultedCases` / `@Projection` 各自的契约与陷阱；为什么宏只认 `Int?` 不认 `Optional<Int>`，`@Bijection` 的 `borrowing` 与条件性 `copy` 绕的是哪个编译器崩溃，以及 `.recurring` 在没有期待类型时为什么有歧义。
 - [指定排序定义 —— 用法契约与陷阱](ComparisonSelection.md) —— 一个类型怎么带多套排序规则、调用点怎么选；为什么必须是 `static var`、什么时候写裸 keyPath、`by:` 与 `using:` 的分工。
+- [`NotificationCenter.Backport` —— 类型化通知消息的用法契约与陷阱](NotificationCenterBackport.md) —— 两种消息怎么选、与 `Notification` 互通的规则、六条签名上看不出的契约（主线程假定、token 即生命周期、序列缓冲与弱持有 subject 等），以及与原生 API 的差异和迁回步骤。
 - [存储层重构与 `@UserDefault` 宏](StorageLayer.md) —— `@Keychain` 宏发布后，运行时与编码协议都是 Keychain 专用的；这篇记录如何把存储层抽象出来以容纳 `@UserDefault`。
 
 ## 设计文档（Specs，归档）
