@@ -16,9 +16,12 @@ Foundation 预置的系统消息是怎么逆向、怎么核对的，见提案
 - **部署目标低于 26**：用这个。等部署目标升上去，按文末的步骤换回原生，基本就是删掉 `Backport.`。
 - **要观察 Foundation 自己发的系统通知**（撤销管理器、时区变化、文件句柄读完之类）：用现成的，见
   「Foundation 预置的系统消息」一节。
-- **要观察 AppKit / UIKit 的系统通知**（`NSApplication.didBecomeActiveNotification` 之类）：本库不提供预置消息。
-  自己定义一个消息，用 `name` 对上系统通知名、用 `makeMessage(_:)` 从 `userInfo` 取值即可
-  （见「与 `Notification` 互通」）。
+- **要观察 AppKit / UIKit 发的系统通知**（`NSWindow.didBecomeKeyNotification` 之类）：用 UIFoundation 的
+  `UIFoundationToolbox`。它按同一套约定，把 AppKit 的 137 个、UIKit 的 71 个预置消息搬到了老系统上
+  （例如 `NSWindow.Backport.DidBecomeKeyMessage`），见它的指南
+  [`NotificationMessages.md`](https://github.com/Mx-Iris/UIFoundation/blob/main/Documentations/NotificationMessages.md)。
+- **两边都没有预置的系统通知**：自己定义一个消息，用 `name` 对上系统通知名、用 `makeMessage(_:)` 从 `userInfo`
+  取值即可（见「与 `Notification` 互通」）。
 
 ## 两种消息怎么选
 
@@ -179,7 +182,7 @@ for await _ in NotificationCenter.default.messages(of: ProcessInfo.processInfo, 
 | `messages(of:for:)` 的返回类型 | `some AsyncSequence<Message, Never> & Sendable` | `NotificationCenter.Backport.AsyncMessageSequence<Message>`；在 macOS 15 / iOS 18 以上能当前者用 |
 | 手动调用 `next()` | `var iterator`，`try await iterator.next()` | `var iterator`，`await iterator.next()`（写了 `try` 也能编译，只是会多一条警告） |
 | `makeMessage(_:)` 失败时的提示 | Xcode 紫色 runtime issue | fault 日志 |
-| 预置的系统消息 | Foundation、AppKit、UIKit 等框架都有 | 只有 Foundation 的 32 个，放在 `<主题类型>.Backport` 里 |
+| 预置的系统消息 | Foundation、AppKit、UIKit 等框架都有 | 本库只有 Foundation 的 32 个，放在 `<主题类型>.Backport` 里；AppKit / UIKit 的在 UIFoundation（见「先判断该用哪一个」） |
 | 预置消息的可用性 | 26 | 跟着底层通知常量走：几乎都在本库的最低系统上就能用，`PowerStateDidChange` 在 macOS 上要 12 |
 
 两者在 26 系统上可以并存、互不干扰。但**不要让一个类型同时遵循两边的协议**：调用点会同时匹配两套重载，
