@@ -52,6 +52,9 @@
   苹果的 `MainActorMessage` / `AsyncMessage` 一套要求 26 系统；这里把 swift-foundation 在苹果平台上的那条实现搬进 `FoundationToolbox`，
   类型挪进 `NotificationCenter.Backport`，方法名与语义不变。四个私有入口已反汇编核对并换成公开 API；
   有三处因自身要求新系统而必须偏离（`messages` 的返回类型、投递队列、`Deque`）。
+- [draft —— 把 Foundation 预置的系统通知消息搬进 `NotificationCenter.Backport`](Evolutions/draft-notification-center-backport-foundation-messages.md)（Implemented）
+  26 SDK 给 `UndoManager`、`ProcessInfo`、`FileHandle` 等 16 个类型预置了 32 个消息；这里照反汇编结论逐个重写，类型放进
+  `<主题类型>.Backport`。标识符必须标 `@_disfavoredOverload`，否则在 26 的上下文里连苹果原生的简写都会报歧义。
 
 ## 专题说明
 
@@ -62,7 +65,7 @@
 - [类型化的 NS 集合句柄 —— 用法契约与实现决策](TypedObjectiveCCollections.md) —— 六个泛型 struct 给 `NSArray` / `NSDictionary` / `NSSet` 一族补回元素类型；引用语义、变更方法为什么不是 `mutating`、为什么用 `init(validating:)` 而不是 `as?`。
 - [五个枚举宏 —— 用法契约与实现决策](EnumMacros.md) —— `@Bijection` / `@CaseTag` / `@MirroredCases` / `@DefaultedCases` / `@Projection` 各自的契约与陷阱；为什么宏只认 `Int?` 不认 `Optional<Int>`，`@Bijection` 的 `borrowing` 与条件性 `copy` 绕的是哪个编译器崩溃，以及 `.recurring` 在没有期待类型时为什么有歧义。
 - [指定排序定义 —— 用法契约与陷阱](ComparisonSelection.md) —— 一个类型怎么带多套排序规则、调用点怎么选；为什么必须是 `static var`、什么时候写裸 keyPath、`by:` 与 `using:` 的分工。
-- [`NotificationCenter.Backport` —— 类型化通知消息的用法契约与陷阱](NotificationCenterBackport.md) —— 两种消息怎么选、与 `Notification` 互通的规则、六条签名上看不出的契约（主线程假定、token 即生命周期、序列缓冲与弱持有 subject 等），以及与原生 API 的差异和迁回步骤。
+- [`NotificationCenter.Backport` —— 类型化通知消息的用法契约与陷阱](NotificationCenterBackport.md) —— 两种消息怎么选、与 `Notification` 互通的规则、六条签名上看不出的契约（主线程假定、token 即生命周期、序列缓冲与弱持有 subject 等）、Foundation 预置的 32 个系统消息（以及它们的简写为什么在 26 的上下文里会选 Foundation 原生的），以及与原生 API 的差异和迁回步骤。
 - [存储层重构与 `@UserDefault` 宏](StorageLayer.md) —— `@Keychain` 宏发布后，运行时与编码协议都是 Keychain 专用的；这篇记录如何把存储层抽象出来以容纳 `@UserDefault`。
 
 ## 设计文档（Specs，归档）

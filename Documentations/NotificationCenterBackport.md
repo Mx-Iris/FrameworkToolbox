@@ -5,16 +5,20 @@ Foundation 在 macOS 26 / iOS 26 / tvOS 26 / watchOS 26 / visionOS 26 给 `Notif
 `NotificationCenter.Backport`，方法名、参数标签、默认值、投递语义都与原生一致。
 
 为什么这么搬、苹果的私有入口换成了什么、哪几处必须偏离，见提案
-[把 swift-foundation 的类型化通知 API 搬到老系统](Evolutions/draft-notification-center-backport.md)。
+[把 swift-foundation 的类型化通知 API 搬到老系统](Evolutions/draft-notification-center-backport.md)；
+Foundation 预置的系统消息是怎么逆向、怎么核对的，见提案
+[把 Foundation 预置的系统通知消息搬进 `NotificationCenter.Backport`](Evolutions/draft-notification-center-backport-foundation-messages.md)。
 这篇只讲怎么用，以及有哪些**签名上看不出来、违反了就出事**的约定。
 
 ## 先判断该用哪一个
 
 - **部署目标已经是 26**：直接用 Foundation 原生的 `NotificationCenter.MainActorMessage` 一套，不要用这个。
 - **部署目标低于 26**：用这个。等部署目标升上去，按文末的步骤换回原生，基本就是删掉 `Backport.`。
-- **只想观察系统通知**（`NSApplication.didBecomeActiveNotification` 之类）：苹果 SDK 里预置的消息类型遵循的是
-  它自己的协议，这里用不上。自己定义一个消息，用 `name` 对上系统通知名、用 `makeMessage(_:)` 从 `userInfo`
-  取值即可（见「与 `Notification` 互通」）。
+- **要观察 Foundation 自己发的系统通知**（撤销管理器、时区变化、文件句柄读完之类）：用现成的，见
+  「Foundation 预置的系统消息」一节。
+- **要观察 AppKit / UIKit 的系统通知**（`NSApplication.didBecomeActiveNotification` 之类）：本库不提供预置消息。
+  自己定义一个消息，用 `name` 对上系统通知名、用 `makeMessage(_:)` 从 `userInfo` 取值即可
+  （见「与 `Notification` 互通」）。
 
 ## 两种消息怎么选
 
@@ -97,6 +101,57 @@ struct WindowDidResize: NotificationCenter.Backport.MainActorMessage {
 `name` 默认是消息类型的完整限定名（例如 `MyApp.EventDidStart`）。只在新代码之间互发时不用管它，要接上已有的
 通知名时才需要覆盖。
 
+## Foundation 预置的系统消息
+
+Foundation 给自家 16 个类型预置了 32 个消息，这里都有，放在各自类型的 `Backport` 里，名字与 Foundation 相同，
+例如 `UndoManager.Backport.DidUndoChangeMessage`。标识符也与 Foundation 同名，是类型名去掉 `Message`、首字母小写：
+
+```swift
+let token = NotificationCenter.default.addObserver(of: undoManager, for: .didUndoChange) { message in
+    print(message.groupIsDiscardable)
+}
+
+for await _ in NotificationCenter.default.messages(of: ProcessInfo.processInfo, for: .thermalStateDidChange) {
+    print(ProcessInfo.processInfo.thermalState)
+}
+```
+
+| 主题类型 | 消息（省略 `Message` 后缀） | 种类 |
+|---|---|---|
+| `UndoManager` | `WillUndoChange`、`DidUndoChange`\*、`WillRedoChange`、`DidRedoChange`\*、`Checkpoint`、`DidOpenUndoGroup`、`DidCloseUndoGroup`\*、`WillCloseUndoGroup` | MainActor |
+| `HTTPCookieStorage` | `CookiesChanged` | Async |
+| `NSMetadataQuery` | `DidFinishGathering`、`DidStartGathering` | Async |
+| `Calendar` | `CalendarDayChanged` | Async |
+| `Date` | `SystemClockDidChange` | MainActor |
+| `TimeZone` | `SystemTimeZoneDidChange`\*（`previousTimeZone`） | MainActor |
+| `ProcessInfo` | `PowerStateDidChange`（macOS 上要 12）、`ThermalStateDidChange` | Async |
+| `FileHandle` | `ConnectionAccepted`\*（`fileHandleItem`）、`DataAvailable`、`ReadToEndOfFileCompletion`\*、`ReadCompletion`\*（`dataItem`） | Async |
+| `Bundle` | `DidLoad` | Async |
+| `UserDefaults` | `DidChange`（Async）、`SizeLimitExceeded`（MainActor） | — |
+| `Process` | `DidTerminate`（只在 macOS） | Async |
+| `Port` | `DidBecomeInvalid` | Async |
+| `Locale` | `CurrentLocaleDidChange` | MainActor |
+| `FileManager` | `UbiquityIdentityDidChange` | MainActor |
+| `NSBundleResourceRequest` | `LowDiskSpace`（macOS 上没有，27 起废弃） | Async |
+| `NSExtensionContext` | `DidBecomeActive`、`DidEnterBackground`、`WillEnterForeground`、`WillResignActive` | MainActor |
+
+带 \* 的带属性；`UndoManager` 那三个的属性都是 `groupIsDiscardable`。每个消息的名字、从通知转成消息、从消息转成通知，
+都与 Foundation 自己的实现逐个对照过。用的时候要知道三件事：
+
+1. **在 26 的上下文里，简写选的是 Foundation 原生的那个。** 部署目标为 26，或代码在 `if #available(macOS 26, *)`
+   块里时，`.didUndoChange` 解析到 Foundation 的 `UndoManager.DidUndoChangeMessage`，返回的是
+   `NotificationCenter.ObservationToken`，不是 `NotificationCenter.Backport.ObservationToken`。
+   要在那里用本库的，写出消息类型：`for: UndoManager.Backport.DidUndoChangeMessage.self`。
+   这是刻意的：两边的简写同名，若不让一步，只要 import 了本库，Foundation 原生的简写就会报
+   `ambiguous use of 'didUndoChange'`。
+2. **系统发出的通知一定能转成消息，只有 `FileHandle` 那三个例外。** 不带属性的消息不看通知内容，有通知就有消息；
+   带属性的取不到值时用默认值（`groupIsDiscardable` 为 `false`，`previousTimeZone` 为 `nil`）。
+   `FileHandle` 的三个先看 `userInfo` 里有没有合法的 POSIX 错误码，有就是 `.failure`；再看有没有数据（或新的
+   file handle），有就是 `.success`；两样都没有时转不成消息，观察者不会被调用。
+3. **主题是值类型的**（`Calendar`、`Date`、`TimeZone`、`Locale`）**只能按类型观察**：
+   `addObserver(of: TimeZone.self, for: .systemTimeZoneDidChange)`，或者不带 subject。传实例的重载要求主题是 class，
+   Foundation 的也是这样。
+
 ## 契约 —— 签名上看不出来，违反了就出事
 
 1. **`MainActorMessage` 的观察者认定自己在主线程上被调用。** 观察者内部用 `MainActor.assumeIsolated` 进入主 actor。
@@ -124,15 +179,18 @@ struct WindowDidResize: NotificationCenter.Backport.MainActorMessage {
 | `messages(of:for:)` 的返回类型 | `some AsyncSequence<Message, Never> & Sendable` | `NotificationCenter.Backport.AsyncMessageSequence<Message>`；在 macOS 15 / iOS 18 以上能当前者用 |
 | 手动调用 `next()` | `var iterator`，`try await iterator.next()` | `var iterator`，`await iterator.next()`（写了 `try` 也能编译，只是会多一条警告） |
 | `makeMessage(_:)` 失败时的提示 | Xcode 紫色 runtime issue | fault 日志 |
-| 预置的系统消息 | 有 | 没有 |
+| 预置的系统消息 | Foundation、AppKit、UIKit 等框架都有 | 只有 Foundation 的 32 个，放在 `<主题类型>.Backport` 里 |
+| 预置消息的可用性 | 26 | 跟着底层通知常量走：几乎都在本库的最低系统上就能用，`PowerStateDidChange` 在 macOS 上要 12 |
 
 两者在 26 系统上可以并存、互不干扰。但**不要让一个类型同时遵循两边的协议**：调用点会同时匹配两套重载，
-编译器报歧义。
+编译器报歧义。预置消息的简写两边同名，本库的那份让给了 Foundation，见上文「Foundation 预置的系统消息」。
 
 ## 迁回原生 API
 
 1. 把部署目标升到 26 一档。
-2. 全局把 `NotificationCenter.Backport.` 替换成 `NotificationCenter.`。
+2. 全局删掉 `Backport.`：`NotificationCenter.Backport.MainActorMessage` 变成 `NotificationCenter.MainActorMessage`，
+   `UndoManager.Backport.DidUndoChangeMessage` 变成 `UndoManager.DidUndoChangeMessage`。预置消息的简写调用点
+   （`.didUndoChange`）不用改，部署目标一到 26，它们就会自己解析到 Foundation 的版本。
 3. 手动调用迭代器 `next()` 的地方补上 `try`。
 4. 如果在属性或函数签名里把序列写成了 `NotificationCenter.Backport.AsyncMessageSequence<Message>`，
    改成 `some AsyncSequence<Message, Never>`。

@@ -311,4 +311,140 @@ func consumeNotificationCenterBackportMessages(from center: NotificationCenter, 
     _ = await iterator.next()
 }
 
+// MARK: - Foundation's predefined messages through the public interface
+
+// Compiled, not run. Outside an `#available` check for the 26 releases every
+// shorthand below resolves to the backport, so each predefined message's
+// identifier, properties and initializer are reached through the plain import.
+@MainActor
+func observeFoundationPredefinedMessages(in center: NotificationCenter) -> [NotificationCenter.Backport.ObservationToken] {
+    var tokens: [NotificationCenter.Backport.ObservationToken] = []
+    tokens.append(center.addObserver(of: UndoManager.self, for: .willUndoChange) { _ in })
+    tokens.append(center.addObserver(of: UndoManager.self, for: .didUndoChange) { message in _ = message.groupIsDiscardable })
+    tokens.append(center.addObserver(of: UndoManager.self, for: .willRedoChange) { _ in })
+    tokens.append(center.addObserver(of: UndoManager.self, for: .didRedoChange) { message in _ = message.groupIsDiscardable })
+    tokens.append(center.addObserver(of: UndoManager.self, for: .checkpoint) { _ in })
+    tokens.append(center.addObserver(of: UndoManager.self, for: .didOpenUndoGroup) { _ in })
+    tokens.append(center.addObserver(of: UndoManager.self, for: .didCloseUndoGroup) { message in _ = message.groupIsDiscardable })
+    tokens.append(center.addObserver(of: UndoManager.self, for: .willCloseUndoGroup) { _ in })
+    tokens.append(center.addObserver(of: HTTPCookieStorage.self, for: .cookiesChanged) { _ in })
+    tokens.append(center.addObserver(of: NSMetadataQuery.self, for: .didFinishGathering) { _ in })
+    tokens.append(center.addObserver(of: NSMetadataQuery.self, for: .didStartGathering) { _ in })
+    tokens.append(center.addObserver(of: Calendar.self, for: .calendarDayChanged) { _ in })
+    tokens.append(center.addObserver(of: Date.self, for: .systemClockDidChange) { _ in })
+    tokens.append(center.addObserver(of: TimeZone.self, for: .systemTimeZoneDidChange) { message in _ = message.previousTimeZone })
+    tokens.append(center.addObserver(of: ProcessInfo.self, for: .thermalStateDidChange) { _ in })
+    tokens.append(center.addObserver(of: FileHandle.self, for: .connectionAccepted) { message in _ = message.fileHandleItem })
+    tokens.append(center.addObserver(of: FileHandle.self, for: .dataAvailable) { _ in })
+    tokens.append(center.addObserver(of: FileHandle.self, for: .readToEndOfFileCompletion) { message in _ = message.dataItem })
+    tokens.append(center.addObserver(of: FileHandle.self, for: .readCompletion) { message in _ = message.dataItem })
+    tokens.append(center.addObserver(of: Bundle.self, for: .didLoad) { _ in })
+    tokens.append(center.addObserver(of: UserDefaults.self, for: .didChange) { _ in })
+    tokens.append(center.addObserver(of: UserDefaults.self, for: .sizeLimitExceeded) { _ in })
+    tokens.append(center.addObserver(of: Port.self, for: .didBecomeInvalid) { _ in })
+    tokens.append(center.addObserver(of: Locale.self, for: .currentLocaleDidChange) { _ in })
+    tokens.append(center.addObserver(of: FileManager.self, for: .ubiquityIdentityDidChange) { _ in })
+    tokens.append(center.addObserver(of: NSExtensionContext.self, for: .didBecomeActive) { _ in })
+    tokens.append(center.addObserver(of: NSExtensionContext.self, for: .didEnterBackground) { _ in })
+    tokens.append(center.addObserver(of: NSExtensionContext.self, for: .willEnterForeground) { _ in })
+    tokens.append(center.addObserver(of: NSExtensionContext.self, for: .willResignActive) { _ in })
+    #if os(macOS)
+    tokens.append(center.addObserver(of: Process.self, for: .didTerminate) { _ in })
+    #endif
+    return tokens
+}
+
+// The one predefined message that asks for more than the floor: its
+// notification's constant is macOS 12.
+@available(macOS 12, *)
+func reachPowerStateMessage(in center: NotificationCenter) -> (NotificationCenter.Backport.ObservationToken, Notification) {
+    (
+        center.addObserver(of: ProcessInfo.self, for: .powerStateDidChange) { _ in },
+        ProcessInfo.Backport.PowerStateDidChangeMessage.makeNotification(.init())
+    )
+}
+
+@MainActor
+func makeFoundationPredefinedNotifications(fileHandle: FileHandle) -> [Notification] {
+    var notifications = [
+        UndoManager.Backport.WillUndoChangeMessage.makeNotification(.init()),
+        UndoManager.Backport.DidUndoChangeMessage.makeNotification(.init(groupIsDiscardable: true)),
+        UndoManager.Backport.WillRedoChangeMessage.makeNotification(.init()),
+        UndoManager.Backport.DidRedoChangeMessage.makeNotification(.init(groupIsDiscardable: true)),
+        UndoManager.Backport.CheckpointMessage.makeNotification(.init()),
+        UndoManager.Backport.DidOpenUndoGroupMessage.makeNotification(.init()),
+        UndoManager.Backport.DidCloseUndoGroupMessage.makeNotification(.init(groupIsDiscardable: true)),
+        UndoManager.Backport.WillCloseUndoGroupMessage.makeNotification(.init()),
+        HTTPCookieStorage.Backport.CookiesChangedMessage.makeNotification(.init()),
+        NSMetadataQuery.Backport.DidFinishGatheringMessage.makeNotification(.init()),
+        NSMetadataQuery.Backport.DidStartGatheringMessage.makeNotification(.init()),
+        Calendar.Backport.CalendarDayChangedMessage.makeNotification(.init()),
+        Date.Backport.SystemClockDidChangeMessage.makeNotification(.init()),
+        TimeZone.Backport.SystemTimeZoneDidChangeMessage.makeNotification(.init(previousTimeZone: .current)),
+        ProcessInfo.Backport.ThermalStateDidChangeMessage.makeNotification(.init()),
+        FileHandle.Backport.ConnectionAcceptedMessage.makeNotification(.init(fileHandleItem: .success(fileHandle))),
+        FileHandle.Backport.DataAvailableMessage.makeNotification(.init()),
+        FileHandle.Backport.ReadToEndOfFileCompletionMessage.makeNotification(.init(dataItem: .success(Data()))),
+        FileHandle.Backport.ReadCompletionMessage.makeNotification(.init(dataItem: .failure(POSIXError(.EIO)))),
+        Bundle.Backport.DidLoadMessage.makeNotification(.init()),
+        UserDefaults.Backport.DidChangeMessage.makeNotification(.init()),
+        UserDefaults.Backport.SizeLimitExceededMessage.makeNotification(.init()),
+        Port.Backport.DidBecomeInvalidMessage.makeNotification(.init()),
+        Locale.Backport.CurrentLocaleDidChangeMessage.makeNotification(.init()),
+        FileManager.Backport.UbiquityIdentityDidChangeMessage.makeNotification(.init()),
+        NSExtensionContext.Backport.DidBecomeActiveMessage.makeNotification(.init()),
+        NSExtensionContext.Backport.DidEnterBackgroundMessage.makeNotification(.init()),
+        NSExtensionContext.Backport.WillEnterForegroundMessage.makeNotification(.init()),
+        NSExtensionContext.Backport.WillResignActiveMessage.makeNotification(.init()),
+    ]
+    #if os(macOS)
+    notifications.append(Process.Backport.DidTerminateMessage.makeNotification(.init()))
+    #endif
+    return notifications
+}
+
+// Compiled, not run, and the guard for `@_disfavoredOverload` on every
+// predefined identifier: where Foundation's own messages are available, each
+// shorthand has to resolve to Foundation's, and it is ambiguous — so this
+// fails to compile — for any identifier that lost the attribute. The results
+// are discarded rather than collected, because a typed destination would pick
+// the overload by itself and hide the ambiguity.
+@MainActor
+func observeThroughFoundationsOwnShorthand(in center: NotificationCenter) {
+    guard #available(macOS 26, *) else { return }
+    _ = center.addObserver(of: UndoManager.self, for: .willUndoChange) { _ in }
+    _ = center.addObserver(of: UndoManager.self, for: .didUndoChange) { _ in }
+    _ = center.addObserver(of: UndoManager.self, for: .willRedoChange) { _ in }
+    _ = center.addObserver(of: UndoManager.self, for: .didRedoChange) { _ in }
+    _ = center.addObserver(of: UndoManager.self, for: .checkpoint) { _ in }
+    _ = center.addObserver(of: UndoManager.self, for: .didOpenUndoGroup) { _ in }
+    _ = center.addObserver(of: UndoManager.self, for: .didCloseUndoGroup) { _ in }
+    _ = center.addObserver(of: UndoManager.self, for: .willCloseUndoGroup) { _ in }
+    _ = center.addObserver(of: HTTPCookieStorage.self, for: .cookiesChanged) { _ in }
+    _ = center.addObserver(of: NSMetadataQuery.self, for: .didFinishGathering) { _ in }
+    _ = center.addObserver(of: NSMetadataQuery.self, for: .didStartGathering) { _ in }
+    _ = center.addObserver(of: Calendar.self, for: .calendarDayChanged) { _ in }
+    _ = center.addObserver(of: Date.self, for: .systemClockDidChange) { _ in }
+    _ = center.addObserver(of: TimeZone.self, for: .systemTimeZoneDidChange) { _ in }
+    _ = center.addObserver(of: ProcessInfo.self, for: .powerStateDidChange) { _ in }
+    _ = center.addObserver(of: ProcessInfo.self, for: .thermalStateDidChange) { _ in }
+    _ = center.addObserver(of: FileHandle.self, for: .connectionAccepted) { _ in }
+    _ = center.addObserver(of: FileHandle.self, for: .dataAvailable) { _ in }
+    _ = center.addObserver(of: FileHandle.self, for: .readToEndOfFileCompletion) { _ in }
+    _ = center.addObserver(of: FileHandle.self, for: .readCompletion) { _ in }
+    _ = center.addObserver(of: Bundle.self, for: .didLoad) { _ in }
+    _ = center.addObserver(of: UserDefaults.self, for: .didChange) { _ in }
+    _ = center.addObserver(of: UserDefaults.self, for: .sizeLimitExceeded) { _ in }
+    _ = center.addObserver(of: Port.self, for: .didBecomeInvalid) { _ in }
+    _ = center.addObserver(of: Locale.self, for: .currentLocaleDidChange) { _ in }
+    _ = center.addObserver(of: FileManager.self, for: .ubiquityIdentityDidChange) { _ in }
+    _ = center.addObserver(of: NSExtensionContext.self, for: .didBecomeActive) { _ in }
+    _ = center.addObserver(of: NSExtensionContext.self, for: .didEnterBackground) { _ in }
+    _ = center.addObserver(of: NSExtensionContext.self, for: .willEnterForeground) { _ in }
+    _ = center.addObserver(of: NSExtensionContext.self, for: .willResignActive) { _ in }
+    #if os(macOS)
+    _ = center.addObserver(of: Process.self, for: .didTerminate) { _ in }
+    #endif
+}
+
 print("NotificationCenter.Backport messages observed:", MainActor.assumeIsolated { demonstrateNotificationCenterBackport() })

@@ -57,10 +57,45 @@ extension NotificationCenter {
     ///
     /// The two APIs share no message types. They meet only through
     /// `Notification`, exactly as either of them meets
-    /// `post(name:object:userInfo:)`. The messages Foundation predefines for
-    /// system notifications conform to Foundation's protocols, not these.
+    /// `post(name:object:userInfo:)`.
+    ///
+    /// ### Foundation's predefined messages
+    ///
+    /// The messages Foundation predefines for its own notifications are here
+    /// as well, each in a `Backport` namespace on its subject type:
+    /// `UndoManager.Backport.DidUndoChangeMessage` stands in for Foundation's
+    /// `UndoManager.DidUndoChangeMessage`, and its identifier has Foundation's
+    /// name, `.didUndoChange`. Wherever Foundation's own message is available
+    /// — a deployment target of 26, or inside `if #available(macOS 26, *)` —
+    /// that shorthand picks Foundation's message, not this one; name the type
+    /// (`for: UndoManager.Backport.DidUndoChangeMessage.self`) to pick the
+    /// backport there.
     public enum Backport {}
 }
+
+// Conventions for the predefined messages in `FoundationMessages/`, one file per
+// subject type. Each reproduces Foundation's own implementation, read from
+// Foundation 5027.0.69 on macOS 27.0; the
+// `notification-center-backport-foundation-messages` proposal has the details.
+//
+// - Every identifier is `@_disfavoredOverload`. Without it the shorthand is
+//   ambiguous wherever Foundation's identifier of the same name is available
+//   too, so merely importing this module would break Foundation's own call
+//   sites. With it, the solver still picks the backport where Foundation's is
+//   unavailable, because an unavailable declaration scores worse than a
+//   disfavored one (`SK_Unavailable` ranks above `SK_DisfavoredOverload` in
+//   the compiler's `include/swift/Sema/Score.h`). `FoundationToolboxClient`
+//   fails to compile if one goes missing — for every identifier that exists on
+//   macOS, which leaves `.lowDiskSpace` unguarded.
+// - A message without properties implements `makeMessage(_:)` as `Self()`,
+//   whatever the notification's name, object or user info, as Foundation's
+//   does. The protocol's default returns `nil`, which would silently drop
+//   every notification the system posts, so the explicit ones must stay.
+// - `name` is the SDK's constant for the notification. Where the SDK keeps that
+//   constant from a platform on which Foundation offers the message anyway, it
+//   is spelled as the string Foundation's getter returns.
+// - Availability follows the notification's constant, not the 26 gate on
+//   Foundation's types: only what the constant itself requires is declared.
 
 /// The faults this API reports.
 ///
