@@ -18,7 +18,8 @@ public struct DyldInterposeMacro: PeerMacro {
         try DyldInterposeSupport.makeInterposeTupleDeclarations(
             of: node,
             providingPeersOf: declaration,
-            configuration: configuration
+            configuration: configuration,
+            in: context
         )
     }
 }

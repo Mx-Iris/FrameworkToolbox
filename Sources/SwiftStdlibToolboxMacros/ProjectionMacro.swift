@@ -126,13 +126,25 @@ extension ProjectionMacro {
             }
 
             let pattern = bindings.isEmpty ? "" : "(\(bindings.joined(separator: ", ")))"
+            let call = "Self.\(name)(\(arguments.joined(separator: ", ")))"
 
-            projectedCases.append(
-                """
-                case .\(element.name)\(pattern): \
-                Self.\(name)(\(arguments.joined(separator: ", ")))
-                """
-            )
+            // A payload the projection function cannot take is a type error
+            // on this call, which the caller never wrote. Mapping the call to
+            // the case's own line reports it on the case that needs changing.
+            // The directive sets the line of the line after it, so the call
+            // stands alone between the two.
+            if let location = context.location(of: element, at: .afterLeadingTrivia, filePathMode: .filePath) {
+                projectedCases.append(
+                    """
+                    case .\(element.name)\(pattern):
+                    #sourceLocation(file: \(location.file), line: \(location.line))
+                    \(call)
+                    #sourceLocation()
+                    """
+                )
+            } else {
+                projectedCases.append("case .\(element.name)\(pattern): \(call)")
+            }
         }
 
         // Flattening keeps the property from being a double optional when the

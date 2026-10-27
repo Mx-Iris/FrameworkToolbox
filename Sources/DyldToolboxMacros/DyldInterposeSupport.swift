@@ -29,7 +29,8 @@ enum DyldInterposeSupport {
     static func makeInterposeTupleDeclarations(
         of node: AttributeSyntax,
         providingPeersOf declaration: some DeclSyntaxProtocol,
-        configuration: DyldInterposeExpansionConfiguration
+        configuration: DyldInterposeExpansionConfiguration,
+        in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
         guard let functionDeclaration = declaration.as(FunctionDeclSyntax.self) else {
             throw DyldInterposeMacroError.requiresFunction(attributeName: configuration.attributeName)
@@ -45,21 +46,41 @@ enum DyldInterposeSupport {
         let cFunctionType = buildCFunctionType(from: functionDeclaration.signature)
         let constantName = configuration.constantNamePrefix + replacementName
         let targetExpressionDescription = targetFunctionExpression.trimmedDescription
+        let tuple = "private let \(constantName): (\(cFunctionType), \(cFunctionType)) = (\(replacementName), \(targetExpressionDescription))"
 
+        // When the replacement's signature does not match the replacee's, the
+        // type error is raised on the tuple — code the caller never wrote. A
+        // `#sourceLocation` pointing at the attribute puts it on the line that
+        // names the replacee instead. The directive sets the line of the line
+        // that follows it, so each branch carries the declaration on a single
+        // line right after it, attributes included.
+        let lineDirectives = sourceLocationDirectives(for: node, in: context)
         let generatedDeclaration: DeclSyntax = """
         #if canImport(Darwin)
         #if compiler(>=6.3)
-        @section("\(raw: configuration.sectionName)")
-        @used
+        \(raw: lineDirectives.opening)@section("\(raw: configuration.sectionName)") @used \(raw: tuple)\(raw: lineDirectives.closing)
         #else
-        @_section("\(raw: configuration.sectionName)")
-        @_used
+        \(raw: lineDirectives.opening)@_section("\(raw: configuration.sectionName)") @_used \(raw: tuple)\(raw: lineDirectives.closing)
         #endif
-        private let \(raw: constantName): (\(raw: cFunctionType), \(raw: cFunctionType)) = (\(raw: replacementName), \(raw: targetExpressionDescription))
         #endif
         """
 
         return [generatedDeclaration]
+    }
+
+    /// The `#sourceLocation` lines to wrap the tuple in, or empty strings when
+    /// the expansion context cannot say where the attribute is.
+    private static func sourceLocationDirectives(
+        for node: AttributeSyntax,
+        in context: some MacroExpansionContext
+    ) -> (opening: String, closing: String) {
+        guard let location = context.location(of: node, at: .afterLeadingTrivia, filePathMode: .filePath) else {
+            return ("", "")
+        }
+        return (
+            "#sourceLocation(file: \(location.file), line: \(location.line))\n",
+            "\n#sourceLocation()"
+        )
     }
 
     static func parseTargetArgument(from attribute: AttributeSyntax) -> ExprSyntax? {

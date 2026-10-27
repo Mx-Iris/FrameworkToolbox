@@ -24,13 +24,14 @@ struct DyldInterposeMacroTests {
 
             #if canImport(Darwin)
             #if compiler(>=6.3)
-            @section("__DATA,__interpose")
-            @used
+            #sourceLocation(file: "Test.swift", line: 1)
+            @section("__DATA,__interpose") @used private let _dyldInterpose_myGetpid: (@convention(c) () -> pid_t, @convention(c) () -> pid_t) = (myGetpid, getpid)
+            #sourceLocation()
             #else
-            @_section("__DATA,__interpose")
-            @_used
+            #sourceLocation(file: "Test.swift", line: 1)
+            @_section("__DATA,__interpose") @_used private let _dyldInterpose_myGetpid: (@convention(c) () -> pid_t, @convention(c) () -> pid_t) = (myGetpid, getpid)
+            #sourceLocation()
             #endif
-            private let _dyldInterpose_myGetpid: (@convention(c) () -> pid_t, @convention(c) () -> pid_t) = (myGetpid, getpid)
             #endif
             """
         }
@@ -52,13 +53,14 @@ struct DyldInterposeMacroTests {
 
             #if canImport(Darwin)
             #if compiler(>=6.3)
-            @section("__DATA,__interpose")
-            @used
+            #sourceLocation(file: "Test.swift", line: 1)
+            @section("__DATA,__interpose") @used private let _dyldInterpose_myWrite: (@convention(c) (Int32, UnsafeRawPointer?, Int) -> Int, @convention(c) (Int32, UnsafeRawPointer?, Int) -> Int) = (myWrite, write)
+            #sourceLocation()
             #else
-            @_section("__DATA,__interpose")
-            @_used
+            #sourceLocation(file: "Test.swift", line: 1)
+            @_section("__DATA,__interpose") @_used private let _dyldInterpose_myWrite: (@convention(c) (Int32, UnsafeRawPointer?, Int) -> Int, @convention(c) (Int32, UnsafeRawPointer?, Int) -> Int) = (myWrite, write)
+            #sourceLocation()
             #endif
-            private let _dyldInterpose_myWrite: (@convention(c) (Int32, UnsafeRawPointer?, Int) -> Int, @convention(c) (Int32, UnsafeRawPointer?, Int) -> Int) = (myWrite, write)
             #endif
             """
         }
@@ -80,13 +82,14 @@ struct DyldInterposeMacroTests {
 
             #if canImport(Darwin)
             #if compiler(>=6.3)
-            @section("__DATA,__interpose")
-            @used
+            #sourceLocation(file: "Test.swift", line: 1)
+            @section("__DATA,__interpose") @used private let _dyldInterpose_myFree: (@convention(c) (UnsafeMutableRawPointer?) -> Void, @convention(c) (UnsafeMutableRawPointer?) -> Void) = (myFree, free)
+            #sourceLocation()
             #else
-            @_section("__DATA,__interpose")
-            @_used
+            #sourceLocation(file: "Test.swift", line: 1)
+            @_section("__DATA,__interpose") @_used private let _dyldInterpose_myFree: (@convention(c) (UnsafeMutableRawPointer?) -> Void, @convention(c) (UnsafeMutableRawPointer?) -> Void) = (myFree, free)
+            #sourceLocation()
             #endif
-            private let _dyldInterpose_myFree: (@convention(c) (UnsafeMutableRawPointer?) -> Void, @convention(c) (UnsafeMutableRawPointer?) -> Void) = (myFree, free)
             #endif
             """
         }
@@ -108,13 +111,14 @@ struct DyldInterposeMacroTests {
 
             #if canImport(Darwin)
             #if compiler(>=6.3)
-            @section("__DATA,__interpose")
-            @used
+            #sourceLocation(file: "Test.swift", line: 1)
+            @section("__DATA,__interpose") @used private let _dyldInterpose_myGetpid: (@convention(c) () -> pid_t, @convention(c) () -> pid_t) = (myGetpid, Darwin.getpid)
+            #sourceLocation()
             #else
-            @_section("__DATA,__interpose")
-            @_used
+            #sourceLocation(file: "Test.swift", line: 1)
+            @_section("__DATA,__interpose") @_used private let _dyldInterpose_myGetpid: (@convention(c) () -> pid_t, @convention(c) () -> pid_t) = (myGetpid, Darwin.getpid)
+            #sourceLocation()
             #endif
-            private let _dyldInterpose_myGetpid: (@convention(c) () -> pid_t, @convention(c) () -> pid_t) = (myGetpid, Darwin.getpid)
             #endif
             """
         }

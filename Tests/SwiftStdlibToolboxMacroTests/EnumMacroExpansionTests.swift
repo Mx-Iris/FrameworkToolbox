@@ -524,9 +524,13 @@ struct EnumMacroExpansionTests {
                 var id: String? {
                     switch self {
                     case .user(let payload):
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.id(payload)
+                        #sourceLocation()
                     case .session(let payload?):
+                        #sourceLocation(file: "Test.swift", line: 3)
                         Self.id(payload)
+                        #sourceLocation()
                     default:
                         nil
                     }
@@ -569,7 +573,9 @@ struct EnumMacroExpansionTests {
                 var owner: String? {
                     switch self {
                     case .text(let payload?):
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.owner(payload)
+                        #sourceLocation()
                     default:
                         nil
                     }
@@ -578,7 +584,9 @@ struct EnumMacroExpansionTests {
                 var length: Int? {
                     switch self {
                     case .text(let payload?):
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.length(payload)
+                        #sourceLocation()
                     default:
                         nil
                     }
@@ -619,7 +627,9 @@ struct EnumMacroExpansionTests {
                 var tag: String? {
                     switch self {
                     case .item(let payload?):
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.tag(payload)
+                        #sourceLocation()
                     default:
                         nil
                     }
@@ -652,7 +662,9 @@ struct EnumMacroExpansionTests {
                 var tag: String? {
                     switch self {
                     case .item(let payload?):
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.tag(payload)
+                        #sourceLocation()
                     default:
                         nil
                     }
@@ -685,7 +697,9 @@ struct EnumMacroExpansionTests {
                 var tag: String?? {
                     switch self {
                     case .item(let payload?):
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.tag(payload)
+                        #sourceLocation()
                     default:
                         nil
                     }
@@ -722,7 +736,9 @@ struct EnumMacroExpansionTests {
                 var pair: String? {
                     switch self {
                     case .point(let payload1, let payload2):
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.pair(payload1, payload2)
+                        #sourceLocation()
                     default:
                         nil
                     }
@@ -757,7 +773,9 @@ struct EnumMacroExpansionTests {
                 var combine: String? {
                     switch self {
                     case .both(let payload1, let payload2):
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.combine(text: payload1, number: payload2)
+                        #sourceLocation()
                     default:
                         nil
                     }
@@ -792,7 +810,9 @@ struct EnumMacroExpansionTests {
                 var placeholder: String? {
                     switch self {
                     case .first:
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.placeholder()
+                        #sourceLocation()
                     default:
                         nil
                     }
@@ -827,9 +847,13 @@ struct EnumMacroExpansionTests {
                 var label: String? {
                     switch self {
                     case .first(let payload):
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.label(payload)
+                        #sourceLocation()
                     case .second(let payload):
+                        #sourceLocation(file: "Test.swift", line: 3)
                         Self.label(payload)
+                        #sourceLocation()
                     }
                 }
             }
@@ -860,7 +884,9 @@ struct EnumMacroExpansionTests {
                 var label: String? {
                     switch self {
                     case .first(let payload?):
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.label(payload)
+                        #sourceLocation()
                     default:
                         nil
                     }
@@ -1002,7 +1028,9 @@ struct EnumMacroExpansionTests {
                 var label: String? {
                     switch self {
                     case .first(let payload):
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.label(payload)
+                        #sourceLocation()
                     }
                 }
             }
@@ -1039,7 +1067,9 @@ struct EnumMacroExpansionTests {
                 var describe: (any CustomStringConvertible)? {
                     switch self {
                     case .first(let payload):
+                        #sourceLocation(file: "Test.swift", line: 2)
                         Self.describe(payload)
+                        #sourceLocation()
                     }
                 }
             }

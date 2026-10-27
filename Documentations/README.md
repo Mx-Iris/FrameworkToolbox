@@ -65,6 +65,9 @@
   `box` 的 setter 由一对按 `Self: AnyObject` 重载的 accessor 宏选择，`referenceSemantics:` 废弃；忘写它曾让编译器在 SILGen 崩溃。
 - [draft —— ObjC runtime 宏改由编译器判断 type encoding 与隔离](Evolutions/draft-objc-runtime-compiler-type-facts.md)（In Progress）
   表外拼写（typealias、导入的枚举）的 encoding 与 proxy 返回值读法由重载决议决定；被主线程隔离的 hook 容器在宏属性那一行报错。
+- [draft —— 把宏展开里的类型错误指回调用方源码](Evolutions/draft-macro-diagnostics-at-call-site.md)（In Progress）
+  `@DyldInterpose` 与 `@Projection` 用 `#sourceLocation` 把类型错误映射回用户那一行；`@ObjectiveCBridgeable` 的遵循检查因编译器
+  不报告隐含遵循而撤回，实测记录在内。
 
 ## 专题说明
 
