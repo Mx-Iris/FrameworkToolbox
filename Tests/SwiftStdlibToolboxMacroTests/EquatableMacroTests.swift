@@ -139,4 +139,55 @@ struct EquatableMacroTests {
             """
         }
     }
+
+    // The markers may be spelled with their module. They stay unexpanded here
+    // because the test harness only expands attributes written without one;
+    // what matters is that `@Equatable` still recognises them and leaves both
+    // properties out of the comparison.
+    @Test func recognisesModuleQualifiedMarkers() {
+        assertMacro {
+            """
+            @Equatable
+            struct User {
+                let id: UUID
+                @SwiftStdlibToolbox.EquatableIgnored var cache: String = ""
+                @SwiftStdlibToolbox.EquatableIgnoredUnsafeClosure var onTap: () -> Void
+            }
+            """
+        } expansion: {
+            """
+            struct User {
+                let id: UUID
+                @SwiftStdlibToolbox.EquatableIgnored var cache: String = ""
+                @SwiftStdlibToolbox.EquatableIgnoredUnsafeClosure var onTap: () -> Void
+            }
+
+            nonisolated extension User: Equatable {
+                nonisolated public static func == (lhs: User, rhs: User) -> Bool {
+                    lhs.id == rhs.id
+                }
+            }
+            """
+        }
+    }
+
+    // `@SwiftUI.Binding` is the same wrapper as `@Binding`, and ignoring it is
+    // refused for the same reason whichever way it is spelled.
+    @Test func ignoredRejectsModuleQualifiedBinding() {
+        assertMacro {
+            """
+            struct Row {
+                @SwiftUI.Binding @EquatableIgnored var value: Int
+            }
+            """
+        } diagnostics: {
+            """
+            struct Row {
+                @SwiftUI.Binding @EquatableIgnored var value: Int
+                                 ┬────────────────
+                                 ╰─ 🛑 @EquatableIgnored cannot be applied to @Binding properties
+            }
+            """
+        }
+    }
 }

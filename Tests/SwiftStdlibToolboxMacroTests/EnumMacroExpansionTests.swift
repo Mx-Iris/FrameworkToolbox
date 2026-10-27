@@ -943,4 +943,70 @@ struct EnumMacroExpansionTests {
             """
         }
     }
+
+    // MARK: - Module-qualified markers
+
+    // A caller may spell any of these macros with its module, and the macro
+    // that looks for the marker has to recognise both spellings. The marker
+    // stays unexpanded in these snapshots because the test harness only
+    // expands attributes written without a module; the compiler expands both.
+
+    @Test func mirroredCasesFindsAModuleQualifiedCaseTag() {
+        assertMacro {
+            """
+            @MirroredCases enum Tooltip {
+                @SwiftStdlibToolbox.CaseTag(by: Tooltip.self) enum Union {
+                    case text(String)
+                    case custom
+                }
+            }
+            """
+        } expansion: {
+            """
+            enum Tooltip {
+                @SwiftStdlibToolbox.CaseTag(by: Tooltip.self) enum Union {
+                    case text(String)
+                    case custom
+                }
+
+                case text
+
+                case custom
+            }
+            """
+        }
+    }
+
+    @Test func projectionFindsAModuleQualifiedProjectionFunction() {
+        assertMacro {
+            """
+            @Projection enum FullyCovered {
+                case first(String)
+
+                @SwiftStdlibToolbox.ProjectionFunction
+                static func label(_ value: some CustomStringConvertible) -> String {
+                    value.description
+                }
+            }
+            """
+        } expansion: {
+            """
+            enum FullyCovered {
+                case first(String)
+
+                @SwiftStdlibToolbox.ProjectionFunction
+                static func label(_ value: some CustomStringConvertible) -> String {
+                    value.description
+                }
+
+                var label: String? {
+                    switch self {
+                    case .first(let payload):
+                        Self.label(payload)
+                    }
+                }
+            }
+            """
+        }
+    }
 }

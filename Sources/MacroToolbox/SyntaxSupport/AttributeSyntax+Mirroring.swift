@@ -8,14 +8,36 @@ import SwiftSyntax
 extension AttributeSyntax {
     /// The attribute's name without its arguments — the `available` of
     /// `@available(macOS 13, *)` — or `nil` when it is not a plain name.
+    ///
+    /// Right for built-in attributes, which are never written with a module.
+    /// To find a macro, use ``unqualifiedName``.
     public var baseName: String? {
         attributeName.as(IdentifierTypeSyntax.self)?.name.text
+    }
+
+    /// The attribute's name with any module qualifier dropped — `CaseTag` for
+    /// both `@CaseTag` and `@SwiftStdlibToolbox.CaseTag` — or `nil` when it is
+    /// neither form.
+    ///
+    /// A caller may spell any macro with its module, and a macro looking for a
+    /// marker it does not recognise skips the declaration without a word, so
+    /// markers have to be matched on this rather than on ``baseName``.
+    public var unqualifiedName: String? {
+        if let identifier = attributeName.as(IdentifierTypeSyntax.self) {
+            return identifier.name.text
+        }
+        if let member = attributeName.as(MemberTypeSyntax.self) {
+            return member.name.text
+        }
+        return nil
     }
 }
 
 extension AttributeListSyntax {
-    public func first(named baseName: String) -> AttributeSyntax? {
-        for case .attribute(let attribute) in self where attribute.baseName == baseName {
+    /// The first attribute naming the macro `macroName`, whether or not it is
+    /// written with its module.
+    public func first(named macroName: String) -> AttributeSyntax? {
+        for case .attribute(let attribute) in self where attribute.unqualifiedName == macroName {
             return attribute
         }
         return nil

@@ -1,4 +1,5 @@
 import Foundation
+import MacroToolbox
 import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxBuilder
@@ -230,6 +231,10 @@ extension EquatableMacro {
     }
 
     private static func shouldSkip(memberType node: MemberTypeSyntax) -> Bool {
+        // The marker may be reached through any module that re-exports it.
+        if node.name.text == "EquatableIgnored" {
+            return true
+        }
         if node.baseType.as(IdentifierTypeSyntax.self)?.name.text == "SwiftUI",
            skippablePropertyWrappers.contains(node.name.text) {
             return true
@@ -239,10 +244,7 @@ extension EquatableMacro {
 
     private static func isMarkedWithEquatableIgnoredUnsafeClosure(_ varDecl: VariableDeclSyntax) -> Bool {
         varDecl.attributes.contains(where: { attribute in
-            if let attributeName = attribute.as(AttributeSyntax.self)?.attributeName.as(IdentifierTypeSyntax.self)?.name.text {
-                return attributeName == "EquatableIgnoredUnsafeClosure"
-            }
-            return false
+            attribute.as(AttributeSyntax.self)?.unqualifiedName == "EquatableIgnoredUnsafeClosure"
         })
     }
 

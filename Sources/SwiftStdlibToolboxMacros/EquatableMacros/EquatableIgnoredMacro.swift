@@ -72,6 +72,17 @@ public struct EquatableIgnoredMacro: PeerMacro {
     }
 
     private static func attributeName(_ attribute: AttributeListSyntax.Element) -> String? {
-        attribute.as(AttributeSyntax.self)?.attributeName.as(IdentifierTypeSyntax.self)?.trimmed.description
+        guard let attributeName = attribute.as(AttributeSyntax.self)?.attributeName else {
+            return nil
+        }
+        if let identifier = attributeName.as(IdentifierTypeSyntax.self) {
+            return identifier.name.text
+        }
+        // `@SwiftUI.Binding` is the same wrapper; another module's `Binding` is not.
+        if let member = attributeName.as(MemberTypeSyntax.self),
+           member.baseType.as(IdentifierTypeSyntax.self)?.name.text == "SwiftUI" {
+            return member.name.text
+        }
+        return nil
     }
 }

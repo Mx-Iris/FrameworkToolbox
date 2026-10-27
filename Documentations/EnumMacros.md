@@ -38,6 +38,8 @@
 - `@Projection` 能看到被 `@ProjectionFunction` 标记的函数的完整签名（名字、参数个数、参数标签
   全是语法），但**看不出这些参数类型能不能接住每个 case 的 payload**——那要等编译器。所以宏按
   关联值的**个数**匹配，类型对不上的报错会落在展开之后。
+- 标记宏可以带模块名写（`@SwiftStdlibToolbox.CaseTag(by:)`、`@SwiftStdlibToolbox.ProjectionFunction`），
+  `@MirroredCases` 与 `@Projection` 按去掉模块名之后的名字找它们。
 
 ## `@Bijection`
 
