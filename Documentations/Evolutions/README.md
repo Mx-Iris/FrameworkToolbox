@@ -41,6 +41,6 @@ SPM library product，使用方以源码依赖并重新编译，未开启 librar
 | [0008](0008-objc-runtime-compiler-type-facts.md) | ObjC runtime 宏改由编译器判断 type encoding 与隔离 | Implemented |
 | [0009](0009-macro-diagnostics-at-call-site.md) | 把宏展开里的类型错误指回调用方源码 | Implemented |
 | [draft](draft-add-completion-handler-sendable.md) | `@AddCompletionHandler` 生成的 completion 改为 `@Sendable` | Accepted |
-| [draft](draft-equatable-refined-hashable.md) | `@Equatable` 不再弄丢经由细化协议得到的 `Hashable` | In Progress |
+| [0010](0010-equatable-refined-hashable.md) | `@Equatable` 不再弄丢经由细化协议得到的 `Hashable` | Implemented |
 
 `Specs/` 与 `Plans/` 是提案制确立前的产物，见[上级索引](../README.md)，保持原样不迁移。

@@ -1,6 +1,6 @@
-# Draft - `@Equatable` 不再弄丢经由细化协议得到的 `Hashable`
+# 0010 - `@Equatable` 不再弄丢经由细化协议得到的 `Hashable`
 
-- **状态**: In Progress
+- **状态**: Implemented
 - **创建日期**: 2026-10-27
 - **最后更新**: 2026-10-27
 - **实现分支**: `feature/equatable-refined-hashable`
@@ -65,3 +65,4 @@
 | 2026-10-27 | 默认 MainActor 隔离模块里的守卫写成 `nonisolated LedgerRecord` | 实测：那种模块里，主线程隔离的类型遵循一个细化 `Hashable` 的协议会报 `conformance … crosses into main actor-isolated code`，不挂 `@Equatable` 的同样写法报同一个错，与本宏无关；直接写 `Hashable` 则不报。调用方要像对 `Hashable` 写 `nonisolated Hashable` 那样把这个遵循移出主线程，守卫照此写，并在旁边注明 |
 | 2026-10-27 | 快照随之更新 | 继承子句没写 `Hashable` 的 5 个快照，生成的 `==` 上多了 `_EquatableHashing` 一行，成员顺序与 `==` 一致；写了 `Hashable` 的快照不变。两个实现各有单独的宏测试，测试框架不做重载决议 |
 | 2026-10-27 | 实现完成，待合并 | 干净重编后完整测试套件通过（706 个 swift-testing 测试、51 个 XCTest），没有新增警告。文档判断：`@Equatable` 的文档注释改写了 `Hashable` 怎么判断，并写明条件遵循这个盲区；`CLAUDE.md` 里「编译器替宏判断」一条换掉了对 `conformingTo:` 的旧解释，写成 `conformances:` 的占位遵循规则；不另写使用指南，没有新术语 |
+| 2026-10-27 | Implemented，编号 0010 | 随 `feature/equatable-refined-hashable` 合入 main，与方案没有偏离，没有遗留的后续项。文档判断同上一行：`@Equatable` 的文档注释与 `CLAUDE.md` 已同步，不另写使用指南，没有新术语 |
