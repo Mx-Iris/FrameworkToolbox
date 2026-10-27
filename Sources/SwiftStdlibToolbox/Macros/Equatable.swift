@@ -58,17 +58,21 @@
 ///
 /// Expanded:
 /// ```swift
-/// extension User: Equatable {
+/// nonisolated extension User: Equatable {
 ///     nonisolated public static func == (lhs: User, rhs: User) -> Bool {
 ///         lhs.id == rhs.id
 ///     }
 /// }
-/// extension User {
+/// nonisolated extension User {
 ///     nonisolated public func hash(into hasher: inout Hasher) {
 ///         hasher.combine(id)
 ///     }
 /// }
 /// ```
+///
+/// The extensions are `nonisolated` so that in a module whose default isolation
+/// is `MainActor` the conformance stays usable off the main actor, as its
+/// `nonisolated` witnesses already are.
 @attached(extension, conformances: Equatable, Hashable, names: named(==), named(hash(into:)))
 public macro Equatable() = #externalMacro(module: "SwiftStdlibToolboxMacros", type: "EquatableMacro")
 

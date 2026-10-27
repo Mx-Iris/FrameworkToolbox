@@ -257,25 +257,32 @@ private func buildCategoryAccessorMembers(
 
 // MARK: - Protocol requirements
 
-/// Protocol-internal declarations carry no access modifier, no `nonisolated`,
-/// and no body — they're plain protocol requirements that conforming types may
-/// satisfy with their own storage / computed properties.
+/// Protocol-internal declarations carry no access modifier and no body — they're
+/// plain protocol requirements that conforming types may satisfy with their own
+/// storage / computed properties.
+///
+/// They are `nonisolated`, though, like the default implementations below,
+/// which read them from nonisolated code. In a module whose default isolation
+/// is `MainActor` (SE-0466) a requirement without it is main-actor isolated,
+/// and the protocol then fails to compile at all. Anywhere else a requirement
+/// of a protocol with no isolation is nonisolated already, so spelling it out
+/// changes nothing for existing conformers.
 ///
 /// The `isEnabled:` switch adds nothing here: it is resolved inside the default
 /// implementations below, so no new requirement appears and existing conformers
 /// keep compiling.
 private func buildProtocolRequirements() -> [DeclSyntax] {
     return [
-        "static var category: String { get }",
-        "static var subsystem: String { get }",
-        "static var _osLog: os.OSLog { get }",
+        "nonisolated static var category: String { get }",
+        "nonisolated static var subsystem: String { get }",
+        "nonisolated static var _osLog: os.OSLog { get }",
         """
         \(raw: LoggableMacro.loggerAvailability)
-        static var logger: os.Logger { get }
+        nonisolated static var logger: os.Logger { get }
         """,
         """
         \(raw: LoggableMacro.loggerAvailability)
-        var logger: os.Logger { get }
+        nonisolated var logger: os.Logger { get }
         """,
     ]
 }

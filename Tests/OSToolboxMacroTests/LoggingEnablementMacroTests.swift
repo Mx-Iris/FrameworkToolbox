@@ -310,25 +310,25 @@ struct LoggableEnablementTests {
             """
             protocol Networking { 
 
-                static var category: String {
+                nonisolated static var category: String {
                     get
                 }
 
-                static var subsystem: String {
+                nonisolated static var subsystem: String {
                     get
                 }
 
-                static var _osLog: os.OSLog {
-                    get
-                }
-
-                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                static var logger: os.Logger {
+                nonisolated static var _osLog: os.OSLog {
                     get
                 }
 
                 @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
-                var logger: os.Logger {
+                nonisolated static var logger: os.Logger {
+                    get
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated var logger: os.Logger {
                     get
                 }
             }

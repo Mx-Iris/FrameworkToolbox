@@ -326,6 +326,21 @@ let package = Package(
             name: "ObjCRuntimeToolboxSoleImportClient",
             dependencies: ["ObjCRuntimeToolbox"]
         ),
+        // Compiles the macros the way a new Xcode app target does: Swift 6, `MainActor`
+        // as the default isolation, and the approachable-concurrency features. Every
+        // other target here is Swift 5 without a default isolation, so a macro that
+        // generates something a background thread cannot reach would pass everywhere
+        // else. It must keep these settings of its own — see its `main.swift`.
+        .executableTarget(
+            name: "DefaultMainActorIsolationClient",
+            dependencies: ["FoundationToolbox"],
+            swiftSettings: [
+                .swiftLanguageMode(.v6),
+                .defaultIsolation(MainActor.self),
+                .enableUpcomingFeature("InferIsolatedConformances"),
+                .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+            ]
+        ),
 
         .testTarget(
             name: "FrameworkToolboxTests",

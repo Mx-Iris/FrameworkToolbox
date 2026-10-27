@@ -337,13 +337,18 @@ extension EquatableMacro {
         return diagnostic
     }
 
+    /// The extensions are `nonisolated` as well as their members. In a module
+    /// whose default isolation is `MainActor` (SE-0466), an extension without
+    /// it declares a main-actor-isolated conformance even though `==` itself is
+    /// `nonisolated`, and every use of the type as `Equatable` — or as
+    /// `Hashable`, which builds on it — from a background thread fails.
     private static func generateEquatableExtensionSyntax(
         sortedProperties: [(name: String, type: TypeSyntax?)],
         type: TypeSyntaxProtocol
     ) -> ExtensionDeclSyntax? {
         guard !sortedProperties.isEmpty else {
             let extensionDecl: DeclSyntax = """
-            extension \(type): Equatable {
+            nonisolated extension \(type): Equatable {
                 nonisolated public static func == (lhs: \(type), rhs: \(type)) -> Bool {
                     true
                 }
@@ -360,7 +365,7 @@ extension EquatableMacro {
         let equalityImplementation = comparisons.isEmpty ? "true" : comparisons
 
         let extensionDecl: DeclSyntax = """
-        extension \(type): Equatable {
+        nonisolated extension \(type): Equatable {
             nonisolated public static func == (lhs: \(type), rhs: \(type)) -> Bool {
                 \(raw: equalityImplementation)
             }
@@ -376,7 +381,7 @@ extension EquatableMacro {
     ) -> ExtensionDeclSyntax? {
         guard !sortedProperties.isEmpty else {
             let hashableExtensionDecl: DeclSyntax = """
-            extension \(raw: type) {
+            nonisolated extension \(raw: type) {
                 nonisolated public func hash(into hasher: inout Hasher) {}
             }
             """
@@ -390,7 +395,7 @@ extension EquatableMacro {
         .joined(separator: "\n")
 
         let hashableExtensionDecl: DeclSyntax = """
-        extension \(raw: type) {
+        nonisolated extension \(raw: type) {
             nonisolated public func hash(into hasher: inout Hasher) {
                 \(raw: hashableImplementation)
             }

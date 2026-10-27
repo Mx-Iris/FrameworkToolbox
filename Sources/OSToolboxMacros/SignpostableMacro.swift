@@ -260,9 +260,13 @@ private func buildSignpostIdentifierFactories(accessPrefix: String) -> [DeclSynt
 
 // MARK: - Protocol requirements
 
-/// Protocol-internal declarations carry no access modifier, no `nonisolated`,
-/// and no body — they're plain requirements conforming types may satisfy with
-/// their own storage or computed properties.
+/// Protocol-internal declarations carry no access modifier and no body — they're
+/// plain requirements conforming types may satisfy with their own storage or
+/// computed properties.
+///
+/// They are `nonisolated`, for the reason given on `@Loggable`'s requirements:
+/// the default implementations read them from nonisolated code, and under a
+/// `MainActor` default isolation an unmarked requirement is main-actor isolated.
 ///
 /// As with `@Loggable`, the `isEnabled:` switch adds no requirement here — it is
 /// resolved inside the default implementations, so existing conformers keep
@@ -270,16 +274,16 @@ private func buildSignpostIdentifierFactories(accessPrefix: String) -> [DeclSynt
 private func buildSignpostProtocolRequirements() -> [DeclSyntax] {
     let availability = SignpostableMacro.signposterAvailability
     return [
-        "static var signpostCategory: String { get }",
-        "static var signpostSubsystem: String { get }",
-        "static var _signpostLog: os.OSLog { get }",
+        "nonisolated static var signpostCategory: String { get }",
+        "nonisolated static var signpostSubsystem: String { get }",
+        "nonisolated static var _signpostLog: os.OSLog { get }",
         """
         \(raw: availability)
-        static var signposter: os.OSSignposter { get }
+        nonisolated static var signposter: os.OSSignposter { get }
         """,
         """
         \(raw: availability)
-        var signposter: os.OSSignposter { get }
+        nonisolated var signposter: os.OSSignposter { get }
         """,
     ]
 }

@@ -26,7 +26,7 @@ struct EquatableMacroTests {
                 let age: Int
             }
 
-            extension User: Equatable {
+            nonisolated extension User: Equatable {
                 nonisolated public static func == (lhs: User, rhs: User) -> Bool {
                     lhs.age == rhs.age && lhs.name == rhs.name
                 }
@@ -53,7 +53,7 @@ struct EquatableMacroTests {
                 var cache: String = ""
             }
 
-            extension User: Equatable {
+            nonisolated extension User: Equatable {
                 nonisolated public static func == (lhs: User, rhs: User) -> Bool {
                     lhs.id == rhs.id && lhs.name == rhs.name
                 }
@@ -78,13 +78,13 @@ struct EquatableMacroTests {
                 let name: String
             }
 
-            extension User: Equatable {
+            nonisolated extension User: Equatable {
                 nonisolated public static func == (lhs: User, rhs: User) -> Bool {
                     lhs.id == rhs.id && lhs.name == rhs.name
                 }
             }
 
-            extension User {
+            nonisolated extension User {
                 nonisolated public func hash(into hasher: inout Hasher) {
                     hasher.combine(id)
                     hasher.combine(name)
@@ -110,7 +110,7 @@ struct EquatableMacroTests {
                 let id: UUID
             }
 
-            extension Item: Equatable {
+            nonisolated extension Item: Equatable {
                 nonisolated public static func == (lhs: Item, rhs: Item) -> Bool {
                     lhs.id == rhs.id && lhs.name == rhs.name
                 }
@@ -131,7 +131,7 @@ struct EquatableMacroTests {
             struct Empty {
             }
 
-            extension Empty: Equatable {
+            nonisolated extension Empty: Equatable {
                 nonisolated public static func == (lhs: Empty, rhs: Empty) -> Bool {
                     true
                 }

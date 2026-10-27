@@ -588,25 +588,25 @@ struct SignpostableMacroTests {
             """
             protocol Networking { 
 
-                static var signpostCategory: String {
+                nonisolated static var signpostCategory: String {
                     get
                 }
 
-                static var signpostSubsystem: String {
+                nonisolated static var signpostSubsystem: String {
                     get
                 }
 
-                static var _signpostLog: os.OSLog {
-                    get
-                }
-
-                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-                static var signposter: os.OSSignposter {
+                nonisolated static var _signpostLog: os.OSLog {
                     get
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-                var signposter: os.OSSignposter {
+                nonisolated static var signposter: os.OSSignposter {
+                    get
+                }
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                nonisolated var signposter: os.OSSignposter {
                     get
                 }
             }
@@ -677,25 +677,25 @@ struct SignpostableMacroTests {
             """
             public protocol Networking { 
 
-                static var signpostCategory: String {
+                nonisolated static var signpostCategory: String {
                     get
                 }
 
-                static var signpostSubsystem: String {
+                nonisolated static var signpostSubsystem: String {
                     get
                 }
 
-                static var _signpostLog: os.OSLog {
-                    get
-                }
-
-                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-                static var signposter: os.OSSignposter {
+                nonisolated static var _signpostLog: os.OSLog {
                     get
                 }
 
                 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-                var signposter: os.OSSignposter {
+                nonisolated static var signposter: os.OSSignposter {
+                    get
+                }
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                nonisolated var signposter: os.OSSignposter {
                     get
                 }
             }
