@@ -22,8 +22,8 @@ struct AddCompletionHandlerMacroTests {
                 42
             }
 
-            func fetchValue(for identifier: String, completion: @escaping (Result<Int, Error>) -> Void) {
-                Task {
+            func fetchValue(for identifier: String, completion: @escaping (Swift.Result<Int, any Swift.Error>) -> Void) {
+                _Concurrency.Task {
                     do {
                         let result = try await fetchValue(for: identifier)
                         completion(.success(result))
@@ -48,8 +48,8 @@ struct AddCompletionHandlerMacroTests {
             func refresh() async throws {
             }
 
-            func refresh(completion: @escaping (Result<Void, Error>) -> Void) {
-                Task {
+            func refresh(completion: @escaping (Swift.Result<Void, any Swift.Error>) -> Void) {
+                _Concurrency.Task {
                     do {
                         try await refresh()
                         completion(.success(()))
@@ -76,8 +76,8 @@ struct AddCompletionHandlerMacroTests {
                 path
             }
 
-            func request(_ path: String, method httpMethod: String, completion: @escaping (Result<String, Error>) -> Void) {
-                Task {
+            func request(_ path: String, method httpMethod: String, completion: @escaping (Swift.Result<String, any Swift.Error>) -> Void) {
+                _Concurrency.Task {
                     do {
                         let result = try await request(path, method: httpMethod)
                         completion(.success(result))
@@ -121,8 +121,8 @@ struct AddCompletionHandlerMacroTests {
                 42
             }
 
-            func fetchValue(completion: @escaping (Result<Int, Error>) -> Void) {
-                Task {
+            func fetchValue(completion: @escaping (Swift.Result<Int, any Swift.Error>) -> Void) {
+                _Concurrency.Task {
                     do {
                         let result = try await fetchValue()
                         completion(.success(result))

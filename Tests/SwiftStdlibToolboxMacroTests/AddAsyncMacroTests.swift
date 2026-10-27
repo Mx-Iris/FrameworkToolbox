@@ -24,7 +24,7 @@ struct AddAsyncMacroTests {
             }
 
             func fetchValue() async -> Int {
-                await withCheckedContinuation { continuation in
+                await _Concurrency.withCheckedContinuation { continuation in
                     fetchValue() { returnValue in
                         continuation.resume(returning: returnValue)
                     }
@@ -49,7 +49,7 @@ struct AddAsyncMacroTests {
             }
 
             func loadData(from url: URL) async throws -> Data {
-                try await withCheckedThrowingContinuation { continuation in
+                try await _Concurrency.withCheckedThrowingContinuation { continuation in
                     loadData(from: url) { returnValue in
                         switch returnValue {
                             case .success(let value):
@@ -79,7 +79,7 @@ struct AddAsyncMacroTests {
             }
 
             func request(_ path: String, method httpMethod: String) async throws -> String {
-                try await withCheckedThrowingContinuation { continuation in
+                try await _Concurrency.withCheckedThrowingContinuation { continuation in
                     request(path, method: httpMethod) { returnValue in
                         switch returnValue {
                             case .success(let value):
@@ -263,7 +263,7 @@ struct AddAsyncMacroTests {
                 var identifier: String = ""
 
                 func fetchValue() async -> Int {
-                    await withCheckedContinuation { continuation in
+                    await _Concurrency.withCheckedContinuation { continuation in
                         fetchValue() { returnValue in
                             continuation.resume(returning: returnValue)
                         }
@@ -271,7 +271,7 @@ struct AddAsyncMacroTests {
                 }
 
                 func loadData() async throws -> Data {
-                    try await withCheckedThrowingContinuation { continuation in
+                    try await _Concurrency.withCheckedThrowingContinuation { continuation in
                         loadData() { returnValue in
                             switch returnValue {
                                 case .success(let value):

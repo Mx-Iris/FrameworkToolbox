@@ -34,7 +34,7 @@ struct MutexMacroTests {
                 }
             }
 
-            private let _counter = Mutex<Int >(0)
+            private let _counter = OSToolbox.Mutex<Int >(0)
             """
         }
     }
@@ -67,7 +67,7 @@ struct MutexMacroTests {
                 }
             }
 
-            private let _name = Mutex<String >("")
+            private let _name = OSToolbox.Mutex<String >("")
             """
         }
     }
@@ -100,7 +100,7 @@ struct MutexMacroTests {
                 }
             }
 
-            private let _value = Mutex<String? >(nil)
+            private let _value = OSToolbox.Mutex<String? >(nil)
             """
         }
     }
@@ -126,7 +126,7 @@ struct MutexMacroTests {
                 }
             }
 
-            private let _value = Mutex<String?>(nil)
+            private let _value = OSToolbox.Mutex<String?>(nil)
             """
         }
     }
@@ -159,7 +159,7 @@ struct MutexMacroTests {
                 }
             }
 
-            private let _items = Mutex<[String] >([])
+            private let _items = OSToolbox.Mutex<[String] >([])
             """
         }
     }
@@ -192,7 +192,7 @@ struct MutexMacroTests {
                 }
             }
 
-            private let _delegate = Mutex(OSToolbox.WeakBox<AnyObject>(nil))
+            private let _delegate = OSToolbox.Mutex(OSToolbox.WeakBox<AnyObject>(nil))
             """
         }
     }
@@ -225,7 +225,7 @@ struct MutexMacroTests {
                 }
             }
 
-            private static let _counter = Mutex<Int >(0)
+            private static let _counter = OSToolbox.Mutex<Int >(0)
             """
         }
     }

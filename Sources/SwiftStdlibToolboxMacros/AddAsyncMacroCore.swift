@@ -71,10 +71,12 @@ enum AddAsyncMacroCore {
             }
             """
 
+            // Qualified so that a member of the enclosing type with the same
+            // name cannot shadow the global function.
             let continuationExpr =
             isResultReturn
-            ? "try await withCheckedThrowingContinuation { continuation in"
-            : "await withCheckedContinuation { continuation in"
+            ? "try await _Concurrency.withCheckedThrowingContinuation { continuation in"
+            : "await _Concurrency.withCheckedContinuation { continuation in"
 
             let newBody: ExprSyntax =
             """

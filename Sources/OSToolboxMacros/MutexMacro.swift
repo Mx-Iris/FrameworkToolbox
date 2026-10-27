@@ -6,19 +6,23 @@ import MacroToolbox
 public struct MutexMacro: LockMacroProtocol {
     public static let macroName = "Mutex"
 
+    /// The storage type is spelled with its module because the standard
+    /// library's `Synchronization` declares a `Mutex` too: in any file that
+    /// imports both, a bare `Mutex` is ambiguous, and the error lands on
+    /// generated code the caller never wrote.
     public static func makeStorageDecl(for info: LockPropertyInfo) -> DeclSyntax {
         let staticKeyword = info.isStatic ? "static " : ""
         if info.isWeak {
             return """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = Mutex(OSToolbox.WeakBox<\(raw: info.baseType)>(\(info.initialValue)))
+            private \(raw: staticKeyword)let \(raw: info.storageName) = OSToolbox.Mutex(OSToolbox.WeakBox<\(raw: info.baseType)>(\(info.initialValue)))
             """
         } else if info.isImplicitlyUnwrappedOptional {
             return """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = Mutex<\(raw: info.baseType)?>(\(info.initialValue))
+            private \(raw: staticKeyword)let \(raw: info.storageName) = OSToolbox.Mutex<\(raw: info.baseType)?>(\(info.initialValue))
             """
         } else {
             return """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = Mutex<\(raw: info.type)>(\(info.initialValue))
+            private \(raw: staticKeyword)let \(raw: info.storageName) = OSToolbox.Mutex<\(raw: info.type)>(\(info.initialValue))
             """
         }
     }

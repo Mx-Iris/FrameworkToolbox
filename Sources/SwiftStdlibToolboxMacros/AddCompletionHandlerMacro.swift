@@ -33,18 +33,21 @@ public struct AddCompletionHandlerMacro: PeerMacro {
             return []
         }
 
+        // `Task`, `Result` and `Error` are written with their modules: apps
+        // routinely declare a `Task` or `Result` model of their own, and the
+        // generated peer would pick that one up instead.
         let returnTypeDescription = function.signature.returnClause?.type.trimmedDescription ?? "Void"
         let completionHandlerParameter = FunctionParameterSyntax(
             firstName: .identifier("completion"),
             colon: .colonToken(trailingTrivia: .space),
-            type: TypeSyntax("@escaping (Result<\(raw: returnTypeDescription), Error>) -> Void")
+            type: TypeSyntax("@escaping (Swift.Result<\(raw: returnTypeDescription), any Swift.Error>) -> Void")
         )
 
         let callArguments = function.signature.parameterClause.parameters.asPassthroughArguments
         let returnsVoid = function.signature.returnClause?.type.isVoid ?? true
         let body: ExprSyntax = if returnsVoid {
             """
-            Task {
+            _Concurrency.Task {
                 do {
                     try await \(raw: function.name.text)(\(raw: callArguments.joined(separator: ", ")))
                     completion(.success(()))
@@ -55,7 +58,7 @@ public struct AddCompletionHandlerMacro: PeerMacro {
             """
         } else {
             """
-            Task {
+            _Concurrency.Task {
                 do {
                     let result = try await \(raw: function.name.text)(\(raw: callArguments.joined(separator: ", ")))
                     completion(.success(result))
