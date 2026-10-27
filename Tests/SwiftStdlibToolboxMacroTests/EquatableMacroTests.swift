@@ -29,6 +29,7 @@ struct EquatableMacroTests {
             }
 
             nonisolated extension User: Equatable {
+                @SwiftStdlibToolbox._EquatableHashing(User.self, members: ["age", "name"])
                 nonisolated public static func == (lhs: User, rhs: User) -> Bool {
                     lhs.age == rhs.age && lhs.name == rhs.name
                 }
@@ -58,6 +59,7 @@ struct EquatableMacroTests {
             }
 
             nonisolated extension User: Equatable {
+                @SwiftStdlibToolbox._EquatableHashing(User.self, members: ["id", "name"])
                 nonisolated public static func == (lhs: User, rhs: User) -> Bool {
                     lhs.id == rhs.id && lhs.name == rhs.name
                 }
@@ -119,6 +121,7 @@ struct EquatableMacroTests {
             }
 
             nonisolated extension Item: Equatable {
+                @SwiftStdlibToolbox._EquatableHashing(Item.self, members: ["id", "name"])
                 nonisolated public static func == (lhs: Item, rhs: Item) -> Bool {
                     lhs.id == rhs.id && lhs.name == rhs.name
                 }
@@ -140,6 +143,7 @@ struct EquatableMacroTests {
             }
 
             nonisolated extension Empty: Equatable {
+                @SwiftStdlibToolbox._EquatableHashing(Empty.self, members: [])
                 nonisolated public static func == (lhs: Empty, rhs: Empty) -> Bool {
                     true
                 }
@@ -172,6 +176,7 @@ struct EquatableMacroTests {
             }
 
             nonisolated extension User: Equatable {
+                @SwiftStdlibToolbox._EquatableHashing(User.self, members: ["id"])
                 nonisolated public static func == (lhs: User, rhs: User) -> Bool {
                     lhs.id == rhs.id
                 }

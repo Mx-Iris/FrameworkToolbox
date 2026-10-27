@@ -70,21 +70,28 @@
 /// }
 /// ```
 ///
-/// `Hashable` is recognised in any spelling of the inheritance clause —
-/// `Swift.Hashable`, `nonisolated Hashable`, `Hashable & Sendable` — and when it
-/// is declared in an extension elsewhere, which the compiler reports to the
-/// macro. Not when it comes only through a protocol that refines it.
+/// Whether the type is `Hashable` is the compiler's call, wherever the
+/// conformance comes from. A `Hashable` named in the type's own inheritance
+/// clause, in any spelling (`Swift.Hashable`, `nonisolated Hashable`,
+/// `Hashable & Sendable`), gets the `hash(into:)` above directly. Otherwise the
+/// generated `==` carries `_EquatableHashing`, which writes the same
+/// `hash(into:)` exactly when the type turns out to be `Hashable` — through an
+/// extension elsewhere, a protocol that refines `Hashable`, or a superclass —
+/// and nothing otherwise. A conditional conformance
+/// (`extension Pair: Hashable where First: Hashable`) is the one case it cannot
+/// cover: the extension the macro writes into carries no such constraint, so
+/// the compiler synthesizes `hash(into:)` over every stored property there.
 ///
 /// The extensions are `nonisolated` so that in a module whose default isolation
 /// is `MainActor` the conformance stays usable off the main actor, as its
 /// `nonisolated` witnesses already are.
 ///
 /// Every compared member also gets a check, attached by the macro, that has the
-/// compiler confirm the member's type conforms to `Equatable` — `Hashable` for a
-/// Hashable type. A member that does not is reported on its own line, with a
-/// fix that applies `@EquatableIgnored`, instead of only as an error inside the
-/// generated `==`.
-@attached(extension, conformances: Equatable, Hashable, _EquatableConformanceSentinel, names: named(==), named(hash(into:)))
+/// compiler confirm the member's type conforms to `Equatable` — `Hashable` when
+/// the inheritance clause names `Hashable`. A member that does not is reported
+/// on its own line, with a fix that applies `@EquatableIgnored`, instead of only
+/// as an error inside the generated `==`.
+@attached(extension, conformances: Equatable, names: named(==), named(hash(into:)))
 @attached(memberAttribute)
 public macro Equatable() = #externalMacro(module: "SwiftStdlibToolboxMacros", type: "EquatableMacro")
 
@@ -163,17 +170,39 @@ public macro _HashableMemberCheck<Member: Hashable>(initialValue: Member) = #ext
     type: "ComparableMemberMacro"
 )
 
-/// Never conformed to, and never added by `@Equatable` either; it only appears in
-/// the macro's `conformances:` list.
-///
-/// The compiler hands an extension macro the protocols from that list which the
-/// type does not conform to yet, so `Hashable` being absent means the type is
-/// Hashable — even when the conformance is declared in an extension the macro
-/// cannot see. That reading only holds when the compiler filled the list in;
-/// swift-macro-testing passes an empty list for every type. This protocol is
-/// always in the compiler's list, so its presence tells the two apart.
+// MARK: - Hashing
+
+// Whether a type is `Hashable` cannot be read off its declaration: the
+// conformance may sit in an extension elsewhere, come through a protocol that
+// refines `Hashable`, or be inherited. Listing `Hashable` among `@Equatable`'s
+// `conformances:` to have the compiler report it backfires. Before expanding,
+// the compiler records a placeholder conformance for every listed protocol, and
+// while that placeholder exists a conformance merely implied by a refined
+// protocol is never recorded — so the type stopped being `Hashable` at all.
+//
+// So when the inheritance clause does not name `Hashable`, the generated `==`
+// carries `_EquatableHashing`, and overload resolution decides: a `Hashable`
+// type matches both overloads and the constrained one wins, writing the
+// `hash(into:)` that combines exactly the members `==` compares, in the same
+// order; any other type matches only the one that writes nothing. The member
+// names travel as string literals, which are not type-checked, so a member
+// whose type does not compile cannot drag this attribute into the error.
+
+/// Writes nothing: the type is not `Hashable`.
 @_documentation(visibility: private)
-public protocol _EquatableConformanceSentinel {}
+@attached(peer, names: named(hash(into:)))
+public macro _EquatableHashing<Subject>(_ subject: Subject.Type, members: [String]) = #externalMacro(
+    module: "SwiftStdlibToolboxMacros",
+    type: "NoHashFunctionMacro"
+)
+
+/// Writes the `hash(into:)` that agrees with `==`: the type is `Hashable`.
+@_documentation(visibility: private)
+@attached(peer, names: named(hash(into:)))
+public macro _EquatableHashing<Subject: Hashable>(_ subject: Subject.Type, members: [String]) = #externalMacro(
+    module: "SwiftStdlibToolboxMacros",
+    type: "MatchingHashFunctionMacro"
+)
 
 /// A peer macro that marks properties to be ignored in `Equatable` conformance generation.
 ///

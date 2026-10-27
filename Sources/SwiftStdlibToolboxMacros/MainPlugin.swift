@@ -9,6 +9,8 @@ struct MainPlugin: CompilerPlugin {
         EquatableIgnoredUnsafeClosureMacro.self,
         ComparableMemberMacro.self,
         UncomparableMemberMacro.self,
+        MatchingHashFunctionMacro.self,
+        NoHashFunctionMacro.self,
         AssociatedValueMacro.self,
         CaseCheckableMacro.self,
         AvailableNonMutatingMacro.self,

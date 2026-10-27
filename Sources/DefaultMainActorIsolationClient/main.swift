@@ -49,12 +49,41 @@ struct Swatch {
     let hex: String
 }
 
+// `Hashable` only through a protocol that refines it, so the inheritance clause
+// does not say so and the `hash(into:)` is chosen by overload resolution — once
+// for a type taken off the main actor and once for one left on it. The second
+// has to take the conformance off the main actor itself, macro or no macro:
+// here a main-actor type conforming to a protocol that refines `Hashable` is
+// rejected (`conformance … crosses into main actor-isolated code`) even with
+// no `@Equatable` anywhere near it, while `Hashable` named directly is not.
+protocol LedgerRecord: Hashable {}
+
+@Equatable
+nonisolated struct LedgerEntry: LedgerRecord {
+    let identifier: Int
+    @EquatableIgnored var memo: String = ""
+}
+
+@Equatable
+struct Shelf: nonisolated LedgerRecord {
+    let name: String
+    @EquatableIgnored var label: String = ""
+}
+
 nonisolated func areEqual<Value: Equatable>(_ first: Value, _ second: Value) -> Bool {
     first == second
 }
 
 nonisolated func deduplicate(_ receipts: [Receipt], _ themes: [Theme], _ swatches: [Swatch]) -> Int {
     Set(receipts).count + Set(themes).count + (areEqual(swatches.first, swatches.last) ? 1 : 0)
+}
+
+nonisolated func distinctEntries(_ entries: [LedgerEntry]) -> Int {
+    Set(entries).count
+}
+
+func distinctShelves(_ shelves: [Shelf]) -> Int {
+    Set(shelves).count
 }
 
 // MARK: - `@ObjectiveCBridgeable` on a type the caller took off the main actor
@@ -131,4 +160,6 @@ nonisolated func sendInBackground(_ client: NetworkClient) {
 
 _ = describe(.cash)
 _ = deduplicate([], [], [])
+_ = distinctEntries([])
+_ = distinctShelves([])
 _ = bridge(Identifier(rawValue: "guard"))

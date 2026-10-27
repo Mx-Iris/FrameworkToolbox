@@ -70,7 +70,7 @@
   不报告隐含遵循而撤回，实测记录在内。
 - [draft —— `@AddCompletionHandler` 生成的 completion 改为 `@Sendable`](Evolutions/draft-add-completion-handler-sendable.md)（Accepted）
   生成的 `Task` 捕获非 `Sendable` 的 completion，Swift 6 下 `nonisolated` 类型上的用法编不过；改签名，按源码破坏评估调用点。
-- [draft —— `@Equatable` 不再弄丢经由细化协议得到的 `Hashable`](Evolutions/draft-equatable-refined-hashable.md)（Accepted）
+- [draft —— `@Equatable` 不再弄丢经由细化协议得到的 `Hashable`](Evolutions/draft-equatable-refined-hashable.md)（In Progress）
   把 `Hashable` 列进 `conformances:` 会让编译器丢掉经由细化协议隐含的遵循；改由一对按 `Subject: Hashable` 重载的 peer 宏
   决定要不要生成 `hash(into:)`。
 

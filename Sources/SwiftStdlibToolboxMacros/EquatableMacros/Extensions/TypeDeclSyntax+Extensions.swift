@@ -6,9 +6,9 @@ extension TypeDeclSyntax {
     /// Whether the type's own inheritance clause declares `Hashable`, in any of
     /// the spellings that mean it — see ``TypeSyntax/namesHashable``.
     ///
-    /// This only sees the declaration the macro is attached to. A conformance
-    /// declared in an extension elsewhere is reported by the compiler instead,
-    /// through the extension macro's `conformingTo:` list.
+    /// This only sees the declaration the macro is attached to. A conformance it
+    /// does not name — declared in an extension elsewhere, implied by a refined
+    /// protocol, inherited — is the compiler's to find; see `_EquatableHashing`.
     var declaresHashable: Bool {
         inheritanceClause?.inheritedTypes.contains { $0.type.namesHashable } ?? false
     }

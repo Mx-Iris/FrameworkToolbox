@@ -1,6 +1,6 @@
 # Draft - `@Equatable` 不再弄丢经由细化协议得到的 `Hashable`
 
-- **状态**: Accepted
+- **状态**: In Progress
 - **创建日期**: 2026-10-27
 - **最后更新**: 2026-10-27
 - **实现分支**: `feature/equatable-refined-hashable`
@@ -60,3 +60,8 @@
 | 2026-10-27 | Created as Draft | 上一轮宏审视时发现：类型经由细化协议得到 `Hashable` 时 `@Equatable` 编不过，在改动前的 main 上同样失败，当时作为既有问题留下 |
 | 2026-10-27 | 用户批准，开始实现 | 用户决定修复 |
 | 2026-10-27 | 判断交给重载决议，不加宏参数让调用方声明 | 让调用方写 `@Equatable(hashable: true)` 也能修，但那是又一个让调用方代替编译器回答的问题，答错仍是编译失败或哈希不一致；编译器本来就知道答案 |
+| 2026-10-27 | 回归测试先红后绿 | 改动前，`EquatableHashingConsistencyTests` 里三个经由细化协议得到 `Hashable` 的类型（写在类型上、写在 extension 里、一个 final class）编不过：`type 'RefinedHashableHandle' does not conform to protocol 'Hashable'`、`generic struct 'Set' requires that 'RefinedHashableNote' conform to 'Hashable'`。改动后编译通过，`==` 判等的两个值哈希相等 |
+| 2026-10-27 | 重载在真实编译器里选对了 | 用 `-dump-macro-expansions` 看 `DefaultMainActorIsolationClient` 的展开：经由细化协议 `Hashable` 的 `LedgerEntry` 由 `_EquatableHashing` 生成了只 combine 被比较成员的 `hash(into:)`，不 `Hashable` 的 `Swatch` 什么也没生成 |
+| 2026-10-27 | 默认 MainActor 隔离模块里的守卫写成 `nonisolated LedgerRecord` | 实测：那种模块里，主线程隔离的类型遵循一个细化 `Hashable` 的协议会报 `conformance … crosses into main actor-isolated code`，不挂 `@Equatable` 的同样写法报同一个错，与本宏无关；直接写 `Hashable` 则不报。调用方要像对 `Hashable` 写 `nonisolated Hashable` 那样把这个遵循移出主线程，守卫照此写，并在旁边注明 |
+| 2026-10-27 | 快照随之更新 | 继承子句没写 `Hashable` 的 5 个快照，生成的 `==` 上多了 `_EquatableHashing` 一行，成员顺序与 `==` 一致；写了 `Hashable` 的快照不变。两个实现各有单独的宏测试，测试框架不做重载决议 |
+| 2026-10-27 | 实现完成，待合并 | 干净重编后完整测试套件通过（706 个 swift-testing 测试、51 个 XCTest），没有新增警告。文档判断：`@Equatable` 的文档注释改写了 `Hashable` 怎么判断，并写明条件遵循这个盲区；`CLAUDE.md` 里「编译器替宏判断」一条换掉了对 `conformingTo:` 的旧解释，写成 `conformances:` 的占位遵循规则；不另写使用指南，没有新术语 |

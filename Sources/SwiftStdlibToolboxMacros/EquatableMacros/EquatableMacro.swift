@@ -158,25 +158,53 @@ public struct EquatableMacro: ExtensionMacro {
             return Self.compare(lhs: lhs, rhs: rhs)
         }
 
+        // A `Hashable` the inheritance clause names gets its `hash(into:)` here.
+        // Any other type leaves the question to the compiler: `==` carries
+        // `_EquatableHashing`, which writes the same `hash(into:)` only if the
+        // type turns out to be `Hashable`. The compiler cannot be asked through
+        // `conformances:` — see `_EquatableHashing`'s declaration for why.
+        let hashingAttribute = typeDecl.declaresHashable
+            ? nil
+            : Self.hashingAttribute(for: type, sortedProperties: sortedProperties)
+
         guard let extensionSyntax = Self.generateEquatableExtensionSyntax(
             sortedProperties: sortedProperties,
-            type: type
+            type: type,
+            hashingAttribute: hashingAttribute
         ) else {
             return []
         }
 
-        // If the type conforms to `Hashable`, always generate a corresponding hash function aligned with the `Equatable` implementation
-        if typeDecl.declaresHashable || Self.compilerReportsHashableConformance(in: protocols) {
-            guard let hashableExtensionSyntax = Self.generateHashableExtensionSyntax(
-                sortedProperties: sortedProperties,
-                type: type
-            ) else {
-                return [extensionSyntax]
-            }
-            return [extensionSyntax, hashableExtensionSyntax]
-        } else {
+        guard typeDecl.declaresHashable else {
             return [extensionSyntax]
         }
+        guard let hashableExtensionSyntax = Self.generateHashableExtensionSyntax(
+            sortedProperties: sortedProperties,
+            type: type
+        ) else {
+            return [extensionSyntax]
+        }
+        return [extensionSyntax, hashableExtensionSyntax]
+    }
+
+    /// `@_EquatableHashing(<type>.self, members: [...])`, naming the compared
+    /// members in the order `==` compares them.
+    private static func hashingAttribute(
+        for type: some TypeSyntaxProtocol,
+        sortedProperties: [(name: String, type: TypeSyntax?)]
+    ) -> String {
+        let memberList = sortedProperties
+            .map { "\"\($0.name)\"" }
+            .joined(separator: ", ")
+        return "@SwiftStdlibToolbox._EquatableHashing(\(type.trimmedDescription).self, members: [\(memberList)])"
+    }
+
+    /// The statements of the `hash(into:)` that agrees with `==`: one
+    /// `combine` per compared member, in the order `==` compares them.
+    static func hashCombinations(of memberNames: [String]) -> String {
+        memberNames
+            .map { "hasher.combine(\($0))" }
+            .joined(separator: "\n")
     }
 }
 
@@ -252,10 +280,11 @@ extension EquatableMacro: MemberAttributeMacro {
             return []
         }
 
-        // The memberAttribute role sees no conformance list, so a `Hashable`
-        // declared in an extension elsewhere goes unnoticed here and the member
-        // is checked as `Equatable`; at worst the error then lands in the
-        // expansion of `hash(into:)`, as it did before these checks existed.
+        // Only the inheritance clause is visible here, so a `Hashable` declared
+        // in an extension elsewhere or implied by a refined protocol goes
+        // unnoticed and the member is checked as `Equatable`; at worst the error
+        // then lands in the expansion of `hash(into:)`, as it did before these
+        // checks existed.
         let checkName = typeDecl.declaresHashable ? "_HashableMemberCheck" : "_EquatableMemberCheck"
         return ["@SwiftStdlibToolbox.\(raw: checkName)(\(raw: argument))"]
     }
@@ -326,31 +355,6 @@ extension EquatableMacro: MemberAttributeMacro {
 }
 
 extension EquatableMacro {
-    /// Whether the compiler says the type already conforms to `Hashable`,
-    /// wherever that conformance is declared.
-    ///
-    /// The compiler passes an extension macro the protocols from its
-    /// `conformances:` list that the type does *not* conform to yet, so a
-    /// `Hashable` missing from the list means the type has it. That reading
-    /// needs the list to come from the compiler at all: swift-macro-testing
-    /// passes an empty one for every type, which would make everything
-    /// Hashable. `_EquatableConformanceSentinel` is listed in the macro's
-    /// declaration and never conformed to, so it is present exactly when the
-    /// compiler filled the list in; without it the macro falls back to reading
-    /// the inheritance clause.
-    ///
-    /// The compiler's answer covers conformances declared directly, in the type
-    /// or in any extension, but not one implied by a refined protocol
-    /// (`protocol Record: Hashable`): that one is reported missing — measured on
-    /// `ObjectiveCCollectionHandle`, which refines `ObjectiveCRepresentable`.
-    /// Such a type falls back to the inheritance clause like before.
-    private static func compilerReportsHashableConformance(in protocols: [TypeSyntax]) -> Bool {
-        let compilerFilledTheList = protocols.contains { protocolType in
-            protocolType.trimmedDescription.split(separator: ".").last == "_EquatableConformanceSentinel"
-        }
-        return compilerFilledTheList && !protocols.contains { $0.namesHashable }
-    }
-
     // Skip properties with SwiftUI attributes (like @State, @Binding, etc.) or if they are marked with @EqutableIgnored
     private static func shouldSkip(_ varDecl: VariableDeclSyntax) -> Bool {
         varDecl.attributes.contains { attribute in
@@ -498,31 +502,24 @@ extension EquatableMacro {
     /// it declares a main-actor-isolated conformance even though `==` itself is
     /// `nonisolated`, and every use of the type as `Equatable` — or as
     /// `Hashable`, which builds on it — from a background thread fails.
+    ///
+    /// `hashingAttribute` goes on `==` itself: a peer macro attached there puts
+    /// the `hash(into:)` it writes into this same extension.
     private static func generateEquatableExtensionSyntax(
         sortedProperties: [(name: String, type: TypeSyntax?)],
-        type: TypeSyntaxProtocol
+        type: TypeSyntaxProtocol,
+        hashingAttribute: String?
     ) -> ExtensionDeclSyntax? {
-        guard !sortedProperties.isEmpty else {
-            let extensionDecl: DeclSyntax = """
-            nonisolated extension \(type): Equatable {
-                nonisolated public static func == (lhs: \(type), rhs: \(type)) -> Bool {
-                    true
-                }
-            }
-            """
-
-            return extensionDecl.as(ExtensionDeclSyntax.self)
-        }
-
         let comparisons = sortedProperties.map { property in
             "lhs.\(property.name) == rhs.\(property.name)"
         }.joined(separator: " && ")
 
         let equalityImplementation = comparisons.isEmpty ? "true" : comparisons
+        let attributeLine = hashingAttribute.map { "\($0)\n" } ?? ""
 
         let extensionDecl: DeclSyntax = """
         nonisolated extension \(type): Equatable {
-            nonisolated public static func == (lhs: \(type), rhs: \(type)) -> Bool {
+            \(raw: attributeLine)nonisolated public static func == (lhs: \(type), rhs: \(type)) -> Bool {
                 \(raw: equalityImplementation)
             }
         }
@@ -545,10 +542,7 @@ extension EquatableMacro {
             return hashableExtensionDecl.as(ExtensionDeclSyntax.self)
         }
 
-        let hashableImplementation = sortedProperties.map { property in
-            "hasher.combine(\(property.name))"
-        }
-        .joined(separator: "\n")
+        let hashableImplementation = Self.hashCombinations(of: sortedProperties.map { property in property.name })
 
         let hashableExtensionDecl: DeclSyntax = """
         nonisolated extension \(raw: type) {
