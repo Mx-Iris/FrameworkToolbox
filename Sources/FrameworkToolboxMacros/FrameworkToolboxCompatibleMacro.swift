@@ -24,7 +24,11 @@ public enum FrameworkToolboxCompatibleMacro: MemberMacro {
         // diagnose it, it crashes in SILGen (signal 5, `While silgen emitFunction
         // … for setter for box`). Unnecessary because the box wraps the same
         // object, so mutating through it is already visible everywhere.
-        let boxSetter = arguments.hasReferenceSemantics ? "set {}" : "set { self = newValue.base }"
+        //
+        // Which case applies depends on the protocol's declaration, which this
+        // macro never sees: it is attached to `extension Collection {}`, not to
+        // `Collection`. So the accessors come from `_FrameworkToolboxBoxAccessors`,
+        // whose overloads let the compiler decide from `Self: AnyObject`.
         return [
             """
             \(raw: accessLevel) static var box: FrameworkToolbox<Self>.Type {
@@ -33,10 +37,8 @@ public enum FrameworkToolboxCompatibleMacro: MemberMacro {
             }
             """,
             """
-            \(raw: accessLevel) var box: FrameworkToolbox<Self> {
-                \(raw: boxSetter)
-                get { FrameworkToolbox(self) }
-            }
+            @_FrameworkToolboxBoxAccessors(Self.self)
+            \(raw: accessLevel) var box: FrameworkToolbox<Self>
             """,
             """
             \(raw: accessLevel) subscript<Member>(dynamicMember keyPath: ReferenceWritableKeyPath<FrameworkToolbox<Self>, Member>) -> Member {
@@ -81,12 +83,13 @@ public enum FrameworkToolboxCompatibleMacro: MemberMacro {
         /// The access level to emit the generated members at; `nil` means the
         /// default, `public`.
         var accessLevel: String?
-        /// Whether the extended type has reference semantics, which decides
-        /// whether the instance `box` setter can write back. See `expansion`.
-        var hasReferenceSemantics: Bool = false
     }
 
     /// Parses arguments from the attribute syntax.
+    ///
+    /// The deprecated `referenceSemantics:` is accepted and ignored: the setter
+    /// is now chosen by the compiler, and an argument that disagreed with the
+    /// protocol would only have reintroduced the problem it once worked around.
     private static func parseArguments(
         from node: AttributeSyntax,
         in context: some MacroExpansionContext
@@ -97,43 +100,60 @@ public enum FrameworkToolboxCompatibleMacro: MemberMacro {
             return arguments
         }
 
-        for argument in argumentList {
-            guard let label = argument.label?.text else {
-                // The only unlabelled argument is the access level, written as a
-                // member access such as `.public`.
-                guard let memberAccessExpression = argument.expression.as(MemberAccessExprSyntax.self) else {
-                    throw MacroError.invalidAccessLevelArgument(node: argument.expression)
-                }
-                arguments.accessLevel = memberAccessExpression.declName.baseName.text
-                continue
+        for argument in argumentList where argument.label == nil {
+            // The only unlabelled argument is the access level, written as a
+            // member access such as `.public`.
+            guard let memberAccessExpression = argument.expression.as(MemberAccessExprSyntax.self) else {
+                throw MacroError.invalidAccessLevelArgument(node: argument.expression)
             }
-
-            switch label {
-            case "referenceSemantics":
-                guard let booleanLiteral = argument.expression.as(BooleanLiteralExprSyntax.self) else {
-                    throw MacroError.invalidReferenceSemanticsArgument(node: argument.expression)
-                }
-                arguments.hasReferenceSemantics = booleanLiteral.literal.tokenKind == .keyword(.true)
-            default:
-                break
-            }
+            arguments.accessLevel = memberAccessExpression.declName.baseName.text
         }
 
         return arguments
     }
 }
 
+// MARK: - The instance `box` accessors
+
+/// `_FrameworkToolboxBoxAccessors` for a `Self` that may be a value type: the
+/// setter writes back, so `mutating` methods reached through `.box` take effect.
+public enum ValueSemanticsBoxAccessorsMacro: AccessorMacro {
+    public static func expansion(
+        of node: AttributeSyntax,
+        providingAccessorsOf declaration: some DeclSyntaxProtocol,
+        in context: some MacroExpansionContext
+    ) throws -> [AccessorDeclSyntax] {
+        [
+            "set { self = newValue.base }",
+            "get { FrameworkToolbox(self) }",
+        ]
+    }
+}
+
+/// `_FrameworkToolboxBoxAccessors` for a `Self` constrained to `AnyObject`: the
+/// setter stays empty, since it is not `mutating` and the box wraps the same
+/// object anyway.
+public enum ReferenceSemanticsBoxAccessorsMacro: AccessorMacro {
+    public static func expansion(
+        of node: AttributeSyntax,
+        providingAccessorsOf declaration: some DeclSyntaxProtocol,
+        in context: some MacroExpansionContext
+    ) throws -> [AccessorDeclSyntax] {
+        [
+            "set {}",
+            "get { FrameworkToolbox(self) }",
+        ]
+    }
+}
+
 /// Helper to provide diagnostic messages.
 private enum MacroError: Error, CustomStringConvertible, DiagnosticMessage {
     case invalidAccessLevelArgument(node: ExprSyntax)
-    case invalidReferenceSemanticsArgument(node: ExprSyntax)
 
     var description: String {
         switch self {
         case .invalidAccessLevelArgument:
             return "Invalid argument for access level. Please use a member of the `AccessLevel` enum, like `.public`."
-        case .invalidReferenceSemanticsArgument:
-            return "`referenceSemantics:` has to be a boolean literal — it is read at expansion time, so it cannot be a runtime expression."
         }
     }
     

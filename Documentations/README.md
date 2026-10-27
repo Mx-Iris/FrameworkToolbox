@@ -61,6 +61,8 @@
   推断出的类型。文内记有两条实测的编译器规则：被吸收的初始值按属性初始值的上下文检查，以及推断类型不能是别的声明的 `some` 类型。
 - [draft —— `@Equatable` 让编译器检查每个成员能否比较](Evolutions/draft-equatable-member-check.md)（In Progress）
   每个参与比较的成员挂一个只差 `Equatable` 约束的检查宏，类型不遵循时在成员那一行报错并给出加 `@EquatableIgnored` 的修复。
+- [draft —— `@FrameworkToolboxExtension` 让编译器判断协议是否只能由类遵循](Evolutions/draft-box-extension-reference-semantics.md)（In Progress）
+  `box` 的 setter 由一对按 `Self: AnyObject` 重载的 accessor 宏选择，`referenceSemantics:` 废弃；忘写它曾让编译器在 SILGen 崩溃。
 
 ## 专题说明
 

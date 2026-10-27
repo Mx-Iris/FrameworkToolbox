@@ -129,18 +129,52 @@ extension FrameworkToolboxDynamicMemberLookup where Self: AnyObject, Self: Frame
 /// Copies `FrameworkToolboxCompatible`'s default implementations into a protocol
 /// extension, so every type conforming to that protocol gains the `box` namespace.
 ///
-/// - Parameters:
-///   - accessLevel: The access level to emit the generated members at. Defaults
-///     to `public`.
-///   - referenceSemantics: Pass `true` when extending a class-bound protocol.
-///     The generated `box` setter then stays empty — a setter in a class-bound
-///     protocol's extension is not `mutating` and cannot assign `self`, and the
-///     compiler crashes in SILGen rather than diagnosing it. Under reference
-///     semantics nothing is lost: the box wraps the same object. Has to be a
-///     boolean literal, since it is read at expansion time.
+/// The instance `box` setter writes back for a protocol value types can adopt,
+/// so `mutating` methods reached through `.box` take effect, and stays empty for
+/// a class-bound protocol (`AnyObject`, `@objc`), whose extension setters are not
+/// `mutating` — assigning `self` there crashes the compiler instead of being
+/// diagnosed. Nothing is lost under reference semantics: the box wraps the same
+/// object. The macro cannot see the protocol's declaration, so the choice is the
+/// compiler's: see `_FrameworkToolboxBoxAccessors`.
+///
+/// - Parameter accessLevel: The access level to emit the generated members at.
+///   Defaults to `public`.
+@attached(member, names: arbitrary)
+public macro FrameworkToolboxExtension(
+    _ accessLevel: AccessLevel? = nil
+) =
+    #externalMacro(module: "FrameworkToolboxMacros", type: "FrameworkToolboxCompatibleMacro")
+
+/// The spelling from before the compiler made the choice; `referenceSemantics:`
+/// is ignored.
+@available(*, deprecated, message: "No longer needed: whether the protocol is class-bound is now worked out by the compiler. Remove the 'referenceSemantics:' argument.")
 @attached(member, names: arbitrary)
 public macro FrameworkToolboxExtension(
     _ accessLevel: AccessLevel? = nil,
-    referenceSemantics: Bool = false
+    referenceSemantics: Bool
 ) =
     #externalMacro(module: "FrameworkToolboxMacros", type: "FrameworkToolboxCompatibleMacro")
+
+/// Supplies the instance `box` accessors `@FrameworkToolboxExtension` generates,
+/// with the setter its protocol needs.
+///
+/// A pair of overloads differing only in a constraint, attached as
+/// `@_FrameworkToolboxBoxAccessors(Self.self)`. Inside a protocol extension
+/// `Self` is the protocol's generic parameter, so when the protocol is
+/// class-bound `Self: AnyObject` holds, both overloads match, and the
+/// constrained one wins; for any other protocol only the unconstrained one
+/// matches. The compiler answers the question the macro cannot, the same one
+/// `FrameworkToolboxCompatible`'s own `where Self: AnyObject` extension answers.
+///
+/// The attribute is written without its module: the module and the box type are
+/// both named `FrameworkToolbox`, so `@FrameworkToolbox._FrameworkToolboxBoxAccessors`
+/// resolves `FrameworkToolbox` to the struct and fails.
+@_documentation(visibility: private)
+@attached(accessor, names: named(get), named(set))
+public macro _FrameworkToolboxBoxAccessors<Subject>(_ subject: Subject.Type) =
+    #externalMacro(module: "FrameworkToolboxMacros", type: "ValueSemanticsBoxAccessorsMacro")
+
+@_documentation(visibility: private)
+@attached(accessor, names: named(get), named(set))
+public macro _FrameworkToolboxBoxAccessors<Subject: AnyObject>(_ subject: Subject.Type) =
+    #externalMacro(module: "FrameworkToolboxMacros", type: "ReferenceSemanticsBoxAccessorsMacro")
