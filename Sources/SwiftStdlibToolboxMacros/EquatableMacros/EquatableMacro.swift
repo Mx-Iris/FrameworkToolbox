@@ -117,7 +117,7 @@ public struct EquatableMacro: ExtensionMacro {
         of node: AttributeSyntax,
         attachedTo declaration: some DeclGroupSyntax,
         providingExtensionsOf type: some TypeSyntaxProtocol,
-        conformingTo _: [TypeSyntax],
+        conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
         // Ensure we're attached to a struct
@@ -182,7 +182,7 @@ public struct EquatableMacro: ExtensionMacro {
         }
 
         // If the type conforms to `Hashable`, always generate a corresponding hash function aligned with the `Equatable` implementation
-        if typeDecl.isHashable {
+        if typeDecl.declaresHashable || Self.compilerReportsHashableConformance(in: protocols) {
             guard let hashableExtensionSyntax = Self.generateHashableExtensionSyntax(
                 sortedProperties: sortedProperties,
                 type: type
@@ -197,6 +197,31 @@ public struct EquatableMacro: ExtensionMacro {
 }
 
 extension EquatableMacro {
+    /// Whether the compiler says the type already conforms to `Hashable`,
+    /// wherever that conformance is declared.
+    ///
+    /// The compiler passes an extension macro the protocols from its
+    /// `conformances:` list that the type does *not* conform to yet, so a
+    /// `Hashable` missing from the list means the type has it. That reading
+    /// needs the list to come from the compiler at all: swift-macro-testing
+    /// passes an empty one for every type, which would make everything
+    /// Hashable. `_EquatableConformanceSentinel` is listed in the macro's
+    /// declaration and never conformed to, so it is present exactly when the
+    /// compiler filled the list in; without it the macro falls back to reading
+    /// the inheritance clause.
+    ///
+    /// The compiler's answer covers conformances declared directly, in the type
+    /// or in any extension, but not one implied by a refined protocol
+    /// (`protocol Record: Hashable`): that one is reported missing — measured on
+    /// `ObjectiveCCollectionHandle`, which refines `ObjectiveCRepresentable`.
+    /// Such a type falls back to the inheritance clause like before.
+    private static func compilerReportsHashableConformance(in protocols: [TypeSyntax]) -> Bool {
+        let compilerFilledTheList = protocols.contains { protocolType in
+            protocolType.trimmedDescription.split(separator: ".").last == "_EquatableConformanceSentinel"
+        }
+        return compilerFilledTheList && !protocols.contains { $0.namesHashable }
+    }
+
     // Skip properties with SwiftUI attributes (like @State, @Binding, etc.) or if they are marked with @EqutableIgnored
     private static func shouldSkip(_ varDecl: VariableDeclSyntax) -> Bool {
         varDecl.attributes.contains { attribute in

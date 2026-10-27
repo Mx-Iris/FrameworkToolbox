@@ -70,11 +70,28 @@
 /// }
 /// ```
 ///
+/// `Hashable` is recognised in any spelling of the inheritance clause —
+/// `Swift.Hashable`, `nonisolated Hashable`, `Hashable & Sendable` — and when it
+/// is declared in an extension elsewhere, which the compiler reports to the
+/// macro. Not when it comes only through a protocol that refines it.
+///
 /// The extensions are `nonisolated` so that in a module whose default isolation
 /// is `MainActor` the conformance stays usable off the main actor, as its
 /// `nonisolated` witnesses already are.
-@attached(extension, conformances: Equatable, Hashable, names: named(==), named(hash(into:)))
+@attached(extension, conformances: Equatable, Hashable, _EquatableConformanceSentinel, names: named(==), named(hash(into:)))
 public macro Equatable() = #externalMacro(module: "SwiftStdlibToolboxMacros", type: "EquatableMacro")
+
+/// Never conformed to, and never added by `@Equatable` either; it only appears in
+/// the macro's `conformances:` list.
+///
+/// The compiler hands an extension macro the protocols from that list which the
+/// type does not conform to yet, so `Hashable` being absent means the type is
+/// Hashable — even when the conformance is declared in an extension the macro
+/// cannot see. That reading only holds when the compiler filled the list in;
+/// swift-macro-testing passes an empty list for every type. This protocol is
+/// always in the compiler's list, so its presence tells the two apart.
+@_documentation(visibility: private)
+public protocol _EquatableConformanceSentinel {}
 
 /// A peer macro that marks properties to be ignored in `Equatable` conformance generation.
 ///

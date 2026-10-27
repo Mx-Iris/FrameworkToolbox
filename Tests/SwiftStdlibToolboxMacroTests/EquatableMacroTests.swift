@@ -171,6 +171,78 @@ struct EquatableMacroTests {
         }
     }
 
+    // Each of these declares Hashable, so each needs the `hash(into:)` that
+    // agrees with `==`. Missing one leaves the compiler to hash every stored
+    // property, including the ones `==` ignores.
+    @Test func generatesHashingForEverySpellingOfHashable() {
+        assertMacro {
+            """
+            @Equatable
+            struct Qualified: Swift.Hashable {
+                let id: Int
+            }
+
+            @Equatable
+            struct Isolated: nonisolated Hashable {
+                let id: Int
+            }
+
+            @Equatable
+            struct Composed: Hashable & Sendable {
+                let id: Int
+            }
+            """
+        } expansion: {
+            """
+            struct Qualified: Swift.Hashable {
+                let id: Int
+            }
+            struct Isolated: nonisolated Hashable {
+                let id: Int
+            }
+            struct Composed: Hashable & Sendable {
+                let id: Int
+            }
+
+            nonisolated extension Qualified: Equatable {
+                nonisolated public static func == (lhs: Qualified, rhs: Qualified) -> Bool {
+                    lhs.id == rhs.id
+                }
+            }
+
+            nonisolated extension Qualified {
+                nonisolated public func hash(into hasher: inout Hasher) {
+                    hasher.combine(id)
+                }
+            }
+
+            nonisolated extension Isolated: Equatable {
+                nonisolated public static func == (lhs: Isolated, rhs: Isolated) -> Bool {
+                    lhs.id == rhs.id
+                }
+            }
+
+            nonisolated extension Isolated {
+                nonisolated public func hash(into hasher: inout Hasher) {
+                    hasher.combine(id)
+                }
+            }
+
+            nonisolated extension Composed: Equatable {
+                nonisolated public static func == (lhs: Composed, rhs: Composed) -> Bool {
+                    lhs.id == rhs.id
+                }
+            }
+
+            nonisolated extension Composed {
+                nonisolated public func hash(into hasher: inout Hasher) {
+                    hasher.combine(id)
+                }
+            }
+            """
+        }
+    }
+
     // `@SwiftUI.Binding` is the same wrapper as `@Binding`, and ignoring it is
     // refused for the same reason whichever way it is spelled.
     @Test func ignoredRejectsModuleQualifiedBinding() {
