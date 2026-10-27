@@ -22,7 +22,9 @@ struct EquatableMacroTests {
         } expansion: {
             """
             struct User {
+                @SwiftStdlibToolbox._EquatableMemberCheck(type: String.self)
                 let name: String
+                @SwiftStdlibToolbox._EquatableMemberCheck(type: Int.self)
                 let age: Int
             }
 
@@ -48,7 +50,9 @@ struct EquatableMacroTests {
         } expansion: {
             """
             struct User {
+                @SwiftStdlibToolbox._EquatableMemberCheck(type: UUID.self)
                 let id: UUID
+                @SwiftStdlibToolbox._EquatableMemberCheck(type: String.self)
                 let name: String
                 var cache: String = ""
             }
@@ -74,7 +78,9 @@ struct EquatableMacroTests {
         } expansion: {
             """
             struct User: Hashable {
+                @SwiftStdlibToolbox._HashableMemberCheck(type: Int.self)
                 let id: Int
+                @SwiftStdlibToolbox._HashableMemberCheck(type: String.self)
                 let name: String
             }
 
@@ -106,7 +112,9 @@ struct EquatableMacroTests {
         } expansion: {
             """
             struct Item {
+                @SwiftStdlibToolbox._EquatableMemberCheck(type: String.self)
                 let name: String
+                @SwiftStdlibToolbox._EquatableMemberCheck(type: UUID.self)
                 let id: UUID
             }
 
@@ -157,6 +165,7 @@ struct EquatableMacroTests {
         } expansion: {
             """
             struct User {
+                @SwiftStdlibToolbox._EquatableMemberCheck(type: UUID.self)
                 let id: UUID
                 @SwiftStdlibToolbox.EquatableIgnored var cache: String = ""
                 @SwiftStdlibToolbox.EquatableIgnoredUnsafeClosure var onTap: () -> Void
@@ -195,12 +204,15 @@ struct EquatableMacroTests {
         } expansion: {
             """
             struct Qualified: Swift.Hashable {
+                @SwiftStdlibToolbox._HashableMemberCheck(type: Int.self)
                 let id: Int
             }
             struct Isolated: nonisolated Hashable {
+                @SwiftStdlibToolbox._HashableMemberCheck(type: Int.self)
                 let id: Int
             }
             struct Composed: Hashable & Sendable {
+                @SwiftStdlibToolbox._HashableMemberCheck(type: Int.self)
                 let id: Int
             }
 

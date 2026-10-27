@@ -78,8 +78,90 @@
 /// The extensions are `nonisolated` so that in a module whose default isolation
 /// is `MainActor` the conformance stays usable off the main actor, as its
 /// `nonisolated` witnesses already are.
+///
+/// Every compared member also gets a check, attached by the macro, that has the
+/// compiler confirm the member's type conforms to `Equatable` — `Hashable` for a
+/// Hashable type. A member that does not is reported on its own line, with a
+/// fix that applies `@EquatableIgnored`, instead of only as an error inside the
+/// generated `==`.
 @attached(extension, conformances: Equatable, Hashable, _EquatableConformanceSentinel, names: named(==), named(hash(into:)))
+@attached(memberAttribute)
 public macro Equatable() = #externalMacro(module: "SwiftStdlibToolboxMacros", type: "EquatableMacro")
+
+// MARK: - Member checks
+
+// `@Equatable` attaches one of these to every member its `==` compares, because
+// whether a member's type conforms to `Equatable` is something only the compiler
+// knows. Each is a pair of overloads differing in nothing but a constraint, so
+// the compiler chooses between them as it would between two functions: a
+// conforming type matches both and the constrained one wins; any other type
+// matches only the one that reports the member — on the member itself, with a
+// fix. They generate nothing.
+//
+// The two argument labels keep the forms apart. Unlabelled, `Int.self` would
+// also match the by-value overloads, as a metatype value.
+
+/// Checks that a member written with a type annotation can be compared.
+@_documentation(visibility: private)
+@attached(peer)
+public macro _EquatableMemberCheck<Member>(type: Member.Type) = #externalMacro(
+    module: "SwiftStdlibToolboxMacros",
+    type: "UncomparableMemberMacro"
+)
+
+@_documentation(visibility: private)
+@attached(peer)
+public macro _EquatableMemberCheck<Member: Equatable>(type: Member.Type) = #externalMacro(
+    module: "SwiftStdlibToolboxMacros",
+    type: "ComparableMemberMacro"
+)
+
+/// Checks that a member written without a type annotation can be compared,
+/// from its initial value, whose type the compiler infers here as it does for
+/// the property.
+@_documentation(visibility: private)
+@attached(peer)
+public macro _EquatableMemberCheck<Member>(initialValue: Member) = #externalMacro(
+    module: "SwiftStdlibToolboxMacros",
+    type: "UncomparableMemberMacro"
+)
+
+@_documentation(visibility: private)
+@attached(peer)
+public macro _EquatableMemberCheck<Member: Equatable>(initialValue: Member) = #externalMacro(
+    module: "SwiftStdlibToolboxMacros",
+    type: "ComparableMemberMacro"
+)
+
+/// The checks for a type declared `Hashable`, whose generated `hash(into:)`
+/// combines every compared member.
+@_documentation(visibility: private)
+@attached(peer)
+public macro _HashableMemberCheck<Member>(type: Member.Type) = #externalMacro(
+    module: "SwiftStdlibToolboxMacros",
+    type: "UncomparableMemberMacro"
+)
+
+@_documentation(visibility: private)
+@attached(peer)
+public macro _HashableMemberCheck<Member: Hashable>(type: Member.Type) = #externalMacro(
+    module: "SwiftStdlibToolboxMacros",
+    type: "ComparableMemberMacro"
+)
+
+@_documentation(visibility: private)
+@attached(peer)
+public macro _HashableMemberCheck<Member>(initialValue: Member) = #externalMacro(
+    module: "SwiftStdlibToolboxMacros",
+    type: "UncomparableMemberMacro"
+)
+
+@_documentation(visibility: private)
+@attached(peer)
+public macro _HashableMemberCheck<Member: Hashable>(initialValue: Member) = #externalMacro(
+    module: "SwiftStdlibToolboxMacros",
+    type: "ComparableMemberMacro"
+)
 
 /// Never conformed to, and never added by `@Equatable` either; it only appears in
 /// the macro's `conformances:` list.

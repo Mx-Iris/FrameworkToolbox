@@ -7,6 +7,8 @@ struct MainPlugin: CompilerPlugin {
         EquatableMacro.self,
         EquatableIgnoredMacro.self,
         EquatableIgnoredUnsafeClosureMacro.self,
+        ComparableMemberMacro.self,
+        UncomparableMemberMacro.self,
         AssociatedValueMacro.self,
         CaseCheckableMacro.self,
         AvailableNonMutatingMacro.self,

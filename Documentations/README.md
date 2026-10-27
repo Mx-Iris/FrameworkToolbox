@@ -59,6 +59,8 @@
 - [draft —— 属性宏不再强制写类型注解](Evolutions/draft-property-macros-inferred-types.md)（In Progress）
   `@Mutex` / `@OSAllocatedUnfairLock` / `@Keychain` / `@UserDefault` 的类型改由初始值推断；`$name` 投影靠一个 accessor 宏得到
   推断出的类型。文内记有两条实测的编译器规则：被吸收的初始值按属性初始值的上下文检查，以及推断类型不能是别的声明的 `some` 类型。
+- [draft —— `@Equatable` 让编译器检查每个成员能否比较](Evolutions/draft-equatable-member-check.md)（In Progress）
+  每个参与比较的成员挂一个只差 `Equatable` 约束的检查宏，类型不遵循时在成员那一行报错并给出加 `@EquatableIgnored` 的修复。
 
 ## 专题说明
 

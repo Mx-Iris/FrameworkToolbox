@@ -140,33 +140,17 @@ public struct EquatableMacro: ExtensionMacro {
         // Extract stored properties
         var storedProperties: [(name: String, type: TypeSyntax?)] = []
         for member in typeDecl.memberBlock.members {
-            guard let varDecl = member.decl.as(VariableDeclSyntax.self),
-                  let binding = varDecl.bindings.first,
-                  let identifier = binding.pattern.as(IdentifierPatternSyntax.self)?.identifier.text,
-                  binding.accessorBlock == nil,
-                  !varDecl.isStatic else {
+            guard let varDecl = member.decl.as(VariableDeclSyntax.self) else {
                 continue
             }
-
-            if Self.shouldSkip(varDecl) {
+            switch Self.disposition(of: varDecl) {
+            case .compared(let comparedMember):
+                storedProperties.append((name: comparedMember.name, type: comparedMember.binding.typeAnnotation?.type))
+            case .rejectedClosure:
+                context.diagnose(Self.makeClosureDiagnostic(for: varDecl))
+            case .notCompared:
                 continue
             }
-
-            if isMarkedWithEquatableIgnoredUnsafeClosure(varDecl) {
-                continue
-            }
-
-            // Check if it's a closure that should trigger diagnostic
-            let isClosureProperty = (binding.typeAnnotation?.type).map(isClosure) == true ||
-                (binding.initializer?.value.is(ClosureExprSyntax.self) ?? false)
-
-            if isClosureProperty {
-                let diagnostic = Self.makeClosureDiagnostic(for: varDecl)
-                context.diagnose(diagnostic)
-                continue
-            }
-
-            storedProperties.append((name: identifier, type: binding.typeAnnotation?.type))
         }
 
         // Sort properties: "id" first, then by type complexity
@@ -193,6 +177,151 @@ public struct EquatableMacro: ExtensionMacro {
         } else {
             return [extensionSyntax]
         }
+    }
+}
+
+// MARK: - Which members are compared
+
+extension EquatableMacro {
+    /// A stored property `==` compares.
+    struct ComparedMember {
+        let name: String
+        let binding: PatternBindingSyntax
+    }
+
+    enum MemberDisposition {
+        case compared(ComparedMember)
+        /// A closure the type has not marked as safe to ignore; diagnosed by
+        /// the extension role, and only there.
+        case rejectedClosure
+        case notCompared
+    }
+
+    /// What `@Equatable` does with a member — the one decision both of its
+    /// roles have to agree on.
+    static func disposition(of varDecl: VariableDeclSyntax) -> MemberDisposition {
+        guard let binding = varDecl.bindings.first,
+              let identifier = binding.pattern.as(IdentifierPatternSyntax.self)?.identifier.text,
+              binding.accessorBlock == nil,
+              !varDecl.isStatic else {
+            return .notCompared
+        }
+
+        if Self.shouldSkip(varDecl) || isMarkedWithEquatableIgnoredUnsafeClosure(varDecl) {
+            return .notCompared
+        }
+
+        let isClosureProperty = (binding.typeAnnotation?.type).map(isClosure) == true ||
+            (binding.initializer?.value.is(ClosureExprSyntax.self) ?? false)
+        if isClosureProperty {
+            return .rejectedClosure
+        }
+
+        return .compared(ComparedMember(name: identifier, binding: binding))
+    }
+}
+
+// MARK: - The member checks
+
+extension EquatableMacro: MemberAttributeMacro {
+    /// Attaches the check that has the compiler decide whether the member can be
+    /// compared; see `_EquatableMemberCheck`. A member left unchecked behaves as
+    /// before — a type that cannot be compared still fails, in the expansion of
+    /// `==` — so each exclusion below only gives up the better diagnostic.
+    public static func expansion(
+        of node: AttributeSyntax,
+        attachedTo declaration: some DeclGroupSyntax,
+        providingAttributesFor member: some DeclSyntaxProtocol,
+        in context: some MacroExpansionContext
+    ) throws -> [AttributeSyntax] {
+        let typeDecl: TypeDeclSyntax
+        if let structDecl = declaration.as(StructDeclSyntax.self) {
+            typeDecl = structDecl
+        } else if let classDecl = declaration.as(ClassDeclSyntax.self) {
+            typeDecl = classDecl
+        } else {
+            return []
+        }
+
+        guard let varDecl = member.as(VariableDeclSyntax.self),
+              varDecl.bindings.count == 1,
+              case .compared(let comparedMember) = disposition(of: varDecl),
+              comparesDirectMember(named: comparedMember.name, of: typeDecl),
+              let argument = checkArgument(for: comparedMember, in: varDecl)
+        else {
+            return []
+        }
+
+        // The memberAttribute role sees no conformance list, so a `Hashable`
+        // declared in an extension elsewhere goes unnoticed here and the member
+        // is checked as `Equatable`; at worst the error then lands in the
+        // expansion of `hash(into:)`, as it did before these checks existed.
+        let checkName = typeDecl.declaresHashable ? "_HashableMemberCheck" : "_EquatableMemberCheck"
+        return ["@SwiftStdlibToolbox.\(raw: checkName)(\(raw: argument))"]
+    }
+
+    /// Whether `==` compares a member of this name. The compiler applies member
+    /// attributes to the members of an active `#if` clause too, but the
+    /// extension role only compares members declared directly in the type's
+    /// body — checking the others would report members that are never compared.
+    private static func comparesDirectMember(named name: String, of typeDecl: TypeDeclSyntax) -> Bool {
+        typeDecl.memberBlock.members.contains { item in
+            guard let varDecl = item.decl.as(VariableDeclSyntax.self),
+                  case .compared(let comparedMember) = disposition(of: varDecl) else {
+                return false
+            }
+            return comparedMember.name == name
+        }
+    }
+
+    /// The argument that tells the check which type to test, or `nil` for the
+    /// members `==` can compare without the type conforming.
+    private static func checkArgument(
+        for comparedMember: ComparedMember,
+        in varDecl: VariableDeclSyntax
+    ) -> String? {
+        if let type = comparedMember.binding.typeAnnotation?.type.trimmed {
+            // A tuple of Equatable values and a metatype both compare with `==`
+            // through standard library overloads, yet neither conforms.
+            if let tuple = type.as(TupleTypeSyntax.self), tuple.elements.count != 1 {
+                return nil
+            }
+            if type.is(MetatypeTypeSyntax.self) {
+                return nil
+            }
+            return "type: \(metatypeExpression(for: type))"
+        }
+
+        guard let initialValue = comparedMember.binding.initializer?.value.trimmed else {
+            return nil
+        }
+        // A lazy initial value may refer to `self`, which an attribute argument
+        // cannot; tuples and metatypes compare without conforming, as above.
+        if varDecl.modifiers.contains(where: { $0.name.tokenKind == .keyword(.lazy) }) {
+            return nil
+        }
+        if let tuple = initialValue.as(TupleExprSyntax.self), tuple.elements.count != 1 {
+            return nil
+        }
+        if let memberAccess = initialValue.as(MemberAccessExprSyntax.self),
+           memberAccess.declName.baseName.tokenKind == .keyword(.self) {
+            return nil
+        }
+        return "initialValue: \(initialValue)"
+    }
+
+    /// `T.self`, spelled so that `.self` applies to all of `T`. An implicitly
+    /// unwrapped optional is not a type of its own outside a declaration, so it
+    /// is checked as the optional it stands for.
+    private static func metatypeExpression(for type: TypeSyntax) -> String {
+        if let implicitlyUnwrapped = type.as(ImplicitlyUnwrappedOptionalTypeSyntax.self) {
+            return "\(implicitlyUnwrapped.wrappedType.wrappedInOptional).self"
+        }
+        let needsParentheses = type.is(FunctionTypeSyntax.self)
+            || type.is(SomeOrAnyTypeSyntax.self)
+            || type.is(CompositionTypeSyntax.self)
+            || type.is(AttributedTypeSyntax.self)
+        return needsParentheses ? "(\(type)).self" : "\(type).self"
     }
 }
 
