@@ -229,4 +229,61 @@ struct MutexMacroTests {
             """
         }
     }
+
+    // Without a type annotation the compiler infers the property's type from
+    // the initial value, which it keeps for inference once the accessors are
+    // added, and the storage infers its generic argument the same way. The
+    // harness drops the initializer from its output, which the compiler does
+    // not do.
+    @Test func inferredType() {
+        assertMacro {
+            """
+            @Mutex
+            var counter = 0
+            """
+        } expansion: {
+            """
+            var counter {
+                get {
+                    _counter.withLock {
+                        $0
+                    }
+                }
+                set {
+                    _counter.withLock {
+                        $0 = newValue
+                    }
+                }
+                _modify {
+                    let valuePointer = _counter._unsafeLock()
+                    defer {
+                        _counter._unsafeUnlock()
+                    }
+                    yield &valuePointer.pointee
+                }
+            }
+
+            private let _counter = OSToolbox.Mutex(0)
+            """
+        }
+    }
+
+    @Test func weakPropertyStillNeedsAType() {
+        assertMacro {
+            """
+            @Mutex
+            weak var delegate = object
+            """
+        } diagnostics: {
+            // Reported once by each of the macro's two roles, as every other
+            // rejection of the lock macros is.
+            """
+            @Mutex
+            ┬─────
+            ├─ 🛑 @Mutex requires an explicit type annotation.
+            ╰─ 🛑 @Mutex requires an explicit type annotation.
+            weak var delegate = object
+            """
+        }
+    }
 }

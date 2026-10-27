@@ -20,6 +20,13 @@
 /// - A `var $<name>: some Publisher<Value, Never>` peer that exposes that
 ///   publisher under the same access level as the wrapped property.
 ///
+/// The type annotation is optional when the property has an initial value:
+/// `@Keychain(key: "launchCount", service: "com.example.app") var launchCount = 0`
+/// infers `Int` for the property and its storage alike. `$launchCount` is then an
+/// `AnyPublisher<Int, Never>` — the compiler does not let a property take its
+/// inferred type from another declaration's `some` result — which hides the
+/// subject's `send` just the same.
+///
 /// Primitives (`String`, `Data`, `Bool`, the integer and floating-point
 /// families, `Date`, `URL`) avoid JSON entirely; user-defined types opt into
 /// `Codable` storage by conforming to ``KeychainCodableStorable``.

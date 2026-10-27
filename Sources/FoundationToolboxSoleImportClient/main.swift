@@ -24,6 +24,12 @@ final class GuardedSettings {
 
     @Keychain(key: "sole-import-guard.token", service: "sole-import-guard")
     var token: String = ""
+
+    // Without a type annotation the projection goes through
+    // `@FoundationToolbox._StoragePublisherProjection`, a macro the caller never
+    // names, so it too has to resolve from the single import.
+    @UserDefault(key: "sole-import-guard.lastOpened")
+    var lastOpened = 0.0
 }
 
 let guardedSettings = GuardedSettings()

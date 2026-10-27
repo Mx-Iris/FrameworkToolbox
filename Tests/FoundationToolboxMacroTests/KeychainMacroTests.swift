@@ -246,4 +246,36 @@ struct KeychainMacroTests {
             """
         }
     }
+
+    // Without a type annotation nothing generated spells the type out: the
+    // storage infers it from the default value, and the projection becomes a
+    // computed property whose type the compiler infers from a prototype storage
+    // built from the same arguments, never evaluated. The harness leaves the
+    // module-qualified helper macro unexpanded.
+    @Test func inferredType() {
+        assertMacro {
+            """
+            @Keychain(key: "launchCount", service: "com.example.app")
+            public var launchCount = 0
+            """
+        } expansion: {
+            """
+            public var launchCount {
+                get {
+                    _launchCount.get()
+                }
+                set {
+                    _launchCount.set(newValue)
+                }
+            }
+
+            private let _launchCount = FoundationToolbox.KeychainStorage(
+                key: "launchCount", service: "com.example.app",
+                defaultValue: 0
+            )
+
+            @FoundationToolbox._StoragePublisherProjection public var $launchCount = FoundationToolbox.KeychainStorage(key: "launchCount", service: "com.example.app", defaultValue: 0).publisher.eraseToAnyPublisher()
+            """
+        }
+    }
 }

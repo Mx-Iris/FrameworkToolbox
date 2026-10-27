@@ -56,6 +56,10 @@
   26 SDK 给 `UndoManager`、`ProcessInfo`、`FileHandle` 等 16 个类型预置了 32 个消息；这里照反汇编结论逐个重写，类型放进
   `<主题类型>.Backport`。标识符必须标 `@_disfavoredOverload`，否则在 26 的上下文里连苹果原生的简写都会报歧义。
 
+- [draft —— 属性宏不再强制写类型注解](Evolutions/draft-property-macros-inferred-types.md)（In Progress）
+  `@Mutex` / `@OSAllocatedUnfairLock` / `@Keychain` / `@UserDefault` 的类型改由初始值推断；`$name` 投影靠一个 accessor 宏得到
+  推断出的类型。文内记有两条实测的编译器规则：被吸收的初始值按属性初始值的上下文检查，以及推断类型不能是别的声明的 `some` 类型。
+
 ## 专题说明
 
 - [`LogCategory` 与 `#log(category:)` 多 Category 支持](LoggableCategories.md) —— `@Loggable` / `#log` 从「一个类型一个 category」扩展为支持多 category 的经过。

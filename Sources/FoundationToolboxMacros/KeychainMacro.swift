@@ -59,8 +59,9 @@ extension KeychainMacro: PeerMacro {
         let argumentsText = argumentList.description.trimmingCharacters(in: .whitespacesAndNewlines)
 
         // Trim trivia so the generated text doesn't carry trailing whitespace
-        // between the type and the closing `>`.
-        let typeText = info.type.trimmedDescription
+        // between the type and the closing `>`. Without a type annotation the
+        // storage infers its generic argument from `defaultValue`.
+        let genericArgumentClause = info.type.map { "<\($0.trimmedDescription)>" } ?? ""
 
         // Reference types via their owning modules so user code that already
         // declares a same-named type doesn't accidentally shadow the macro's
@@ -68,7 +69,7 @@ extension KeychainMacro: PeerMacro {
         // import, so `Combine.Publisher` is resolvable wherever the macro is
         // usable.
         let storageDecl: DeclSyntax = """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = FoundationToolbox.KeychainStorage<\(raw: typeText)>(
+            private \(raw: staticKeyword)let \(raw: info.storageName) = FoundationToolbox.KeychainStorage\(raw: genericArgumentClause)(
                 \(raw: argumentsText),
                 defaultValue: \(info.initialValue)
             )
@@ -78,13 +79,18 @@ extension KeychainMacro: PeerMacro {
         // is reachable from anywhere the property itself is reachable.
         let accessModifiers = Self.accessLevelModifiers(of: declaration)
 
-        let publisherDecl: DeclSyntax = """
-            \(raw: accessModifiers)\(raw: staticKeyword)var $\(raw: info.propertyName): some Combine.Publisher<\(raw: typeText), Never> {
-                \(raw: info.storageName).publisher
-            }
-            """
-
-        return [storageDecl, publisherDecl]
+        return [
+            storageDecl,
+            StoragePublisherProjection.declaration(
+                accessModifiers: accessModifiers + staticKeyword,
+                propertyName: info.propertyName,
+                storageName: info.storageName,
+                valueType: info.type,
+                prototypeStorageExpression: """
+                    FoundationToolbox.KeychainStorage(\(argumentsText), defaultValue: \(info.initialValue.trimmedDescription))
+                    """
+            ),
+        ]
     }
 
     private static func accessLevelModifiers(of declaration: some DeclSyntaxProtocol) -> String {

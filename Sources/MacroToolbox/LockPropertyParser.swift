@@ -8,8 +8,18 @@ import SwiftDiagnostics
 public struct LockPropertyInfo {
     public let propertyName: String
     public let storageName: String
-    public let type: TypeSyntax
-    public let baseType: String
+    /// The property's type as written, or `nil` when the declaration leaves it
+    /// to be inferred from ``initialValue``.
+    ///
+    /// The macros using this are accessor macros, so once they add a getter the
+    /// compiler keeps the initial value only to infer the property's type from
+    /// (it never runs it). Generated code then has to avoid naming the type: a
+    /// stored property infers its own (`Mutex(initialValue)`), and anything
+    /// computed goes through an accessor macro that takes its type from an
+    /// initializer the same way.
+    public let type: TypeSyntax?
+    /// ``type`` with any optionality stripped, or `nil` along with it.
+    public let baseType: String?
     public let initialValue: ExprSyntax
     public let isWeak: Bool
     public let isOptional: Bool
@@ -44,16 +54,22 @@ public enum LockPropertyParser {
             throw LockPropertyError.cannotHaveExistingAccessors(macroName)
         }
 
-        guard let type = binding.typeAnnotation?.type else {
-            throw LockPropertyError.requiresExplicitType(macroName)
-        }
-
         let isWeak = varDecl.modifiers.contains { $0.name.tokenKind == .keyword(.weak) }
         let isStatic = varDecl.modifiers.contains {
             $0.name.tokenKind == .keyword(.static) || $0.name.tokenKind == .keyword(.class)
         }
-        let isOptional = Self.isOptionalType(type)
-        let isIUO = type.is(ImplicitlyUnwrappedOptionalTypeSyntax.self)
+
+        // An annotation is only needed where nothing else can stand in for it.
+        // A weak property's storage spells `WeakBox<T>`, and `weak var owner =
+        // object` infers `Object?`, which gives no spelling for `T`; a property
+        // with no initial value has nothing to infer from at all.
+        let type = binding.typeAnnotation?.type
+        if type == nil, isWeak || binding.initializer == nil {
+            throw LockPropertyError.requiresExplicitType(macroName)
+        }
+
+        let isOptional = type.map(Self.isOptionalType) ?? false
+        let isIUO = type?.is(ImplicitlyUnwrappedOptionalTypeSyntax.self) ?? false
 
         if isWeak && !isOptional {
             throw LockPropertyError.weakRequiresOptional(macroName)
@@ -68,7 +84,7 @@ public enum LockPropertyParser {
             throw LockPropertyError.requiresInitialValue(macroName)
         }
 
-        let baseType = Self.extractBaseType(from: type)
+        let baseType = type.map(Self.extractBaseType(from:))
 
         return LockPropertyInfo(
             propertyName: pattern.identifier.text,

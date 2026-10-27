@@ -8,6 +8,10 @@
 /// var counter: Int = 0
 /// ```
 ///
+/// The type annotation is optional when the property has an initial value —
+/// `@Mutex var counter = 0` infers `Int` as an unannotated stored property
+/// would. A `weak` property still needs its type.
+///
 /// When applied to a type:
 /// ```swift
 /// @Mutex

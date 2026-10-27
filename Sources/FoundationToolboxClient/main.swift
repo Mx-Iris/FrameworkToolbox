@@ -167,6 +167,21 @@ final class KeychainExample {
     // Public properties also expose a public publisher.
     @Keychain(key: "lastSyncDate", service: exampleService)
     public var lastSyncDate: Date = Date(timeIntervalSince1970: 0)
+
+    // The type annotation is optional: the property, the storage and the
+    // projection all take their type from the initial value.
+    @Keychain(key: "inferredLaunchCount", service: exampleService)
+    var inferredLaunchCount = 0
+}
+
+// The inferred types are the annotated ones: neither line compiles otherwise.
+func requireIntegerPublisher<Projection: Publisher>(_ projection: Projection)
+where Projection.Output == Int, Projection.Failure == Never {}
+
+func readInferredKeychainValue(_ example: KeychainExample) -> Int {
+    let value: Int = example.inferredLaunchCount
+    requireIntegerPublisher(example.$inferredLaunchCount)
+    return value
 }
 
 // User-defined Codable types opt in via KeychainCodableStorable.

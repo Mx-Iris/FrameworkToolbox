@@ -246,4 +246,32 @@ struct UserDefaultMacroTests {
             """
         }
     }
+
+    // See `KeychainMacroTests.inferredType`.
+    @Test func inferredType() {
+        assertMacro {
+            """
+            @UserDefault(key: "launchCount")
+            static var launchCount = 0
+            """
+        } expansion: {
+            """
+            static var launchCount {
+                get {
+                    _launchCount.get()
+                }
+                set {
+                    _launchCount.set(newValue)
+                }
+            }
+
+            private static let _launchCount = FoundationToolbox.UserDefaultStorage(
+                key: "launchCount",
+                defaultValue: 0
+            )
+
+            @FoundationToolbox._StoragePublisherProjection static var $launchCount = FoundationToolbox.UserDefaultStorage(key: "launchCount", defaultValue: 0).publisher.eraseToAnyPublisher()
+            """
+        }
+    }
 }

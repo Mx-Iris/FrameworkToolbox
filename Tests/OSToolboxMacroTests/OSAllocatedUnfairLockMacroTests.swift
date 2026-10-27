@@ -163,4 +163,39 @@ struct OSAllocatedUnfairLockMacroTests {
             """
         }
     }
+
+    // The type comes from the initial value, for the property and the storage
+    // alike; see `MutexMacroTests.inferredType`.
+    @Test func inferredType() {
+        assertMacro {
+            """
+            @OSAllocatedUnfairLock
+            var counter = 0
+            """
+        } expansion: {
+            """
+            var counter {
+                get {
+                    _counter.withLock {
+                        $0
+                    }
+                }
+                set {
+                    _counter.withLock {
+                        $0 = newValue
+                    }
+                }
+                _modify {
+                    let valuePointer = _counter._unsafeLock()
+                    defer {
+                        _counter._unsafeUnlock()
+                    }
+                    yield &valuePointer.pointee
+                }
+            }
+
+            private let _counter = os.OSAllocatedUnfairLock(initialState: 0)
+            """
+        }
+    }
 }

@@ -12,17 +12,24 @@ public struct MutexMacro: LockMacroProtocol {
     /// generated code the caller never wrote.
     public static func makeStorageDecl(for info: LockPropertyInfo) -> DeclSyntax {
         let staticKeyword = info.isStatic ? "static " : ""
+        // Weak and implicitly unwrapped properties always carry a type: the
+        // parser rejects the first without one, and the second is a type.
+        guard let type = info.type, let baseType = info.baseType else {
+            return """
+            private \(raw: staticKeyword)let \(raw: info.storageName) = OSToolbox.Mutex(\(info.initialValue))
+            """
+        }
         if info.isWeak {
             return """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = OSToolbox.Mutex(OSToolbox.WeakBox<\(raw: info.baseType)>(\(info.initialValue)))
+            private \(raw: staticKeyword)let \(raw: info.storageName) = OSToolbox.Mutex(OSToolbox.WeakBox<\(raw: baseType)>(\(info.initialValue)))
             """
         } else if info.isImplicitlyUnwrappedOptional {
             return """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = OSToolbox.Mutex<\(raw: info.baseType)?>(\(info.initialValue))
+            private \(raw: staticKeyword)let \(raw: info.storageName) = OSToolbox.Mutex<\(raw: baseType)?>(\(info.initialValue))
             """
         } else {
             return """
-            private \(raw: staticKeyword)let \(raw: info.storageName) = OSToolbox.Mutex<\(raw: info.type)>(\(info.initialValue))
+            private \(raw: staticKeyword)let \(raw: info.storageName) = OSToolbox.Mutex<\(raw: type)>(\(info.initialValue))
             """
         }
     }
@@ -50,16 +57,23 @@ public struct MutexMacro: LockMacroProtocol {
     }
 
     public static func makeSetter(for info: LockPropertyInfo) -> AccessorDeclSyntax {
+        guard let type = info.type, let baseType = info.baseType else {
+            return """
+            set {
+                \(raw: info.storageName).withLock { $0 = newValue }
+            }
+            """
+        }
         if info.isWeak {
             return """
             set {
-                \(raw: info.storageName).withLock { (weakBox: inout OSToolbox.WeakBox<\(raw: info.baseType)>) -> Void in
+                \(raw: info.storageName).withLock { (weakBox: inout OSToolbox.WeakBox<\(raw: baseType)>) -> Void in
                     weakBox.value = newValue
                 }
             }
             """
         } else {
-            let paramType = info.isImplicitlyUnwrappedOptional ? "\(info.baseType)?" : "\(info.type)"
+            let paramType = info.isImplicitlyUnwrappedOptional ? "\(baseType)?" : "\(type)"
             return """
             set {
                 \(raw: info.storageName).withLock { (value: inout \(raw: paramType)) -> Void in
