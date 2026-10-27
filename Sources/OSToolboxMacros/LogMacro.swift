@@ -15,6 +15,15 @@ public struct LogMacro: ExpressionMacro {
             throw LogMacroError.missingLevel
         }
 
+        // The level chooses the `Logger` method and the legacy `OSLogType`
+        // right here, so it has to be readable as syntax. Anything else —
+        // a variable, a ternary — used to fall through to `log` / `.default`
+        // and log at the default level whatever it held.
+        guard levelArgument.is(MemberAccessExprSyntax.self) else {
+            context.diagnose(Diagnostic(node: levelArgument, message: LogMacroDiagnostic.levelMustBeLiteral))
+            return "()"
+        }
+
         let remainingArguments = arguments.dropFirst()
         let categoryArgument = remainingArguments.first { $0.label?.text == "category" }
 
@@ -103,4 +112,27 @@ enum LogMacroError: Error, CustomStringConvertible {
             return "#log requires a message as the second argument"
         }
     }
+}
+
+/// Diagnostics `#log` attaches to a specific argument rather than to the whole
+/// call, which a thrown ``LogMacroError`` cannot do.
+enum LogMacroDiagnostic: String, DiagnosticMessage {
+    case levelMustBeLiteral
+
+    var message: String {
+        switch self {
+        case .levelMustBeLiteral:
+            return """
+            #log reads its level when the macro expands, so it has to be written as a case \
+            such as .debug or .error — a variable or other expression would be logged at the \
+            default level whatever it held
+            """
+        }
+    }
+
+    var diagnosticID: MessageID {
+        MessageID(domain: "LogMacro", id: rawValue)
+    }
+
+    var severity: DiagnosticSeverity { .error }
 }

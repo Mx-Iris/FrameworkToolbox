@@ -1806,4 +1806,23 @@ struct LogMacroTests {
             """#
         }
     }
+
+    // MARK: Level spelling
+
+    // The level picks the `Logger` method and the legacy `OSLogType` at
+    // expansion time, so only a literal case can be honoured. A variable used
+    // to type-check and then log at the default level whatever it held.
+    @Test func nonLiteralLevelIsRejected() {
+        assertMacro {
+            """
+            #log(level, "Hello")
+            """
+        } diagnostics: {
+            """
+            #log(level, "Hello")
+                 ┬────
+                 ╰─ 🛑 #log reads its level when the macro expands, so it has to be written as a case such as .debug or .error — a variable or other expression would be logged at the default level whatever it held
+            """
+        }
+    }
 }

@@ -282,6 +282,11 @@ public enum LoggableMacro {
 /// On macOS 11.0+ (iOS 14.0+, watchOS 7.0+, tvOS 14.0+), uses `os.Logger`.
 /// On older OS versions, falls back to the legacy `os_log` API.
 ///
+/// The level has to be written as a case — `.debug`, `.info`, `.default`,
+/// `.error`, `.fault`. It picks the `Logger` method and the legacy `OSLogType`
+/// while the macro expands, so a variable or any other expression is rejected
+/// rather than logged at the default level whatever it held.
+///
 /// Example:
 ///
 ///     #log(.debug, "Processing \(value, privacy: .public) with \(secret, privacy: .private)")
