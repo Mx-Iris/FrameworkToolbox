@@ -38,5 +38,6 @@ SPM library product，使用方以源码依赖并重新编译，未开启 librar
 | [draft](draft-property-macros-inferred-types.md) | 属性宏不再强制写类型注解 | In Progress |
 | [draft](draft-equatable-member-check.md) | `@Equatable` 让编译器检查每个成员能否比较 | In Progress |
 | [draft](draft-box-extension-reference-semantics.md) | `@FrameworkToolboxExtension` 让编译器判断协议是否只能由类遵循 | In Progress |
+| [draft](draft-objc-runtime-compiler-type-facts.md) | ObjC runtime 宏改由编译器判断 type encoding 与隔离 | In Progress |
 
 `Specs/` 与 `Plans/` 是提案制确立前的产物，见[上级索引](../README.md)，保持原样不迁移。

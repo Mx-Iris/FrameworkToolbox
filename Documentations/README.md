@@ -63,6 +63,8 @@
   每个参与比较的成员挂一个只差 `Equatable` 约束的检查宏，类型不遵循时在成员那一行报错并给出加 `@EquatableIgnored` 的修复。
 - [draft —— `@FrameworkToolboxExtension` 让编译器判断协议是否只能由类遵循](Evolutions/draft-box-extension-reference-semantics.md)（In Progress）
   `box` 的 setter 由一对按 `Self: AnyObject` 重载的 accessor 宏选择，`referenceSemantics:` 废弃；忘写它曾让编译器在 SILGen 崩溃。
+- [draft —— ObjC runtime 宏改由编译器判断 type encoding 与隔离](Evolutions/draft-objc-runtime-compiler-type-facts.md)（In Progress）
+  表外拼写（typealias、导入的枚举）的 encoding 与 proxy 返回值读法由重载决议决定；被主线程隔离的 hook 容器在宏属性那一行报错。
 
 ## 专题说明
 

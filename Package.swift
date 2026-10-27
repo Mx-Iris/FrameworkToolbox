@@ -333,7 +333,7 @@ let package = Package(
         // else. It must keep these settings of its own — see its `main.swift`.
         .executableTarget(
             name: "DefaultMainActorIsolationClient",
-            dependencies: ["FoundationToolbox"],
+            dependencies: ["FoundationToolbox", "ObjCRuntimeToolbox"],
             swiftSettings: [
                 .swiftLanguageMode(.v6),
                 .defaultIsolation(MainActor.self),

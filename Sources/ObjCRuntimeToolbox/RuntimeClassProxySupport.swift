@@ -10,6 +10,42 @@ import os
 /// generated dispatch assumes, and resolving an implementation to call.
 public enum RuntimeClassProxySupport {
 
+    // MARK: Returning a type the macro could not classify
+
+    /// Delivers the return value of a dispatch whose type the macro saw only as
+    /// an unfamiliar name — a typealias, an imported enumeration, a class it
+    /// has no entry for — and so could not tell an object from a scalar.
+    ///
+    /// The generated code passes both ways of reading the result, and the
+    /// compiler picks this overload or the `AnyObject` one at the call site,
+    /// where the type is concrete. Both closures are valid for every type
+    /// Objective-C can return, and only the chosen one runs. This one reads
+    /// the value straight out of the call.
+    @inlinable
+    public static func _returnValue<Value>(
+        _ type: Value.Type,
+        transfersOwnership: Bool,
+        asObject: () -> Unmanaged<AnyObject>?,
+        asValue: () -> Value
+    ) -> Value? {
+        asValue()
+    }
+
+    /// The object case: taken through `Unmanaged` so that a `nil` result and
+    /// the `alloc` / `new` / `copy` / `mutableCopy` ownership rule are handled,
+    /// exactly as for a type the macro recognizes as an object.
+    @inlinable
+    public static func _returnValue<Value: AnyObject>(
+        _ type: Value.Type,
+        transfersOwnership: Bool,
+        asObject: () -> Unmanaged<AnyObject>?,
+        asValue: () -> Value
+    ) -> Value? {
+        guard let unmanaged = asObject() else { return nil }
+        let object = transfersOwnership ? unmanaged.takeRetainedValue() : unmanaged.takeUnretainedValue()
+        return object as? Value
+    }
+
     /// One method the proxy intends to call, with the signature it assumes.
     public struct MethodRequirement: Sendable {
         public let selector: Selector

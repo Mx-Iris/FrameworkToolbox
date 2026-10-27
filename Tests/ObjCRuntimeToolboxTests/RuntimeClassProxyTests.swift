@@ -42,6 +42,28 @@ final class RuntimeProxyOwner: NSObject {
     @objc dynamic func currentPayload() -> RuntimeProxyPayload { payload }
 }
 
+@objc enum RuntimeProxyLevel: Int {
+    case low
+    case high
+}
+
+/// A spelling of a struct the macro's own table does not list.
+typealias RuntimeProxyRectangle = CGRect
+
+/// Every type here is one the macro sees only as an unfamiliar name: what it
+/// encodes as, and whether it comes back as an object or a scalar, is the
+/// compiler's to work out.
+@objc(RuntimeProxyUnfamiliarTypes)
+final class RuntimeProxyUnfamiliarTypes: NSObject {
+    @objc dynamic var payload = RuntimeProxyPayload()
+    @objc dynamic func duration() -> TimeInterval { 2.5 }
+    @objc dynamic func count() -> NSInteger { 7 }
+    @objc dynamic func level() -> RuntimeProxyLevel { .high }
+    @objc dynamic func frame() -> RuntimeProxyRectangle { CGRect(x: 1, y: 2, width: 3, height: 4) }
+    @objc dynamic func scaled(_ factor: TimeInterval) -> TimeInterval { factor * 2 }
+    @objc dynamic func currentPayload() -> RuntimeProxyPayload { payload }
+}
+
 // MARK: - Proxies
 
 @RuntimeClassProxy("RuntimeProxyTarget")
@@ -62,6 +84,16 @@ protocol RuntimeProxyOwnerSurface {
 @RuntimeClassProxy("ThisClassIsNotPresentInThisProcess")
 protocol RuntimeProxyAbsentSurface {
     func anything()
+}
+
+@RuntimeClassProxy("RuntimeProxyUnfamiliarTypes")
+protocol RuntimeProxyUnfamiliarTypesSurface {
+    func duration() -> TimeInterval?
+    func count() -> NSInteger?
+    func level() -> RuntimeProxyLevel?
+    func frame() -> RuntimeProxyRectangle?
+    func scaled(_ factor: TimeInterval) -> TimeInterval?
+    func currentPayload() -> RuntimeProxyPayload?
 }
 
 // MARK: - Tests
@@ -203,6 +235,37 @@ final class RuntimeClassProxyTests: XCTestCase {
             baselineCount,
             "the payload should have been released exactly once, when its owner went away"
         )
+    }
+
+    // MARK: Unfamiliar spellings
+
+    // The macro used to encode every name missing from its table as an object,
+    // so a proxy using `TimeInterval` or an imported enumeration never passed
+    // validation — and a scalar return would have been read as an object.
+
+    func testUnfamiliarSpellingsMatchTheLiveMethods() {
+        XCTAssertTrue(RuntimeProxyUnfamiliarTypesSurfaceImplementation.isSupported)
+    }
+
+    func testUnfamiliarScalarsAreReadAsValues() throws {
+        let proxy = try XCTUnwrap(RuntimeProxyUnfamiliarTypesSurfaceImplementation(RuntimeProxyUnfamiliarTypes()))
+        XCTAssertEqual(proxy.duration(), 2.5)
+        XCTAssertEqual(proxy.count(), 7)
+        XCTAssertEqual(proxy.level(), .high)
+        XCTAssertEqual(proxy.frame(), CGRect(x: 1, y: 2, width: 3, height: 4))
+        XCTAssertEqual(proxy.scaled(1.5), 3)
+    }
+
+    func testUnfamiliarClassIsReadAsAnObjectWithoutOverReleasing() throws {
+        let host = RuntimeProxyUnfamiliarTypes()
+        let proxy = try XCTUnwrap(RuntimeProxyUnfamiliarTypesSurfaceImplementation(host))
+        let baselineCount = RuntimeProxyPayload.liveInstanceCount
+        for _ in 0 ..< 1000 {
+            autoreleasepool {
+                XCTAssertTrue(proxy.currentPayload() === host.payload)
+            }
+        }
+        XCTAssertEqual(RuntimeProxyPayload.liveInstanceCount, baselineCount)
     }
 }
 

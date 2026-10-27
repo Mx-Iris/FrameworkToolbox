@@ -128,6 +128,30 @@ struct RuntimeHookBatchDuplicateReplacements {
     }
 }
 
+@objc enum RuntimeHookLevel: Int {
+    case low
+    case high
+}
+
+/// Every type in this signature is a name the macro's table does not list. It
+/// used to encode all of them as objects, so the batch never installed.
+@objc(RuntimeHookUnfamiliarTypes)
+final class RuntimeHookUnfamiliarTypes: NSObject {
+    @objc dynamic var lastDuration: TimeInterval = 0
+    @objc dynamic func wait(_ duration: TimeInterval, level: RuntimeHookLevel) -> NSInteger {
+        lastDuration = duration
+        return level.rawValue
+    }
+}
+
+@RuntimeClassHook("RuntimeHookUnfamiliarTypes")
+struct RuntimeHookUnfamiliarTypesReplacements {
+    @RuntimeMethodReplacement
+    func wait(_ duration: TimeInterval, level: RuntimeHookLevel) -> NSInteger {
+        callOriginal(duration * 2, level) + 100
+    }
+}
+
 // MARK: - Tests
 
 final class RuntimeMethodHookTests: XCTestCase {
@@ -140,6 +164,17 @@ final class RuntimeMethodHookTests: XCTestCase {
         assertDerivedEncodingMatchesLiveMethod(RuntimeHookGreeterReplacements.descriptors())
         assertDerivedEncodingMatchesLiveMethod(RuntimeHookCounterReplacements.descriptors())
         assertDerivedEncodingMatchesLiveMethod(RuntimeHookGateReplacements.descriptors())
+    }
+
+    /// Every type in the signature is a name the macro's table does not list,
+    /// which used to be encoded as an object and kept the batch from installing.
+    func testUnfamiliarSpellingsInstallAndForward() throws {
+        assertDerivedEncodingMatchesLiveMethod(RuntimeHookUnfamiliarTypesReplacements.descriptors())
+        try RuntimeHookUnfamiliarTypesReplacements.install()
+
+        let host = RuntimeHookUnfamiliarTypes()
+        XCTAssertEqual(host.wait(1.5, level: .high), 101)
+        XCTAssertEqual(host.lastDuration, 3)
     }
 
     private func assertDerivedEncodingMatchesLiveMethod(

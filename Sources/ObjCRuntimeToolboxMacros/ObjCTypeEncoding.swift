@@ -25,12 +25,20 @@
 ///
 /// ## Unknown types
 ///
-/// An identifier that isn't in the table is encoded as an object (`@`). That is
-/// the right default — the overwhelming majority of types appearing in a hooked
-/// signature are classes (`NSView`, `CGImage`, a private host class) — and a
-/// wrong guess is caught: struct encodings look like `{CGRect=…}` and never
-/// like `@`, so the install-time comparison rejects the batch and reports both
-/// strings. A mis-guess costs the hook, never the host process.
+/// The table only covers spellings it can be sure of. An identifier it does not
+/// list — `TimeInterval`, `NSInteger`, `NSTextAlignment`, a class it has no
+/// entry for — is not guessed: the generated code calls
+/// `ObjCRuntimeToolbox._ObjCTypeEncoding.of(T.self)` instead, and overload
+/// resolution at that call site picks the encoding from what the type is, with
+/// typealiases seen through. See ``methodEncodingExpression(returnTypeText:parameterTypeTexts:)``.
+/// Until that existed every unknown name was encoded as an object, which made
+/// a typealias or an imported enumeration fail the install-time comparison and
+/// left `@RuntimeClassProxy` — which has no `typeEncoding:` to fall back on —
+/// unusable for it.
+///
+/// ``encoding(forTypeText:)`` still answers `@` for an unknown name; it is what
+/// the shape decisions below the encoding (object or scalar return) used to rest
+/// on, and only types the table knows reach it now.
 enum ObjCTypeEncoding {
 
     /// Encoding for a method's full signature: return type, receiver, selector,
@@ -73,13 +81,56 @@ enum ObjCTypeEncoding {
         return "@"
     }
 
-    /// Whether an unknown identifier would be guessed as an object, which the
-    /// macros surface in documentation-facing diagnostics.
-    static func isKnownType(_ typeText: String) -> Bool {
+    /// Whether the table, rather than the compiler, decides this type's
+    /// encoding. `nil` (`Void`) counts as known.
+    static func isKnownType(_ typeText: String?) -> Bool {
+        guard let typeText else { return true }
         let normalizedTypeText = stripOptionalityAndSugar(from: typeText)
+        if normalizedTypeText.isEmpty { return true }
         if encodingTable[normalizedTypeText] != nil { return true }
         if normalizedTypeText.hasPrefix("Unsafe"), normalizedTypeText.containsSubstring("Pointer") { return true }
         return false
+    }
+
+    // MARK: - Encodings the compiler works out
+
+    /// Source text evaluating to the method's encoding.
+    ///
+    /// A string literal when the table knows every type, which keeps the
+    /// expansion of such a method exactly as it was. Otherwise the encoding is
+    /// assembled at run time from parts, and each type the table does not know
+    /// becomes `ObjCRuntimeToolbox._ObjCTypeEncoding.of(T.self)`: overload
+    /// resolution at that call site sees through typealiases and tells an
+    /// imported enumeration from an object, which a spelling cannot.
+    static func methodEncodingExpression(
+        returnTypeText: String?,
+        parameterTypeTexts: [String]
+    ) -> String {
+        let everyTypeIsKnown = isKnownType(returnTypeText) && parameterTypeTexts.allSatisfy { isKnownType($0) }
+        if everyTypeIsKnown {
+            return stringLiteral(methodEncoding(returnTypeText: returnTypeText, parameterTypeTexts: parameterTypeTexts))
+        }
+        let components = [encodingComponentExpression(for: returnTypeText), stringLiteral("@:")]
+            + parameterTypeTexts.map { encodingComponentExpression(for: $0) }
+        return "ObjCRuntimeToolbox._ObjCTypeEncoding.method([\(components.joined(separator: ", "))])"
+    }
+
+    /// One type's part of ``methodEncodingExpression(returnTypeText:parameterTypeTexts:)``.
+    private static func encodingComponentExpression(for typeText: String?) -> String {
+        guard let typeText, !isKnownType(typeText) else {
+            return stringLiteral(encoding(forTypeText: typeText))
+        }
+        return "ObjCRuntimeToolbox._ObjCTypeEncoding.of(\(metatypeExpression(forTypeText: typeText)))"
+    }
+
+    /// `T.self` for a written type, with its optionality removed: an optional
+    /// is encoded, and returned, as what it wraps. Wrapped in parentheses where
+    /// `.self` would otherwise bind to only part of the type.
+    static func metatypeExpression(forTypeText typeText: String) -> String {
+        let unwrapped = strippingOptionality(from: typeText)
+        let needsParentheses = unwrapped.hasPrefix("any ") || unwrapped.hasPrefix("some ")
+            || unwrapped.hasPrefix("@") || unwrapped.containsSubstring("->") || unwrapped.containsSubstring("&")
+        return needsParentheses ? "(\(unwrapped)).self" : "\(unwrapped).self"
     }
 
     // MARK: - Normalisation
@@ -92,6 +143,27 @@ enum ObjCTypeEncoding {
     /// sugar all resolve to objects, so they are folded to a single key rather
     /// than parsed.
     static func stripOptionalityAndSugar(from typeText: String) -> String {
+        var result = strippingOptionality(from: typeText)
+
+        // Arrays, dictionaries and sets are all objects; so is any existential
+        // or metatype-free protocol composition. Fold them to one key.
+        if result.hasPrefix("["), result.hasSuffix("]") { return "Array" }
+        if result.hasPrefix("any ") || result.hasPrefix("some ") { return "AnyObject" }
+
+        // `Foundation.URL` and `Swift.Int` reach the macro fully qualified when
+        // the user writes them that way. The table is keyed on the last
+        // component, which is unambiguous for every entry in it.
+        if let lastComponent = result.split(separator: ".").last, result.containsSubstring(".") {
+            result = String(lastComponent)
+        }
+
+        return result
+    }
+
+    /// A written type with every optional layer and redundant pair of
+    /// parentheses removed: `Optional<Foo>?`, `(Foo)?` and `Foo!` all become
+    /// `Foo`.
+    static func strippingOptionality(from typeText: String) -> String {
         var result = typeText.trimmedWhitespace
 
         // Unwrap repeatedly: `Optional<Foo>?`, `(Foo)?`, `Foo!` all appear.
@@ -116,18 +188,6 @@ enum ObjCTypeEncoding {
                 didChange = true
                 continue
             }
-        }
-
-        // Arrays, dictionaries and sets are all objects; so is any existential
-        // or metatype-free protocol composition. Fold them to one key.
-        if result.hasPrefix("["), result.hasSuffix("]") { return "Array" }
-        if result.hasPrefix("any ") || result.hasPrefix("some ") { return "AnyObject" }
-
-        // `Foundation.URL` and `Swift.Int` reach the macro fully qualified when
-        // the user writes them that way. The table is keyed on the last
-        // component, which is unambiguous for every entry in it.
-        if let lastComponent = result.split(separator: ".").last, result.containsSubstring(".") {
-            result = String(lastComponent)
         }
 
         return result

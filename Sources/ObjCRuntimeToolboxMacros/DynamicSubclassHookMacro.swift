@@ -84,8 +84,16 @@ extension DynamicSubclassHookMacro: MemberMacro {
             arguments: arguments,
             hookTypeName: hookTypeName
         )
+        // The override blocks call the container from no particular
+        // isolation; see `_HookContainerIsolationCheck`.
+        let isolationCheck = hookContainerIsolationCheck(
+            initializerReference: "\(hookTypeName).init(base:)",
+            attribute: node,
+            in: context
+        )
         generated.append("""
         private static func installOverridesIfNeeded(on dynamicSubclass: AnyClass) {
+            \(raw: isolationCheck)
             guard ObjCRuntimeToolbox.DynamicSubclass.claimOverrideInstallation(on: dynamicSubclass, hookIdentifier: \(literal: hookTypeName)) else { return }
             \(raw: installOverridesBody)
         }

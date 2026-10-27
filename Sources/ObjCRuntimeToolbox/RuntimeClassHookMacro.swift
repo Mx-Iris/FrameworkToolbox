@@ -146,4 +146,43 @@ public macro RuntimeMethodReplacement(
     type: "RuntimeMethodReplacementMacro"
 )
 
+/// Reports a hook container isolated to the main actor, for `@RuntimeClassHook`
+/// and `@DynamicSubclassHook`, which generate one call per container.
+///
+/// The Objective-C runtime calls a replacement synchronously on whichever
+/// thread invokes the hooked method, so the generated trampolines call into the
+/// container from no particular isolation. A container isolated to the main
+/// actor cannot be called from there, and nothing in its syntax has to say so:
+/// it inherits the isolation from `@MainActor` on the type, from an isolated
+/// protocol it conforms to, or from a module whose default isolation is
+/// `MainActor` (SE-0466). Only the compiler knows, so the question is put to it:
+/// the macros pass the container's initializer as a function value, whose type
+/// carries `@MainActor` exactly when the container is isolated, and these two
+/// overloads differ in nothing else. A main-actor function converts to no other
+/// function type, so it only matches the second one, which reports it; any
+/// other matches both and the first, which needs no conversion, wins and
+/// generates nothing.
+@_documentation(visibility: private)
+@freestanding(declaration)
+public macro _HookContainerIsolationCheck<each Input, Container>(
+    initializer: (repeat each Input) -> Container
+) = #externalMacro(
+    module: "ObjCRuntimeToolboxMacros",
+    type: "NonisolatedHookContainerMacro"
+)
+
+/// The trailing parameter only keeps this from being a redeclaration of the
+/// one above: in the Swift 5 language mode the two signatures, which differ in
+/// nothing but `@MainActor` on a parameter's function type, are treated as the
+/// same one. It takes no part in choosing between them.
+@_documentation(visibility: private)
+@freestanding(declaration)
+public macro _HookContainerIsolationCheck<each Input, Container>(
+    initializer: @MainActor (repeat each Input) -> Container,
+    _: Void = ()
+) = #externalMacro(
+    module: "ObjCRuntimeToolboxMacros",
+    type: "MainActorHookContainerMacro"
+)
+
 #endif

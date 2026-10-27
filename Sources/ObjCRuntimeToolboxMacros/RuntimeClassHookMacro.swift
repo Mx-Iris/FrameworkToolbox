@@ -61,9 +61,17 @@ extension RuntimeClassHookMacro: MemberMacro {
             className: className,
             hookTypeName: hookTypeName
         )
+        // The trampolines built here call the container from no particular
+        // isolation; see `_HookContainerIsolationCheck`.
+        let isolationCheck = hookContainerIsolationCheck(
+            initializerReference: "\(hookTypeName).init(host:originalImplementation:)",
+            attribute: node,
+            in: context
+        )
         generated.append("""
         static func descriptors() -> [ObjCRuntimeToolbox.RuntimeMethodHook.Descriptor] {
-            \(raw: descriptorEntries)
+            \(raw: isolationCheck)
+            return \(raw: descriptorEntries)
         }
         """)
 
@@ -280,7 +288,7 @@ private func buildDescriptorEntries(
 
     let entries = methods.map { method -> String in
         let selectorString = method.shape.selectorString(explicitSelector: method.marker.explicitSelector)
-        let typeEncoding = method.marker.explicitTypeEncoding ?? ObjCTypeEncoding.methodEncoding(
+        let typeEncodingExpression = method.marker.explicitTypeEncoding.map(stringLiteral) ?? ObjCTypeEncoding.methodEncodingExpression(
             returnTypeText: method.shape.returnTypeText,
             parameterTypeTexts: method.shape.parameters.map { $0.typeText }
         )
@@ -292,7 +300,7 @@ private func buildDescriptorEntries(
             "\(fieldIndentation)className: \(stringLiteral(className)),",
             "\(fieldIndentation)selector: NSSelectorFromString(\(stringLiteral(selectorString))),",
             "\(fieldIndentation)isInstanceMethod: \(method.marker.isClassMethod ? "false" : "true"),",
-            "\(fieldIndentation)expectedTypeEncoding: \(stringLiteral(typeEncoding)),",
+            "\(fieldIndentation)expectedTypeEncoding: \(typeEncodingExpression),",
             "\(fieldIndentation)makeReplacement: { originalImplementation in",
             "\(blockIndentation)let \(method.blockName): @convention(block) \(blockSignature) = \(blockBody)",
             "\(blockIndentation)return imp_implementationWithBlock(\(method.blockName) as AnyObject)",
