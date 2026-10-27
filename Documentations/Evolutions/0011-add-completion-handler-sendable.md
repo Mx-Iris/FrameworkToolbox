@@ -1,6 +1,6 @@
-# Draft - `@AddCompletionHandler` 可选地把 completion 标成 `@Sendable`
+# 0011 - `@AddCompletionHandler` 可选地把 completion 标成 `@Sendable`
 
-- **状态**: In Progress
+- **状态**: Implemented
 - **创建日期**: 2026-10-27
 - **最后更新**: 2026-10-27
 - **实现分支**: `feature/add-completion-handler-sendable`
@@ -78,3 +78,4 @@ current task`）。
 | 2026-10-27 | 参数只收布尔字面量 | 照 `@ObjectiveCBridgeable(inlinable:)` 的先例：`@Sendable` 是生成签名的一部分，展开时就要有答案；不是字面量时在参数上报错，并按 `false` 继续展开。测试框架在出现错误诊断后不记录展开结果，所以报错那例的快照只有诊断 |
 | 2026-10-27 | 守卫改为一正一反 | `ReceiptLoader`（`nonisolated`）写 `sendable: true`，证明选用后 Swift 6 下能编译；`ReceiptStore`（主线程隔离）用默认值、调用方闭包里改主线程状态，证明默认值保住了这种写法。两者在 Swift 6 客户端里都编译通过 |
 | 2026-10-27 | 实现完成，待合并 | 改宏之后 touch 全部源文件重编，完整测试套件通过（702 个 swift-testing 测试、51 个 XCTest），没有新增警告。文档判断：参数的用法与代价写在宏的文档注释和 `CLAUDE.md` 的异步桥接一条，异步桥接宏没有独立的使用指南，不另写；没有新术语 |
+| 2026-10-27 | Implemented，编号 0011 | 随 `feature/add-completion-handler-sendable` 合入 main。合并前 rebase 到已含 0010 的 main：代码自动合并，只有两份文档索引里相邻的两行冲突，两边都保留。rebase 后 touch 全部源文件重编，完整测试套件通过（708 个 swift-testing 测试、51 个 XCTest），没有新增警告。与方案没有偏离，没有遗留的后续项。文档判断同上一行：用法与代价已写在宏的文档注释和 `CLAUDE.md`，不另写使用指南，没有新术语 |
