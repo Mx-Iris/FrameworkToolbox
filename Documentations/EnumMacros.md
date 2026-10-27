@@ -40,6 +40,8 @@
   关联值的**个数**匹配，类型对不上的报错会落在展开之后。
 - 标记宏可以带模块名写（`@SwiftStdlibToolbox.CaseTag(by:)`、`@SwiftStdlibToolbox.ProjectionFunction`），
   `@MirroredCases` 与 `@Projection` 按去掉模块名之后的名字找它们。
+- 宏要把投影函数的返回类型变成可选时，存在类型、函数类型、组合类型会先加括号：`any P?` 编译器
+  直接拒绝，`() -> Void?` 的意思是返回 `Void?` 的函数，所以生成的是 `(any P)?` 与 `(() -> Void)?`。
 
 ## `@Bijection`
 

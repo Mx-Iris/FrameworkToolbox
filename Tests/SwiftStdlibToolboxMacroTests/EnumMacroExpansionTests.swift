@@ -1009,4 +1009,41 @@ struct EnumMacroExpansionTests {
             """
         }
     }
+
+    // MARK: - Optional spellings
+
+    // `T?` binds tighter than an arrow or an existential, so wrapping such a
+    // type in an optional needs parentheses: `any Error?` does not parse as an
+    // optional existential, and `() -> Void?` is a function returning `Void?`.
+
+    @Test func projectionParenthesizesAnExistentialReturnType() {
+        assertMacro {
+            """
+            @Projection enum Target {
+                case first(String)
+
+                @ProjectionFunction
+                static func describe(_ value: some CustomStringConvertible) -> any CustomStringConvertible {
+                    value
+                }
+            }
+            """
+        } expansion: {
+            """
+            enum Target {
+                case first(String)
+                static func describe(_ value: some CustomStringConvertible) -> any CustomStringConvertible {
+                    value
+                }
+
+                var describe: (any CustomStringConvertible)? {
+                    switch self {
+                    case .first(let payload):
+                        Self.describe(payload)
+                    }
+                }
+            }
+            """
+        }
+    }
 }

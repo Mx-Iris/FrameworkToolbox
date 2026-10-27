@@ -1,3 +1,4 @@
+import MacroToolbox
 import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxBuilder
@@ -203,7 +204,7 @@ private func buildMethodMember(
                 "proxyReturnMustBeOptional",
                 """
                 \(runtimeClassProxyMacroName): a returning proxy method must declare an optional return type. \
-                Dispatch into a class resolved at runtime can fail, and there is no honest default to invent — write '\(returnTypeSyntax.trimmedDescription)?' and handle nil (or '?? someDefault') at the call site.
+                Dispatch into a class resolved at runtime can fail, and there is no honest default to invent — write '\(returnTypeSyntax.wrappedInOptional)' and handle nil (or '?? someDefault') at the call site.
                 """
             ),
             at: returnTypeSyntax
@@ -274,7 +275,7 @@ private func buildPropertyMember(
                 "proxyPropertyMustBeOptional",
                 """
                 \(runtimeClassProxyMacroName): a proxied property must be optional. \
-                Reading a class resolved at runtime can fail, and there is no honest default to invent — write '\(propertyTypeText)?' and handle nil at the call site.
+                Reading a class resolved at runtime can fail, and there is no honest default to invent — write '\(propertyTypeSyntax.wrappedInOptional)' and handle nil at the call site.
                 """
             ),
             at: propertyTypeSyntax

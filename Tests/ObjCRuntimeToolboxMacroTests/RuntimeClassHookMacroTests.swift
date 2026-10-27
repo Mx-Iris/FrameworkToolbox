@@ -821,6 +821,30 @@ struct RuntimeClassProxyMacroTests {
         }
     }
 
+    // The suggested spelling has to be one the compiler accepts: `any P?` is
+    // rejected, so an existential is parenthesized before the `?` goes on.
+    @Test func nonOptionalExistentialSuggestsAParenthesizedOptional() {
+        assertMacro {
+            """
+            @RuntimeClassProxy("Tile")
+            protocol DockTile {
+                var delegate: any NSObjectProtocol { get }
+            }
+            """
+        } diagnostics: {
+            """
+            @RuntimeClassProxy("Tile")
+            ┬─────────────────────────
+            ╰─ ⚠️ @RuntimeClassProxy: the protocol declares nothing to proxy. The generated type will validate an empty requirement list and dispatch nothing.
+            protocol DockTile {
+                var delegate: any NSObjectProtocol { get }
+                              ┬───────────────────
+                              ╰─ 🛑 @RuntimeClassProxy: a proxied property must be optional. Reading a class resolved at runtime can fail, and there is no honest default to invent — write '(any NSObjectProtocol)?' and handle nil at the call site.
+            }
+            """
+        }
+    }
+
     @Test func emptyProtocolWarns() {
         assertMacro {
             """

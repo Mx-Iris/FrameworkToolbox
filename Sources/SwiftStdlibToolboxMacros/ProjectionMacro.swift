@@ -140,7 +140,7 @@ extension ProjectionMacro {
         let propertyType: TypeSyntax = if flatten, returnType.isOptional {
             returnType
         } else {
-            "\(returnType)?"
+            returnType.wrappedInOptional
         }
 
         // The `default` is emitted only when it can actually be reached.

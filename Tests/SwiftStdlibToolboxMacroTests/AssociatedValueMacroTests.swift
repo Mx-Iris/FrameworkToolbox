@@ -228,4 +228,48 @@ struct AssociatedValueMacroTests {
             """
         }
     }
+
+    // `T?` binds tighter than an existential or an arrow: `any Error?` is
+    // rejected outright, and `() -> Void?` is a function returning `Void?`, so
+    // the `default: return nil` branch would not compile.
+    @Test func existentialAndFunctionPayloadsAreParenthesized() {
+        assertMacro {
+            """
+            @AssociatedValue
+            enum State {
+                case failed(any Error)
+                case handler(() -> Void)
+                case idle
+            }
+            """
+        } expansion: {
+            """
+            enum State {
+                case failed(any Error)
+                case handler(() -> Void)
+                case idle
+
+                /// Returns the associated value of the `failed` case if `self` is `.failed`, otherwise returns `nil`.
+                var failed: (any Error)? {
+                    switch self {
+                    case .failed(let failed):
+                        return failed
+                    default:
+                        return nil
+                    }
+                }
+
+                /// Returns the associated value of the `handler` case if `self` is `.handler`, otherwise returns `nil`.
+                var handler: (() -> Void)? {
+                    switch self {
+                    case .handler(let handler):
+                        return handler
+                    default:
+                        return nil
+                    }
+                }
+            }
+            """
+        }
+    }
 }

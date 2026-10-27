@@ -4,6 +4,7 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
 
 extension TypeSyntax {
     /// Whether this type is an optional written with the sugared `?` spelling,
@@ -65,5 +66,21 @@ extension TypeSyntax {
         spelling '\(self.trimmed)' will not be recognized here; \
         use the sugared optional '?' instead
         """
+    }
+
+    /// This type made optional, spelled so that the `?` covers all of it.
+    ///
+    /// A trailing `?` binds tighter than an arrow, an existential, a
+    /// composition or an attribute, so appending one to those types means
+    /// something else: `any Error?` is rejected outright, and `() -> Void?` is
+    /// a function returning `Void?`. Those are wrapped in parentheses first;
+    /// every other type gets a plain `?`, the way a person would write it.
+    public var wrappedInOptional: TypeSyntax {
+        let wrapped = self.trimmed
+        let needsParentheses = wrapped.is(FunctionTypeSyntax.self)
+            || wrapped.is(SomeOrAnyTypeSyntax.self)
+            || wrapped.is(CompositionTypeSyntax.self)
+            || wrapped.is(AttributedTypeSyntax.self)
+        return needsParentheses ? "(\(wrapped))?" : "\(wrapped)?"
     }
 }

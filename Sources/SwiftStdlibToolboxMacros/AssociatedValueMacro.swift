@@ -1,3 +1,4 @@
+import MacroToolbox
 import SwiftCompilerPlugin
 import SwiftSyntax
 import SwiftSyntaxBuilder
@@ -53,7 +54,7 @@ public struct AssociatedValueMacro: MemberMacro {
                 if associatedValueType.is(OptionalTypeSyntax.self) {
                     returnTypeString = "\(associatedValueType)"
                 } else {
-                    returnTypeString = "\(associatedValueType)?"
+                    returnTypeString = associatedValueType.wrappedInOptional.description
                 }
 
                 let newProperty: VariableDeclSyntax
