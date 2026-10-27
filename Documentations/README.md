@@ -56,16 +56,16 @@
   26 SDK 给 `UndoManager`、`ProcessInfo`、`FileHandle` 等 16 个类型预置了 32 个消息；这里照反汇编结论逐个重写，类型放进
   `<主题类型>.Backport`。标识符必须标 `@_disfavoredOverload`，否则在 26 的上下文里连苹果原生的简写都会报歧义。
 
-- [draft —— 属性宏不再强制写类型注解](Evolutions/draft-property-macros-inferred-types.md)（In Progress）
+- [0005 —— 属性宏不再强制写类型注解](Evolutions/0005-property-macros-inferred-types.md)（Implemented）
   `@Mutex` / `@OSAllocatedUnfairLock` / `@Keychain` / `@UserDefault` 的类型改由初始值推断；`$name` 投影靠一个 accessor 宏得到
   推断出的类型。文内记有两条实测的编译器规则：被吸收的初始值按属性初始值的上下文检查，以及推断类型不能是别的声明的 `some` 类型。
-- [draft —— `@Equatable` 让编译器检查每个成员能否比较](Evolutions/draft-equatable-member-check.md)（In Progress）
+- [0006 —— `@Equatable` 让编译器检查每个成员能否比较](Evolutions/0006-equatable-member-check.md)（Implemented）
   每个参与比较的成员挂一个只差 `Equatable` 约束的检查宏，类型不遵循时在成员那一行报错并给出加 `@EquatableIgnored` 的修复。
-- [draft —— `@FrameworkToolboxExtension` 让编译器判断协议是否只能由类遵循](Evolutions/draft-box-extension-reference-semantics.md)（In Progress）
+- [0007 —— `@FrameworkToolboxExtension` 让编译器判断协议是否只能由类遵循](Evolutions/0007-box-extension-reference-semantics.md)（Implemented）
   `box` 的 setter 由一对按 `Self: AnyObject` 重载的 accessor 宏选择，`referenceSemantics:` 废弃；忘写它曾让编译器在 SILGen 崩溃。
-- [draft —— ObjC runtime 宏改由编译器判断 type encoding 与隔离](Evolutions/draft-objc-runtime-compiler-type-facts.md)（In Progress）
+- [0008 —— ObjC runtime 宏改由编译器判断 type encoding 与隔离](Evolutions/0008-objc-runtime-compiler-type-facts.md)（Implemented）
   表外拼写（typealias、导入的枚举）的 encoding 与 proxy 返回值读法由重载决议决定；被主线程隔离的 hook 容器在宏属性那一行报错。
-- [draft —— 把宏展开里的类型错误指回调用方源码](Evolutions/draft-macro-diagnostics-at-call-site.md)（In Progress）
+- [0009 —— 把宏展开里的类型错误指回调用方源码](Evolutions/0009-macro-diagnostics-at-call-site.md)（Implemented）
   `@DyldInterpose` 与 `@Projection` 用 `#sourceLocation` 把类型错误映射回用户那一行；`@ObjectiveCBridgeable` 的遵循检查因编译器
   不报告隐含遵循而撤回，实测记录在内。
 
@@ -102,6 +102,9 @@
   [0003](Evolutions/0003-objc-runtime-toolbox-self-contained-leaf.md) 撤销 ——
   `.dynamic` 产品的运行时 target 依赖会被 Xcode 连同传递闭包一起建成共享动态 framework。
 - **`@RuntimeClassHook` / `@RuntimeClassProxy`**（2026-08-05）—— [设计](Specs/2026-08-05-runtime-class-hook-design.md)
+  **编码推导已变更**：文中「编码映射表是白名单，表外类型落到 `@`、只能手填 `typeEncoding:`」已由提案
+  [0008](Evolutions/0008-objc-runtime-compiler-type-facts.md) 改为交给编译器按类型选择 —— typealias、导入的枚举与
+  `ObjCTypeEncodable` 结构体都能推出编码，真正推不出的生成 `"?"` 并在调用点给出警告。
 - **`ObjCRuntimeToolbox`**（2026-06-26）—— [设计](Specs/2026-06-26-objc-runtime-toolbox-design.md)
 - **`@Keychain` 宏**（2026-06-24）—— [设计](Specs/2026-06-24-keychain-macro-design.md)
 - **`#Selector` 字符串字面量宏**（2026-04-15）—— [设计](Specs/2026-04-15-selector-string-literal-macro-design.md) · [计划](Plans/2026-04-15-selector-string-literal-macro.md)

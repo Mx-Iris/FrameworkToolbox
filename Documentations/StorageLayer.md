@@ -146,6 +146,11 @@ var $accessToken: some Publisher<String, Never> {
 
 `Combine.Publisher` 在 macOS 13 / iOS 16 之后的 SDK 标注了 primary associated types `Publisher<Output, Failure>`，Swift 5.7+ 编译期合法。Package 使用 `swift-tools-version: 6.2`，对应 Xcode 26+ 工具链，SDK 一定带有该标注。
 
+**属性省略类型注解时例外。** `@UserDefault(key: "launchCount") var launchCount = 0` 这样不写类型的属性，`$launchCount`
+是 `AnyPublisher<Int, Never>`：属性的推断类型不能是别的声明的 `some` 返回类型，只能擦除，代价是每次读多一次装箱。
+写了类型注解的属性仍是 `some Publisher`，展开结果与上面一致。生成方式见提案
+[0005](Evolutions/0005-property-macros-inferred-types.md)。
+
 ## `UserDefaultStorage` 运行时
 
 ```swift

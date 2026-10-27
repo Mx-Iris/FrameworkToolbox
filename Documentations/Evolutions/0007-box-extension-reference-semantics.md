@@ -1,6 +1,6 @@
-# Draft - `@FrameworkToolboxExtension` 让编译器判断协议是否只能由类遵循
+# 0007 - `@FrameworkToolboxExtension` 让编译器判断协议是否只能由类遵循
 
-- **状态**: In Progress
+- **状态**: Implemented
 - **创建日期**: 2026-10-27
 - **最后更新**: 2026-10-27
 - **实现分支**: `feature/macro-patterns`
@@ -53,3 +53,4 @@
 | 2026-10-27 | `referenceSemantics:` 废弃而不删除 | 删除会让写了它的调用点编不过；废弃重载让旧写法继续编译，只多一条警告 |
 | 2026-10-27 | 真实编译验证通过 | 守卫 `FrameworkToolboxClient/ReferenceSemanticsDetection.swift`（继承 `AnyObject` 的协议、`@objc` 协议、普通协议）在改动前让编译器在 SILGen 崩溃（signal 5，`While silgen emitFunction … ClassBoundService … box`），改动后编译通过；`Self.self` 作为协议 extension 成员上的宏参数可以正常解析，没有循环引用。`CFType` 去掉 `referenceSemantics:` 后照常编译；值类型一侧的写回由 `ComparableExtensionTests` 经 `BinaryInteger` 的扩展在运行时验证。旧写法用临时文件编译一次：编译通过，带一条废弃警告 |
 | 2026-10-27 | 实现完成，待合并 | 完整测试套件通过 |
+| 2026-10-27 | Implemented，编号 0007 | 随 `feature/macro-patterns` 合入 main，与方案没有偏离。文档判断：`referenceSemantics:` 的废弃写在宏的文档注释与废弃信息里，`CLAUDE.md` 的 box 条目已改写；不另写使用指南，没有新术语 |

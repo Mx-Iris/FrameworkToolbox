@@ -1,6 +1,6 @@
-# Draft - 属性宏不再强制写类型注解
+# 0005 - 属性宏不再强制写类型注解
 
-- **状态**: In Progress
+- **状态**: Implemented
 - **创建日期**: 2026-10-27
 - **最后更新**: 2026-10-27
 - **实现分支**: `feature/macro-patterns`
@@ -79,3 +79,4 @@ accessor 块做的检查，宏事后添加的 accessor 不经过它。依据见�
 | 2026-10-27 | `$name` 的初始值改用原型 storage，getter 按名字读真正的 storage | 最初写成 `var $name = _name.publisher`，编译报 `cannot use instance member '_name' within property initializer; property initializers run before 'self' is available`：被吸收的初始值虽不执行，仍按属性初始值的上下文检查 |
 | 2026-10-27 | 省略类型时 `$name` 擦除为 `AnyPublisher` | 推断成 `publisher` 的类型时编译报 `property definition has inferred type 'some Publisher<Double, Never>', involving the 'some' return type of another declaration`。改 storage 的 `publisher` 为具体类型也能绕开，但那是公开 API 的改动；擦除只影响新写法 |
 | 2026-10-27 | 实现完成，待合并 | 快照测试、运行时测试（`InferredStoragePropertyTests`）与客户端编译守卫全部通过 |
+| 2026-10-27 | Implemented，编号 0005 | 随 `feature/macro-patterns` 合入 main，与方案没有偏离。文档判断：四个宏的文档注释已写明类型注解可省、`weak` 仍需写，`CLAUDE.md` 的锁宏与 `@Keychain` 条目已同步；`StorageLayer.md` 讲 `$name` 是 `some Publisher` 的一节补一段省略类型时为 `AnyPublisher` 的例外。不另写使用指南，没有新术语 |

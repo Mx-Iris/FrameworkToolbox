@@ -1,6 +1,6 @@
-# Draft - ObjC runtime 宏改由编译器判断 type encoding 与隔离
+# 0008 - ObjC runtime 宏改由编译器判断 type encoding 与隔离
 
-- **状态**: In Progress
+- **状态**: Implemented
 - **创建日期**: 2026-10-27
 - **最后更新**: 2026-10-27
 - **实现分支**: `feature/macro-patterns`
@@ -78,3 +78,4 @@ proxy 上的 `nonisolated`。用到表外类型的：原来校验失败、运行
 | 2026-10-27 | 多平台构建 | 本提案新加了 `#if canImport(ObjectiveC)` 与 `#if os(macOS)`，按项目规定逐平台构建 `ObjCRuntimeToolbox`：macOS、iOS、Mac Catalyst 通过；本机的 Xcode 26.5 没有安装 watchOS、tvOS、visionOS 平台组件，这三个平台未能构建 |
 | 2026-10-27 | `CGFloat` 一族在 arm64_32 上的 encoding 记为后续项 | 编码表把 `CGFloat` 写死为 `d`，`CGPoint` / `CGSize` / `CGRect` 写死为双精度布局，新加的 `_ObjCTypeEncoding.of(CGFloat.self)` 等重载沿用了同样的值。`CGBase.h` 只在 `__LP64__` 下把 `CGFloat` 定义为 `double`，watchOS 真机的 arm64_32 不是 LP64，那里正确的编码是 `f` 与 `{CGPoint=ff}`。后果是这类签名的 hook 在安装时校验失败、proxy 拒绝工作，属于安全的失败，与改动前相同。修法是让这几个类型也走由编译器选择的重载、按 `MemoryLayout<CGFloat>.size` 取值，但那会改变已有调用点的展开结果，留待另行决定；本机没有 watchOS 平台，未能实测 |
 | 2026-10-27 | 实现完成，待合并 | 干净构建下的完整测试套件通过 |
+| 2026-10-27 | Implemented，编号 0008 | 随 `feature/macro-patterns` 合入 main。与方案的偏离只有上面记的一处：proxy 返回值用普通函数重载而不是嵌套宏。两个后续项见上：`@DynamicSubclassHook` 的并发竞态，`CGFloat` 一族在 arm64_32 上的 encoding。文档判断：`ObjCTypeEncodable` 的用法写在它的文档注释里，`CLAUDE.md` 已同步；归档的 `@RuntimeClassHook` 设计文档仍写着「表外类型落到 `@`、只能手填 `typeEncoding:`」，按归档文档不改原文的惯例，在文档索引的该条目下注明已变更并指向本提案。不另写使用指南，没有新术语 |

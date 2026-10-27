@@ -1,6 +1,6 @@
-# Draft - 把宏展开里的类型错误指回调用方源码
+# 0009 - 把宏展开里的类型错误指回调用方源码
 
-- **状态**: In Progress
+- **状态**: Implemented
 - **创建日期**: 2026-10-27
 - **最后更新**: 2026-10-27
 - **实现分支**: `feature/macro-patterns`
@@ -40,3 +40,4 @@
 | 2026-10-27 | 实测通过 | 用临时文件各制造一次错误：`@DyldInterpose(getpid)` 配一个返回 `Int64` 的函数，错误从 `macro expansion @DyldInterpose:9:114` 移到用户文件第 5 行（属性所在行）；`@Projection` 里一个 `case count(Int)` 不满足 `some Identifiable<String>`，错误从 `macro expansion @Projection:6:14` 移到该 case 所在的第 11 行。临时文件随后删除 |
 | 2026-10-27 | 撤回 `@ObjectiveCBridgeable` 的遵循检查 | 原计划把 `ObjectiveCRepresentable` 列进宏的 `conformances:`，由编译器传回的 `conformingTo:` 判断类型是否遵循，不遵循时给一条清楚的错误代替展开里的一串连锁错误。实测编译器传回的列表**不含经由细化协议隐含得到的遵循**：包内六个句柄都通过 `ObjectiveCCollectionHandle` 遵循，全部被误报为缺少 `ObjectiveCRepresentable`。这个信号对本宏最常见的用法不可靠，改动整体撤回，行为保持原样 |
 | 2026-10-27 | 实现完成，待合并 | 完整测试套件通过 |
+| 2026-10-27 | Implemented，编号 0009 | 随 `feature/macro-patterns` 合入 main。与方案的偏离只有上面记的一处：`@ObjectiveCBridgeable` 的遵循检查撤回。文档判断：调用方的写法没有变化，`#sourceLocation` 的用法与「编译器传回的遵循列表不含隐含遵循」两条规则已记在 `CLAUDE.md`；不另写文档，没有新术语 |
