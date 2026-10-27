@@ -126,6 +126,25 @@ nonisolated func touch(_ counter: Counter, _ preferences: Preferences) -> Int {
     return counter.value + preferences.launchCount
 }
 
+// MARK: - `@AddCompletionHandler` on a type the caller took off the main actor
+
+// The generated function hands the completion handler to a `Task`, which takes
+// its closure as `sending`. On a `nonisolated` type nothing makes that handler
+// safe to send unless it is `@Sendable`, so without it this expansion does not
+// compile at all.
+nonisolated struct ReceiptLoader {
+    @AddCompletionHandler
+    func total(for identifier: Int) async throws -> Double {
+        Double(identifier)
+    }
+}
+
+nonisolated func loadTotal(with loader: ReceiptLoader) {
+    loader.total(for: 1) { result in
+        _ = try? result.get()
+    }
+}
+
 // MARK: - Logging from a background thread inside a main-actor type
 
 @Loggable

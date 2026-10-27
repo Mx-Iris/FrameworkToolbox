@@ -22,7 +22,7 @@ struct AddCompletionHandlerMacroTests {
                 42
             }
 
-            func fetchValue(for identifier: String, completion: @escaping (Swift.Result<Int, any Swift.Error>) -> Void) {
+            func fetchValue(for identifier: String, completion: @escaping @Sendable (Swift.Result<Int, any Swift.Error>) -> Void) {
                 _Concurrency.Task {
                     do {
                         let result = try await fetchValue(for: identifier)
@@ -48,7 +48,7 @@ struct AddCompletionHandlerMacroTests {
             func refresh() async throws {
             }
 
-            func refresh(completion: @escaping (Swift.Result<Void, any Swift.Error>) -> Void) {
+            func refresh(completion: @escaping @Sendable (Swift.Result<Void, any Swift.Error>) -> Void) {
                 _Concurrency.Task {
                     do {
                         try await refresh()
@@ -76,7 +76,7 @@ struct AddCompletionHandlerMacroTests {
                 path
             }
 
-            func request(_ path: String, method httpMethod: String, completion: @escaping (Swift.Result<String, any Swift.Error>) -> Void) {
+            func request(_ path: String, method httpMethod: String, completion: @escaping @Sendable (Swift.Result<String, any Swift.Error>) -> Void) {
                 _Concurrency.Task {
                     do {
                         let result = try await request(path, method: httpMethod)
@@ -121,7 +121,7 @@ struct AddCompletionHandlerMacroTests {
                 42
             }
 
-            func fetchValue(completion: @escaping (Swift.Result<Int, any Swift.Error>) -> Void) {
+            func fetchValue(completion: @escaping @Sendable (Swift.Result<Int, any Swift.Error>) -> Void) {
                 _Concurrency.Task {
                     do {
                         let result = try await fetchValue()

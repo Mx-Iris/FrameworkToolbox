@@ -36,11 +36,16 @@ public struct AddCompletionHandlerMacro: PeerMacro {
         // `Task`, `Result` and `Error` are written with their modules: apps
         // routinely declare a `Task` or `Result` model of their own, and the
         // generated peer would pick that one up instead.
+        //
+        // The handler is `@Sendable` because the `Task` below captures it, and
+        // `Task` takes its closure as `sending`. On a `nonisolated` type nothing
+        // else makes handing the handler to another task safe, so in the Swift 6
+        // language mode the expansion did not compile without it.
         let returnTypeDescription = function.signature.returnClause?.type.trimmedDescription ?? "Void"
         let completionHandlerParameter = FunctionParameterSyntax(
             firstName: .identifier("completion"),
             colon: .colonToken(trailingTrivia: .space),
-            type: TypeSyntax("@escaping (Swift.Result<\(raw: returnTypeDescription), any Swift.Error>) -> Void")
+            type: TypeSyntax("@escaping @Sendable (Swift.Result<\(raw: returnTypeDescription), any Swift.Error>) -> Void")
         )
 
         let callArguments = function.signature.parameterClause.parameters.asPassthroughArguments
