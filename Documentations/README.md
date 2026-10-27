@@ -68,8 +68,9 @@
 - [0009 —— 把宏展开里的类型错误指回调用方源码](Evolutions/0009-macro-diagnostics-at-call-site.md)（Implemented）
   `@DyldInterpose` 与 `@Projection` 用 `#sourceLocation` 把类型错误映射回用户那一行；`@ObjectiveCBridgeable` 的遵循检查因编译器
   不报告隐含遵循而撤回，实测记录在内。
-- [draft —— `@AddCompletionHandler` 生成的 completion 改为 `@Sendable`](Evolutions/draft-add-completion-handler-sendable.md)（In Progress）
-  生成的 `Task` 捕获非 `Sendable` 的 completion，Swift 6 下 `nonisolated` 类型上的用法编不过；改签名，按源码破坏评估调用点。
+- [draft —— `@AddCompletionHandler` 可选地把 completion 标成 `@Sendable`](Evolutions/draft-add-completion-handler-sendable.md)（In Progress）
+  生成的 `Task` 捕获非 `Sendable` 的 completion，Swift 6 下 `nonisolated` 类型上的用法编不过；新参数 `sendable: true` 修好它，
+  默认保持原签名——直接改签名会让在主线程上写 completion 的调用方连 Swift 5 下都编不过，实测在内。
 - [0010 —— `@Equatable` 不再弄丢经由细化协议得到的 `Hashable`](Evolutions/0010-equatable-refined-hashable.md)（Implemented）
   把 `Hashable` 列进 `conformances:` 会让编译器丢掉经由细化协议隐含的遵循；改由一对按 `Subject: Hashable` 重载的 peer 宏
   决定要不要生成 `hash(into:)`。

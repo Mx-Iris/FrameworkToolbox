@@ -126,14 +126,14 @@ nonisolated func touch(_ counter: Counter, _ preferences: Preferences) -> Int {
     return counter.value + preferences.launchCount
 }
 
-// MARK: - `@AddCompletionHandler` on a type the caller took off the main actor
+// MARK: - `@AddCompletionHandler`, on and off the main actor
 
 // The generated function hands the completion handler to a `Task`, which takes
 // its closure as `sending`. On a `nonisolated` type nothing makes that handler
-// safe to send unless it is `@Sendable`, so without it this expansion does not
-// compile at all.
+// safe to send unless it is `@Sendable`, so without `sendable: true` this
+// expansion does not compile at all.
 nonisolated struct ReceiptLoader {
-    @AddCompletionHandler
+    @AddCompletionHandler(sendable: true)
     func total(for identifier: Int) async throws -> Double {
         Double(identifier)
     }
@@ -142,6 +142,28 @@ nonisolated struct ReceiptLoader {
 nonisolated func loadTotal(with loader: ReceiptLoader) {
     loader.total(for: 1) { result in
         _ = try? result.get()
+    }
+}
+
+// Left on the main actor, as everything is by default here, the default keeps
+// the handler a plain closure: the generated task inherits the main actor, and
+// a handler written on the main actor may touch main-actor state, as it always
+// could. With `sendable: true` the closure below would not compile — even in
+// the Swift 5 language mode.
+struct ReceiptStore {
+    @AddCompletionHandler
+    func count() async throws -> Int {
+        0
+    }
+}
+
+final class ReceiptScreen {
+    var summary = ""
+
+    func reload(from store: ReceiptStore) {
+        store.count { result in
+            self.summary = "\(result)"
+        }
     }
 }
 

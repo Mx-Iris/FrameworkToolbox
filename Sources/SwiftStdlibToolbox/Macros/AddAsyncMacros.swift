@@ -26,21 +26,28 @@ public macro AddAsyncAllMembers() = #externalMacro(
 /// Generates a completion-handler based overload of an `async` function.
 ///
 /// Attach this attribute to an `async` function to emit a peer function that
-/// takes an `@escaping @Sendable (Result<ReturnType, any Error>) -> Void`
-/// completion handler. The generated overload runs the original `async` call
-/// inside a `Task` and forwards its result (or thrown error) to the completion
-/// handler from that task — on the function's actor when it has one, on the
-/// global concurrent executor otherwise.
+/// takes an `@escaping (Result<ReturnType, any Error>) -> Void` completion
+/// handler. The generated overload runs the original `async` call inside a
+/// `Task` and forwards its result (or thrown error) to the completion handler
+/// from that task — on the function's actor when it has one, on the global
+/// concurrent executor otherwise.
 ///
-/// The handler is `@Sendable` because the task captures it, so the closure a
-/// caller passes is checked as one: it cannot touch main-actor state directly,
-/// even when the function is itself main-actor isolated, nor mutate a captured
-/// local variable, and a non-`Sendable` function value has to be converted. Hop
-/// to the actor you need inside the handler. In the Swift 6 language mode the
-/// task also captures `self` and the forwarded arguments, so on a `nonisolated`
-/// type those have to be `Sendable`, as they would in code written by hand.
+/// Pass `sendable: true` to make the handler `@Sendable`. The task captures the
+/// handler, so on a `nonisolated` type the expansion does not compile in the
+/// Swift 6 language mode without it. It is off by default because of what it
+/// costs callers: the closure a caller passes is then checked as `@Sendable`, so
+/// it cannot touch main-actor state directly — an error even in the Swift 5
+/// language mode, and even when the function is itself main-actor isolated and
+/// the handler does run there — nor mutate a captured local variable, and a
+/// non-`Sendable` function value has to be converted. In the Swift 6 language
+/// mode the task also captures `self` and the forwarded arguments, so on a
+/// `nonisolated` type those have to be `Sendable` as well, as they would in
+/// code written by hand.
+///
+/// `sendable:` takes a boolean literal only: it shapes the generated signature,
+/// so it is decided while the macro expands.
 @attached(peer, names: overloaded)
-public macro AddCompletionHandler() = #externalMacro(
+public macro AddCompletionHandler(sendable: Bool = false) = #externalMacro(
     module: "SwiftStdlibToolboxMacros",
     type: "AddCompletionHandlerMacro"
 )
