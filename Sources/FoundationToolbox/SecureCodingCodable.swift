@@ -4,13 +4,13 @@ public protocol SecureCodingCodable: NSObject, NSSecureCoding, Codable {}
 
 extension SecureCodingCodable where Self: NSSecureCoding {
     public func encode(to encoder: Encoder) throws {
-        let data = try NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: true)
+        let data = try NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: Self.supportsSecureCoding)
         var container = encoder.singleValueContainer()
         try container.encode(data)
     }
 }
 
-extension Decodable where Self: NSObject, Self: NSSecureCoding {
+extension Decodable where Self: NSObject, Self: NSSecureCoding, Self: SecureCodingCodable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let data = try container.decode(Data.self)
