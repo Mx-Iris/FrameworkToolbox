@@ -3,9 +3,15 @@ import os
 
 @testable import OSToolbox
 
-// The switches these suites exercise are process-wide, so the suites must not
-// run in parallel with themselves — hence `.serialized`. Each test also restores
-// what it changed, so ordering between suites does not matter either.
+// The switches these suites exercise are process-wide, so no two tests that
+// touch them may run at the same time — including two from different suites.
+// `.serialized` on a suite only orders that suite's own tests and does not stop
+// it from running in parallel with a sibling suite, which is how three
+// separately serialized suites here used to race one another and fail now and
+// then. Every suite that flips a switch is therefore nested in
+// `ProcessWideSwitchTests`, whose `.serialized` runs all of their tests one at a
+// time. Each test also restores what it changed, so the order between them does
+// not matter.
 
 // MARK: - Probes
 
@@ -60,205 +66,219 @@ struct RuntimeControlledSignpostService {}
 @Signpostable(.internal, isEnabled: false)
 struct StaticallyDisabledSignpostService {}
 
+// MARK: - Serialization
+
+/// Runs the tests of every suite nested in it one at a time; see the comment at
+/// the top of the file. A suite that flips `LoggingControl` or
+/// `SignpostingControl` belongs in an extension of this type.
+@Suite(.serialized)
+struct ProcessWideSwitchTests {}
+
 // MARK: - LoggingControl
 
-@Suite(.serialized)
-struct LoggingControlTests {
+extension ProcessWideSwitchTests {
+    @Suite
+    struct LoggingControlTests {
 
-    init() {
-        LoggingControl.isEnabled = true
-        LoggingControl.enableAllCategories()
-    }
-
-    @Test func defaultsToEnabled() {
-        #expect(LoggingControl.isEnabled)
-        #expect(LoggingControl.isEnabled(for: .probeCategory))
-        #expect(RuntimeControlledService._osLog !== OSLog.disabled)
-    }
-
-    @Test func globalSwitchSwapsInTheDisabledHandle() {
-        defer { LoggingControl.isEnabled = true }
-
-        LoggingControl.isEnabled = false
-        #expect(RuntimeControlledService._osLog === OSLog.disabled)
-        if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
-            #expect(RuntimeControlledService.logger.isEnabled(type: .error) == false)
+        init() {
+            LoggingControl.isEnabled = true
+            LoggingControl.enableAllCategories()
         }
 
-        LoggingControl.isEnabled = true
-        #expect(RuntimeControlledService._osLog !== OSLog.disabled)
-    }
+        @Test func defaultsToEnabled() {
+            #expect(LoggingControl.isEnabled)
+            #expect(LoggingControl.isEnabled(for: .probeCategory))
+            #expect(RuntimeControlledService._osLog !== OSLog.disabled)
+        }
 
-    /// The generic branch resolves its handle through the runtime cache rather
-    /// than a `static let`, so the switch has to reach it by a different path.
-    @Test func globalSwitchReachesTheGenericBranch() {
-        defer { LoggingControl.isEnabled = true }
+        @Test func globalSwitchSwapsInTheDisabledHandle() {
+            defer { LoggingControl.isEnabled = true }
 
-        #expect(GenericRuntimeControlledService<Int>._osLog !== OSLog.disabled)
-        LoggingControl.isEnabled = false
-        #expect(GenericRuntimeControlledService<Int>._osLog === OSLog.disabled)
-    }
+            LoggingControl.isEnabled = false
+            #expect(RuntimeControlledService._osLog === OSLog.disabled)
+            if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
+                #expect(RuntimeControlledService.logger.isEnabled(type: .error) == false)
+            }
 
-    @Test func categorySwitchAffectsOnlyItsOwnCategory() {
-        defer { LoggingControl.enableAllCategories() }
+            LoggingControl.isEnabled = true
+            #expect(RuntimeControlledService._osLog !== OSLog.disabled)
+        }
 
-        LoggingControl.setEnabled(false, for: .probeCategory)
-        #expect(LoggingControl.isEnabled(for: .probeCategory) == false)
-        #expect(LoggingControl.isEnabled(for: .otherProbeCategory))
-        #expect(InterpolationProbe._osLog(for: .probeCategory) === OSLog.disabled)
-        #expect(InterpolationProbe._osLog(for: .otherProbeCategory) !== OSLog.disabled)
+        /// The generic branch resolves its handle through the runtime cache rather
+        /// than a `static let`, so the switch has to reach it by a different path.
+        @Test func globalSwitchReachesTheGenericBranch() {
+            defer { LoggingControl.isEnabled = true }
 
-        LoggingControl.setEnabled(true, for: .probeCategory)
-        #expect(InterpolationProbe._osLog(for: .probeCategory) !== OSLog.disabled)
-    }
+            #expect(GenericRuntimeControlledService<Int>._osLog !== OSLog.disabled)
+            LoggingControl.isEnabled = false
+            #expect(GenericRuntimeControlledService<Int>._osLog === OSLog.disabled)
+        }
 
-    /// `@Loggable` with no `category:` uses the type's own name, which is what
-    /// makes the per-category switch double as a per-type one needing no
-    /// recompile.
-    @Test func categorySwitchReachesATypesDefaultCategory() {
-        defer { LoggingControl.enableAllCategories() }
+        @Test func categorySwitchAffectsOnlyItsOwnCategory() {
+            defer { LoggingControl.enableAllCategories() }
 
-        LoggingControl.setEnabled(false, for: LogCategory("RuntimeControlledService"))
-        #expect(RuntimeControlledService._osLog === OSLog.disabled)
-    }
+            LoggingControl.setEnabled(false, for: .probeCategory)
+            #expect(LoggingControl.isEnabled(for: .probeCategory) == false)
+            #expect(LoggingControl.isEnabled(for: .otherProbeCategory))
+            #expect(InterpolationProbe._osLog(for: .probeCategory) === OSLog.disabled)
+            #expect(InterpolationProbe._osLog(for: .otherProbeCategory) !== OSLog.disabled)
 
-    @Test func enableAllCategoriesClearsEveryOverride() {
-        LoggingControl.setEnabled(false, for: .probeCategory)
-        LoggingControl.setEnabled(false, for: .otherProbeCategory)
+            LoggingControl.setEnabled(true, for: .probeCategory)
+            #expect(InterpolationProbe._osLog(for: .probeCategory) !== OSLog.disabled)
+        }
 
-        LoggingControl.enableAllCategories()
+        /// `@Loggable` with no `category:` uses the type's own name, which is what
+        /// makes the per-category switch double as a per-type one needing no
+        /// recompile.
+        @Test func categorySwitchReachesATypesDefaultCategory() {
+            defer { LoggingControl.enableAllCategories() }
 
-        #expect(LoggingControl.isEnabled(for: .probeCategory))
-        #expect(LoggingControl.isEnabled(for: .otherProbeCategory))
-    }
+            LoggingControl.setEnabled(false, for: LogCategory("RuntimeControlledService"))
+            #expect(RuntimeControlledService._osLog === OSLog.disabled)
+        }
 
-    /// `enableAllCategories()` must not undo the global switch — they are
-    /// separate controls and clearing one should not silently restore the other.
-    @Test func enableAllCategoriesLeavesTheGlobalSwitchAlone() {
-        defer { LoggingControl.isEnabled = true }
+        @Test func enableAllCategoriesClearsEveryOverride() {
+            LoggingControl.setEnabled(false, for: .probeCategory)
+            LoggingControl.setEnabled(false, for: .otherProbeCategory)
 
-        LoggingControl.isEnabled = false
-        LoggingControl.enableAllCategories()
-        #expect(LoggingControl.isEnabled == false)
-    }
+            LoggingControl.enableAllCategories()
 
-    /// `isEnabled: false` on the type is a compile-time constant, so nothing at
-    /// runtime can turn it back on.
-    @Test func staticallyDisabledIgnoresTheRuntimeSwitches() {
-        #expect(LoggingControl.isEnabled)
-        #expect(StaticallyDisabledService._osLog === OSLog.disabled)
-        #expect(StaticallyDisabledService._osLog(for: .probeCategory) === OSLog.disabled)
-        if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
-            #expect(StaticallyDisabledService.logger.isEnabled(type: .error) == false)
+            #expect(LoggingControl.isEnabled(for: .probeCategory))
+            #expect(LoggingControl.isEnabled(for: .otherProbeCategory))
+        }
+
+        /// `enableAllCategories()` must not undo the global switch — they are
+        /// separate controls and clearing one should not silently restore the other.
+        @Test func enableAllCategoriesLeavesTheGlobalSwitchAlone() {
+            defer { LoggingControl.isEnabled = true }
+
+            LoggingControl.isEnabled = false
+            LoggingControl.enableAllCategories()
+            #expect(LoggingControl.isEnabled == false)
+        }
+
+        /// `isEnabled: false` on the type is a compile-time constant, so nothing at
+        /// runtime can turn it back on.
+        @Test func staticallyDisabledIgnoresTheRuntimeSwitches() {
+            #expect(LoggingControl.isEnabled)
+            #expect(StaticallyDisabledService._osLog === OSLog.disabled)
+            #expect(StaticallyDisabledService._osLog(for: .probeCategory) === OSLog.disabled)
+            if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
+                #expect(StaticallyDisabledService.logger.isEnabled(type: .error) == false)
+            }
         }
     }
 }
 
 // MARK: - The interpolation claim
 
-@Suite(.serialized)
-struct DisabledLoggingSkipsInterpolationTests {
+extension ProcessWideSwitchTests {
+    @Suite
+    struct DisabledLoggingSkipsInterpolationTests {
 
-    init() {
-        LoggingControl.isEnabled = true
-        LoggingControl.enableAllCategories()
-        InterpolationProbe.resetEvaluationCount()
-    }
+        init() {
+            LoggingControl.isEnabled = true
+            LoggingControl.enableAllCategories()
+            InterpolationProbe.resetEvaluationCount()
+        }
 
-    /// Pins the ordering inside `os`'s `osLogInternal`: the enablement check
-    /// comes before the argument closures run. If a future SDK moved it, this
-    /// goes red — which is the point, since the whole design of the switch rests
-    /// on that ordering.
-    @Test func globallyDisabledLoggingEvaluatesNothing() {
-        defer { LoggingControl.isEnabled = true }
+        /// Pins the ordering inside `os`'s `osLogInternal`: the enablement check
+        /// comes before the argument closures run. If a future SDK moved it, this
+        /// goes red — which is the point, since the whole design of the switch rests
+        /// on that ordering.
+        @Test func globallyDisabledLoggingEvaluatesNothing() {
+            defer { LoggingControl.isEnabled = true }
 
-        // Control group first: with logging on, the value is asked for.
-        InterpolationProbe().emit()
-        let evaluationsWhileEnabled = InterpolationProbe.evaluationCount
-        #expect(
-            evaluationsWhileEnabled > 0,
-            "error-level logging is expected to be enabled by default; if this fails the machine's log configuration has been changed"
-        )
+            // Control group first: with logging on, the value is asked for.
+            InterpolationProbe().emit()
+            let evaluationsWhileEnabled = InterpolationProbe.evaluationCount
+            #expect(
+                evaluationsWhileEnabled > 0,
+                "error-level logging is expected to be enabled by default; if this fails the machine's log configuration has been changed"
+            )
 
-        LoggingControl.isEnabled = false
-        InterpolationProbe.resetEvaluationCount()
-        InterpolationProbe().emit()
-        #expect(InterpolationProbe.evaluationCount == 0)
-    }
+            LoggingControl.isEnabled = false
+            InterpolationProbe.resetEvaluationCount()
+            InterpolationProbe().emit()
+            #expect(InterpolationProbe.evaluationCount == 0)
+        }
 
-    @Test func categoryDisabledLoggingEvaluatesNothing() {
-        defer { LoggingControl.enableAllCategories() }
+        @Test func categoryDisabledLoggingEvaluatesNothing() {
+            defer { LoggingControl.enableAllCategories() }
 
-        InterpolationProbe().emitUnderCategory()
-        #expect(InterpolationProbe.evaluationCount > 0)
+            InterpolationProbe().emitUnderCategory()
+            #expect(InterpolationProbe.evaluationCount > 0)
 
-        LoggingControl.setEnabled(false, for: .probeCategory)
-        InterpolationProbe.resetEvaluationCount()
-        InterpolationProbe().emitUnderCategory()
-        #expect(InterpolationProbe.evaluationCount == 0)
+            LoggingControl.setEnabled(false, for: .probeCategory)
+            InterpolationProbe.resetEvaluationCount()
+            InterpolationProbe().emitUnderCategory()
+            #expect(InterpolationProbe.evaluationCount == 0)
+        }
     }
 }
 
 // MARK: - SignpostingControl
 
-@Suite(.serialized)
-struct SignpostingControlTests {
+extension ProcessWideSwitchTests {
+    @Suite
+    struct SignpostingControlTests {
 
-    init() {
-        SignpostingControl.isEnabled = true
-        SignpostingControl.enableAllCategories()
-    }
-
-    @Test func defaultsToEnabled() {
-        #expect(SignpostingControl.isEnabled)
-        #expect(RuntimeControlledSignpostService._signpostLog !== OSLog.disabled)
-    }
-
-    @Test func globalSwitchSwapsInTheDisabledHandle() {
-        defer { SignpostingControl.isEnabled = true }
-
-        SignpostingControl.isEnabled = false
-        #expect(RuntimeControlledSignpostService._signpostLog === OSLog.disabled)
-        if #available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *) {
-            #expect(RuntimeControlledSignpostService.signposter.isEnabled == false)
-        }
-
-        SignpostingControl.isEnabled = true
-        #expect(RuntimeControlledSignpostService._signpostLog !== OSLog.disabled)
-    }
-
-    @Test func categorySwitchAffectsOnlyItsOwnCategory() {
-        defer { SignpostingControl.enableAllCategories() }
-
-        SignpostingControl.setEnabled(false, for: .probeCategory)
-        #expect(RuntimeControlledSignpostService._signpostLog(for: .probeCategory) === OSLog.disabled)
-        #expect(RuntimeControlledSignpostService._signpostLog(for: .otherProbeCategory) !== OSLog.disabled)
-    }
-
-    @Test func staticallyDisabledIgnoresTheRuntimeSwitches() {
-        #expect(SignpostingControl.isEnabled)
-        #expect(StaticallyDisabledSignpostService._signpostLog === OSLog.disabled)
-        if #available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *) {
-            #expect(StaticallyDisabledSignpostService.signposter.isEnabled == false)
-        }
-    }
-
-    /// The two switches are separate on purpose — "logs on, instrumentation off"
-    /// and the reverse are both things people want.
-    @Test func loggingAndSignpostingSwitchesAreIndependent() {
-        defer {
-            LoggingControl.isEnabled = true
+        init() {
             SignpostingControl.isEnabled = true
+            SignpostingControl.enableAllCategories()
         }
 
-        SignpostingControl.isEnabled = false
-        LoggingControl.isEnabled = true
-        #expect(RuntimeControlledSignpostService._signpostLog === OSLog.disabled)
-        #expect(RuntimeControlledService._osLog !== OSLog.disabled)
+        @Test func defaultsToEnabled() {
+            #expect(SignpostingControl.isEnabled)
+            #expect(RuntimeControlledSignpostService._signpostLog !== OSLog.disabled)
+        }
 
-        SignpostingControl.isEnabled = true
-        LoggingControl.isEnabled = false
-        #expect(RuntimeControlledSignpostService._signpostLog !== OSLog.disabled)
-        #expect(RuntimeControlledService._osLog === OSLog.disabled)
+        @Test func globalSwitchSwapsInTheDisabledHandle() {
+            defer { SignpostingControl.isEnabled = true }
+
+            SignpostingControl.isEnabled = false
+            #expect(RuntimeControlledSignpostService._signpostLog === OSLog.disabled)
+            if #available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *) {
+                #expect(RuntimeControlledSignpostService.signposter.isEnabled == false)
+            }
+
+            SignpostingControl.isEnabled = true
+            #expect(RuntimeControlledSignpostService._signpostLog !== OSLog.disabled)
+        }
+
+        @Test func categorySwitchAffectsOnlyItsOwnCategory() {
+            defer { SignpostingControl.enableAllCategories() }
+
+            SignpostingControl.setEnabled(false, for: .probeCategory)
+            #expect(RuntimeControlledSignpostService._signpostLog(for: .probeCategory) === OSLog.disabled)
+            #expect(RuntimeControlledSignpostService._signpostLog(for: .otherProbeCategory) !== OSLog.disabled)
+        }
+
+        @Test func staticallyDisabledIgnoresTheRuntimeSwitches() {
+            #expect(SignpostingControl.isEnabled)
+            #expect(StaticallyDisabledSignpostService._signpostLog === OSLog.disabled)
+            if #available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *) {
+                #expect(StaticallyDisabledSignpostService.signposter.isEnabled == false)
+            }
+        }
+
+        /// The two switches are separate on purpose — "logs on, instrumentation off"
+        /// and the reverse are both things people want.
+        @Test func loggingAndSignpostingSwitchesAreIndependent() {
+            defer {
+                LoggingControl.isEnabled = true
+                SignpostingControl.isEnabled = true
+            }
+
+            SignpostingControl.isEnabled = false
+            LoggingControl.isEnabled = true
+            #expect(RuntimeControlledSignpostService._signpostLog === OSLog.disabled)
+            #expect(RuntimeControlledService._osLog !== OSLog.disabled)
+
+            SignpostingControl.isEnabled = true
+            LoggingControl.isEnabled = false
+            #expect(RuntimeControlledSignpostService._signpostLog !== OSLog.disabled)
+            #expect(RuntimeControlledService._osLog === OSLog.disabled)
+        }
     }
 }
