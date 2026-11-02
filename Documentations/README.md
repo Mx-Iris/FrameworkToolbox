@@ -74,7 +74,7 @@
 - [0011 —— `@AddCompletionHandler` 可选地把 completion 标成 `@Sendable`](Evolutions/0011-add-completion-handler-sendable.md)（Implemented）
   生成的 `Task` 捕获非 `Sendable` 的 completion，Swift 6 下 `nonisolated` 类型上的用法编不过；新参数 `sendable: true` 修好它，
   默认保持原签名——直接改签名会让在主线程上写 completion 的调用方连 Swift 5 下都编不过，实测在内。
-- [draft —— `CodingCodable`：只遵循 `NSCoding` 的类也能走 Codable，并补全归档错误信息](Evolutions/draft-coding-codable.md)（In Progress）
+- [0012 —— `CodingCodable`：只遵循 `NSCoding` 的类也能走 Codable，并补全归档错误信息](Evolutions/0012-coding-codable.md)（Implemented）
   初版解码用的 `unarchivedObject(ofClass:from:)` 能编译，运行时却总是开启 secure coding，只遵循 `NSCoding` 的类能编码却永远解不回来；
   改为按协议设置 `requiresSecureCoding`，错误换成带编码路径与 Foundation 原因说明的 `EncodingError` / `DecodingError`。
 

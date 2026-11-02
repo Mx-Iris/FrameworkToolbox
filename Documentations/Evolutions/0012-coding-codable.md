@@ -1,6 +1,6 @@
-# Draft - `CodingCodable`：只遵循 `NSCoding` 的类也能走 Codable，并补全归档错误信息
+# 0012 - `CodingCodable`：只遵循 `NSCoding` 的类也能走 Codable，并补全归档错误信息
 
-- **状态**: In Progress
+- **状态**: Implemented
 - **创建日期**: 2026-11-02
 - **最后更新**: 2026-11-02
 
@@ -73,3 +73,4 @@
 | 2026-11-02 | 错误信息先红后绿 | 6 个错误测试在只修了解码的代码上全部失败，抛出的是私有错误或原始 `NSError`；补上错误信息后全部通过。归档失败那一例证实：外层错误的说明只有 `The data couldn’t be written because it isn’t in the correct format.`，真正的原因在下层错误的 `NSDebugDescription` 里，所以取原因时沿 `NSUnderlyingErrorKey` 往下找 |
 | 2026-11-02 | 测试同时固定两个协议实现的选择 | 安全归档拒绝不支持 secure coding 的子对象、安全解档报出 Foundation 的类检查，两例只在编译器选中 `SecureCodingCodable` 的实现时成立。两份实现一旦变得有歧义，编译器不会报错，而是改为自动合成 `Codable`（`TypeCheckProtocol.cpp` 的 `resolveWitnessViaLookup`），这两例会先失败 |
 | 2026-11-02 | 实现完成，待提交 | 完整测试套件通过（717 个 swift-testing 测试、51 个 XCTest），没有新增警告。文档判断：存储格式与安全前提写在两个协议的文档注释里，实现上的三个坑写进 `CLAUDE.md`；契约已由文档注释覆盖，不另写使用指南；没有新术语 |
+| 2026-11-02 | Implemented，编号 0012 | 直接在 main 上提交落地。与方案的偏离只有 `init(from:)` 的位置（见上文），没有后续项。落地前在最终代码上跑完整测试套件时，`OSToolboxTests` 的 `LoggingControlTests` 失败了一次，与本改动无关：不含本改动的 main 上只跑 `OSToolboxTests`，第 6 次就复现了同类失败。原因是这几个各自标了 `.serialized` 的测试套件彼此并行执行，却都在改同一个进程级开关。之后完整套件连跑两次均通过（717 个 swift-testing 测试、51 个 XCTest），文档判断同上一行 |
