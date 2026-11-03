@@ -41,3 +41,4 @@ subsystem，只能在每个类型上重抄同一串字面量；传一个 `Static
 | 2026-11-03 | 参数改为 `String?`，表达式原样放进 getter | 用户指定的做法：宏本来就只是把参数放进计算属性，换成常量依然能工作 |
 | 2026-11-03 | 拒绝与生成属性同名的裸名字参数 | 最顺手的常量名就是 `subsystem`，而它在 getter 里解析成 getter 自己，运行时无限递归 |
 | 2026-11-03 | 落地，编号 0013，状态改为 Implemented | 全量构建与测试通过；随 0.16.0 发布，XCOrganizer 是第一个用上它的调用方 |
+| 2026-11-03 | 更正「默认 MainActor 隔离下常量不必写 `nonisolated`」这条假设：必须写 | XCOrganizer 的壳（Swift 5、默认 MainActor 隔离）每个类型报一条警告。普通源文件里的全局 `let` 在这种模块里被推断成 MainActor 隔离，生成的 `nonisolated` getter 读它在 Swift 5 下是警告、Swift 6 下是错误；当初的实测把常量写在 `main.swift`，那里的顶层 `let` 不受这条推断影响，所以看不出来。编译用例挪进单独的文件 `UploadLogging.swift` 并写上 `nonisolated`，去掉它时确认会编不过 |

@@ -56,7 +56,9 @@ import FrameworkToolbox
 ///     written, so a module constant can name it. An argument naming
 ///     `signpostSubsystem` or `signpostCategory` is rejected, since inside the
 ///     getter that name is the generated property, not a declaration outside
-///     the type.
+///     the type. As with `@Loggable`, a constant read by this `nonisolated`
+///     getter must itself be `nonisolated` in a module whose default isolation
+///     is the main actor.
 ///   - category: Overrides the auto-generated category. Defaults to `nil`, which
 ///     generates `"<TypeName>"`. Takes any `String` expression, as `subsystem` does.
 ///

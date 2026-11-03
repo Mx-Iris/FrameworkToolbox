@@ -115,11 +115,13 @@ The last two members are the per-category accessors backing `#log(category:)`. T
 Both take **any `String` expression**, not only a literal: the expression is copied into the generated getter as written and evaluated there. That is how one module keeps every type under one subsystem without repeating the string:
 
 ```swift
-let loggingSubsystem = "com.acme.app"   // once per module; internal is enough
+nonisolated let loggingSubsystem = "com.acme.app"   // once per module; internal is enough
 
 @Loggable(subsystem: loggingSubsystem)
 struct UserService { }
 ```
+
+The generated getters are `nonisolated`. In a module whose default isolation is the main actor — Xcode's default for new app targets — a global `let` in an ordinary source file is main-actor isolated, so without `nonisolated` every annotated type gets a warning in Swift 5 and an error in Swift 6. In other modules the keyword is harmless.
 
 Because the expression is evaluated inside the type, a bare name finds the type's own members first. The macro therefore rejects an argument naming one of the properties it generates — `subsystem: subsystem` would make the getter return itself. Name the constant something else, or qualify it with its module name.
 
@@ -269,6 +271,7 @@ A literal `%` in the format string is automatically escaped to `%%` in the legac
 | `#log(.info, category: .netwrok, ...)` (typo) | Compile error at the call site: type `LogCategory` has no member `netwrok`. | Fix the name, or declare it: `extension LogCategory { static let netwrok = ... }` (don't). |
 | `#log(.info, category: .network, ...)` in a type without `@Loggable` | Compile error: `logger(for:)` not found on `Self`. | Annotate the enclosing type with `@Loggable`. |
 | Expecting `category: .network` to change the subsystem | The subsystem always stays the enclosing type's own; only the category varies. | Pass an explicit `subsystem:` on `@Loggable` if you need a different one. |
+| `let loggingSubsystem = …` in a module with default `MainActor` isolation | `main actor-isolated let 'loggingSubsystem' can not be referenced from a nonisolated context` on every annotated type — a warning in Swift 5, an error in Swift 6. | Declare it `nonisolated let`. |
 | `@Loggable(subsystem: subsystem)` with a global named `subsystem` | Compile error from the macro: inside the type that name is the generated `subsystem` property, which would return itself. | Rename the constant (`loggingSubsystem`), or qualify it with its module name. |
 | `@Loggable(accessLevel: .public)` | Compile error: unknown argument label. | Drop the label: `@Loggable(.public)`. |
 | Expecting `.sensitive` to redact on iOS 13 | The legacy `os_log` API has no `sensitive`; the macro maps it to `%{private}@`. | If you truly need redaction on iOS 13, that is what you get — just be aware the wire-format collapses to `private`. |

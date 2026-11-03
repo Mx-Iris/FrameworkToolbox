@@ -50,7 +50,10 @@ import FrameworkToolbox
 ///     one subsystem (`@Loggable(subsystem: loggingSubsystem)`). Inside that
 ///     getter a bare name finds the type's own members first, so an argument
 ///     naming `subsystem` or `category` is rejected — it would read the
-///     generated property, or the getter itself.
+///     generated property, or the getter itself. The getter is `nonisolated`,
+///     so in a module whose default isolation is the main actor declare the
+///     constant `nonisolated let`; otherwise reading it is an error in Swift 6
+///     and a warning in Swift 5.
 ///   - category: Overrides the auto-generated category. Defaults to `nil`, which
 ///     generates `"<TypeName>"`. Takes any `String` expression, as `subsystem` does.
 ///
