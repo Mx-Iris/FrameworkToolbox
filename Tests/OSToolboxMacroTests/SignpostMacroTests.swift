@@ -364,6 +364,185 @@ struct SignpostableMacroTests {
         }
     }
 
+    /// Any `String` expression is copied into the getters as written, not only
+    /// a literal.
+    @Test func subsystemAndCategoryFromConstants() {
+        assertMacro {
+            """
+            @Signpostable(subsystem: loggingSubsystem, category: LogNames.network)
+            final class NetworkService { }
+            """
+        } expansion: {
+            """
+            final class NetworkService { 
+
+                private nonisolated static var signpostCategory: String {
+                    LogNames.network
+                }
+
+                private nonisolated static var signpostSubsystem: String {
+                    loggingSubsystem
+                }
+
+                private nonisolated static let _enabledSignpostLog = os.OSLog(subsystem: signpostSubsystem, category: signpostCategory)
+
+                private nonisolated static var _signpostLog: os.OSLog {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignpostLog
+                }
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                private nonisolated static let _enabledSignposter = os.OSSignposter(logHandle: _enabledSignpostLog)
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                private nonisolated static var signposter: os.OSSignposter {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return _enabledSignposter
+                }
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                private nonisolated var signposter: os.OSSignposter {
+                    Self.signposter
+                }
+
+                private nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                }
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                private nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                }
+
+                private nonisolated static func makeSignpostID() -> os.OSSignpostID {
+                    os.OSSignpostID(log: _signpostLog)
+                }
+
+                private nonisolated static func makeSignpostID(from object: AnyObject) -> os.OSSignpostID {
+                    os.OSSignpostID(log: _signpostLog, object: object)
+                }
+            }
+            """
+        }
+    }
+
+    /// `signpostSubsystem` inside the generated `signpostCategory` getter is the
+    /// generated property, not a constant of that name declared outside the type.
+    @Test func argumentNamingAGeneratedPropertyIsRejected() {
+        assertMacro {
+            """
+            @Signpostable(category: signpostSubsystem)
+            final class NetworkService { }
+            """
+        } diagnostics: {
+            """
+            @Signpostable(category: signpostSubsystem)
+                                    ┬────────────────
+                                    ╰─ 🛑 'signpostSubsystem' would resolve to the static property 'signpostSubsystem' that @Signpostable generates, not to a declaration of that name outside the type; rename that declaration, or qualify it with its module name
+            final class NetworkService { }
+            """
+        }
+    }
+
+    @Test func protocolSubsystemFromConstant() {
+        assertMacro {
+            """
+            @Signpostable(subsystem: loggingSubsystem)
+            protocol Service { }
+            """
+        } expansion: {
+            """
+            protocol Service { 
+
+                nonisolated static var signpostCategory: String {
+                    get
+                }
+
+                nonisolated static var signpostSubsystem: String {
+                    get
+                }
+
+                nonisolated static var _signpostLog: os.OSLog {
+                    get
+                }
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                nonisolated static var signposter: os.OSSignposter {
+                    get
+                }
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                nonisolated var signposter: os.OSSignposter {
+                    get
+                }
+            }
+
+            extension Service {
+                nonisolated static var signpostCategory: String {
+                    String(describing: self)
+                }
+
+                nonisolated static var signpostSubsystem: String {
+                    loggingSubsystem
+                }
+
+                nonisolated static var _signpostLog: os.OSLog {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(for: self, subsystem: signpostSubsystem, category: signpostCategory)
+                }
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                nonisolated static var signposter: os.OSSignposter {
+                    guard SignpostableMacro._isEnabled(category: signpostCategory) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(for: self, subsystem: signpostSubsystem, category: signpostCategory)
+                }
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                nonisolated var signposter: os.OSSignposter {
+                    Self.signposter
+                }
+
+                nonisolated static func _signpostLog(for category: OSToolbox.LogCategory) -> os.OSLog {
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignpostLog(subsystem: signpostSubsystem, category: category.name)
+                }
+
+                @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+                nonisolated static func signposter(for category: OSToolbox.LogCategory) -> os.OSSignposter {
+                    guard SignpostableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return SignpostableMacro._sharedSignposter(subsystem: signpostSubsystem, category: category.name)
+                }
+
+                nonisolated static func makeSignpostID() -> os.OSSignpostID {
+                    os.OSSignpostID(log: _signpostLog)
+                }
+
+                nonisolated static func makeSignpostID(from object: AnyObject) -> os.OSSignpostID {
+                    os.OSSignpostID(log: _signpostLog, object: object)
+                }
+            }
+            """
+        }
+    }
+
     // MARK: Declaration kinds
 
     @Test func attachedToClass() {

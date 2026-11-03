@@ -40,14 +40,19 @@ import FrameworkToolbox
 ///     way this silences `#log` *and* hand-written `Self.logger.debug(…)`,
 ///     since the switch lives on the handle rather than the call site — and a
 ///     disabled handle never evaluates a message's interpolation arguments.
-///   - subsystem: The subsystem string literal. Defaults to `nil`, which uses
-///     `"<TypeName>"` — the same string the category defaults to. There is no
-///     bundle-identifier fallback on purpose: deriving one would put `Bundle`
-///     into the expansion, and the expansion lands in the caller's file, which
-///     would then fail to compile unless it had imported Foundation. Pass a
-///     literal here to group several types under one subsystem.
-///   - category: Override the auto-generated category with a string literal.
-///     Defaults to `nil`, which generates `"<TypeName>"`.
+///   - subsystem: The subsystem. Defaults to `nil`, which uses `"<TypeName>"` —
+///     the same string the category defaults to. There is no bundle-identifier
+///     fallback on purpose: deriving one would put `Bundle` into the expansion,
+///     and the expansion lands in the caller's file, which would then fail to
+///     compile unless it had imported Foundation. Any `String` expression works,
+///     not only a literal: it is copied into the generated `subsystem` getter as
+///     written, so one constant declared in the module groups every type under
+///     one subsystem (`@Loggable(subsystem: loggingSubsystem)`). Inside that
+///     getter a bare name finds the type's own members first, so an argument
+///     naming `subsystem` or `category` is rejected — it would read the
+///     generated property, or the getter itself.
+///   - category: Overrides the auto-generated category. Defaults to `nil`, which
+///     generates `"<TypeName>"`. Takes any `String` expression, as `subsystem` does.
 ///
 /// Besides the type-level default logger, the macro always generates
 /// `logger(for:)` / `_osLog(for:)` accessors taking a ``LogCategory``, backed
@@ -127,8 +132,8 @@ import FrameworkToolbox
 public macro Loggable(
     _ accessLevel: AccessLevel = .private,
     isEnabled: Bool = true,
-    subsystem: StaticString? = nil,
-    category: StaticString? = nil
+    subsystem: String? = nil,
+    category: String? = nil
 ) = #externalMacro(module: "OSToolboxMacros", type: "LoggableMacro")
 
 /// Overload of `@Loggable` that exposes the `asProtocolRequirement` switch
@@ -139,8 +144,8 @@ public macro Loggable(
     _ accessLevel: AccessLevel = .private,
     asProtocolRequirement: Bool,
     isEnabled: Bool = true,
-    subsystem: StaticString? = nil,
-    category: StaticString? = nil
+    subsystem: String? = nil,
+    category: String? = nil
 ) = #externalMacro(module: "OSToolboxMacros", type: "LoggableMacro")
 
 #endif

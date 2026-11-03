@@ -77,6 +77,9 @@
 - [0012 —— `CodingCodable`：只遵循 `NSCoding` 的类也能走 Codable，并补全归档错误信息](Evolutions/0012-coding-codable.md)（Implemented）
   初版解码用的 `unarchivedObject(ofClass:from:)` 能编译，运行时却总是开启 secure coding，只遵循 `NSCoding` 的类能编码却永远解不回来；
   改为按协议设置 `requiresSecureCoding`，错误换成带编码路径与 Foundation 原因说明的 `EncodingError` / `DecodingError`。
+- [0013 —— `@Loggable` / `@Signpostable` 的 subsystem 与 category 接受任意 `String` 表达式](Evolutions/0013-name-argument-expressions.md)（Implemented）
+  参数从只认字面量的 `StaticString?` 改为 `String?`，表达式原样放进生成的 getter，一个模块用一个常量就能统一 subsystem；
+  参数若与宏生成的属性同名（`subsystem: subsystem`），getter 会解析成自己，宏在参数上直接报错。
 
 ## 专题说明
 

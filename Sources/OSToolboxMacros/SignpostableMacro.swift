@@ -15,6 +15,11 @@ public struct SignpostableMacro: MemberMacro, ExtensionMacro {
     /// reason the generated code carries a legacy path at all.
     static let signposterAvailability = "@available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)"
 
+    /// The static properties the `subsystem:` and `category:` arguments end up
+    /// in. Inside their getters a bare name resolves to these first, so an
+    /// argument naming one of them is rejected rather than transplanted.
+    static let generatedNameProperties: Set<String> = ["signpostCategory", "signpostSubsystem"]
+
     // MARK: - MemberMacro
 
     public static func expansion(
@@ -40,7 +45,8 @@ public struct SignpostableMacro: MemberMacro, ExtensionMacro {
             usesRuntimeCache: isInGenericContext(
                 declaration: declaration,
                 lexicalContext: context.lexicalContext
-            )
+            ),
+            context: context
         )
     }
 
@@ -57,7 +63,7 @@ public struct SignpostableMacro: MemberMacro, ExtensionMacro {
             return []
         }
 
-        let members = buildSignpostProtocolDefaultImplementations(node: node, declaration: declaration)
+        let members = buildSignpostProtocolDefaultImplementations(node: node, declaration: declaration, context: context)
         let memberBlock = members
             .map { indent($0.trimmedDescription, by: 4) }
             .joined(separator: "\n\n")
@@ -73,15 +79,31 @@ public struct SignpostableMacro: MemberMacro, ExtensionMacro {
 
 // MARK: - Concrete (struct/class/enum/actor) generation
 
+/// `@Signpostable`'s reading of a `subsystem:` or `category:` argument.
+private func extractSignpostableNameExpression(
+    labeled label: String,
+    from node: AttributeSyntax,
+    in context: some MacroExpansionContext
+) -> String? {
+    extractNameExpression(
+        labeled: label,
+        from: node,
+        macroName: "Signpostable",
+        generatedNames: SignpostableMacro.generatedNameProperties,
+        in: context
+    )
+}
+
 private func buildSignpostConcreteMembers(
     node: AttributeSyntax,
     declaration: some DeclGroupSyntax,
-    usesRuntimeCache: Bool
+    usesRuntimeCache: Bool,
+    context: some MacroExpansionContext
 ) -> [DeclSyntax] {
     let accessLevel = extractAccessLevel(from: node)
     let accessPrefix = accessLevel == "internal" ? "" : "\(accessLevel) "
-    let customSubsystem = extractStringLiteral(labeled: "subsystem", from: node)
-    let customCategory = extractStringLiteral(labeled: "category", from: node)
+    let customSubsystem = extractSignpostableNameExpression(labeled: "subsystem", from: node, in: context)
+    let customCategory = extractSignpostableNameExpression(labeled: "category", from: node, in: context)
     let enablement = extractEnablement(from: node)
 
     let typeNameLiteral = quoteString(staticTypeName(from: declaration))
@@ -295,12 +317,13 @@ private func buildSignpostProtocolRequirements() -> [DeclSyntax] {
 /// without re-implementing every member.
 private func buildSignpostProtocolDefaultImplementations(
     node: AttributeSyntax,
-    declaration: some DeclGroupSyntax
+    declaration: some DeclGroupSyntax,
+    context: some MacroExpansionContext
 ) -> [DeclSyntax] {
     let accessLevel = protocolAccessLevel(from: declaration)
     let accessPrefix = accessLevel == "internal" ? "" : "\(accessLevel) "
-    let customSubsystem = extractStringLiteral(labeled: "subsystem", from: node)
-    let customCategory = extractStringLiteral(labeled: "category", from: node)
+    let customSubsystem = extractSignpostableNameExpression(labeled: "subsystem", from: node, in: context)
+    let customCategory = extractSignpostableNameExpression(labeled: "category", from: node, in: context)
     let enablement = extractEnablement(from: node)
 
     let typeNameExpression = "String(describing: self)"

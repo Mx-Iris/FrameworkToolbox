@@ -36,6 +36,7 @@ Skip these macros when:
 | Custom subsystem | `@Loggable(subsystem: "com.acme.app") struct Foo { }` |
 | Custom category | `@Loggable(category: "Network") struct Foo { }` |
 | Both, with access level | `@Loggable(.internal, subsystem: "com.acme.app", category: "Network") class Foo { }` |
+| One subsystem for a whole module | `let loggingSubsystem = "com.acme.app"`, then `@Loggable(subsystem: loggingSubsystem)` on each type |
 | Declare named categories | `extension LogCategory { static let network = LogCategory("network") }` |
 | Emit a log line | `#log(.info, "User \(id, privacy: .private) signed in")` |
 | Emit under a named category | `#log(.info, category: .network, "request issued")` |
@@ -51,11 +52,11 @@ import os.log
 import FoundationToolbox
 ```
 
-All three imports are required at the call site:
+What each import is for:
 
 - `FoundationToolbox` — provides the `@Loggable` and `#log` macro declarations.
 - `os.log` — the macro expansions reference `OSLog`, `os_log`, and `os.Logger` directly, so the `os` module must be in scope. (`import os` works too.)
-- `Foundation` — `@Loggable` expands into code that reads `Bundle.main.bundleIdentifier` (or `Bundle(for: self).bundleIdentifier` on classes) when no explicit `subsystem:` is given.
+- `Foundation` — not needed by the expansions: with no `subsystem:` the subsystem is the type name, not a bundle identifier, so nothing generated names `Bundle`.
 
 The macros are gated on `#if canImport(os)`, so they are unavailable on platforms without Apple's `os` framework (Linux, Windows). Code that must compile cross-platform should wrap the call site in `#if canImport(os)` itself.
 
@@ -64,11 +65,13 @@ The macros are gated on `#if canImport(os)`, so they are unavailable on platform
 ### Signature
 
 ```swift
-@attached(member, names: named(_osLog), named(category), named(subsystem), named(logger))
+@attached(member, names: named(_osLog), named(_enabledOSLog), named(category), named(subsystem), named(logger), named(_enabledLogger))
+@attached(extension, names: named(_osLog), named(_enabledOSLog), named(category), named(subsystem), named(logger), named(_enabledLogger))
 public macro Loggable(
     _ accessLevel: AccessLevel = .private,
-    subsystem: StaticString? = nil,
-    category: StaticString? = nil
+    isEnabled: Bool = true,
+    subsystem: String? = nil,
+    category: String? = nil
 )
 ```
 
@@ -79,7 +82,7 @@ For `@Loggable struct UserService { }`:
 ```swift
 struct UserService {
     private nonisolated static var category: String { "UserService" }
-    private nonisolated static var subsystem: String { Bundle.main.bundleIdentifier ?? "UserService" }
+    private nonisolated static var subsystem: String { "UserService" }
     private nonisolated static let _osLog = OSLog(subsystem: subsystem, category: category)
 
     @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
@@ -105,13 +108,20 @@ The last two members are the per-category accessors backing `#log(category:)`. T
 
 **`accessLevel`** — first positional argument, defaults to `.private`. Accepts `.private`, `.fileprivate`, `.internal`, `.package`, `.public`. Controls visibility of every generated member. The default `.private` is a deliberate choice — most call sites only need to use the logger from inside the type itself.
 
-**`subsystem:`** — optional `StaticString`. When omitted, the macro synthesizes a `Bundle`-based default:
-- For `class` types: `Bundle(for: self).bundleIdentifier ?? "<TypeName>"`
-- For `struct` / `enum` / `actor`: `Bundle.main.bundleIdentifier ?? "<TypeName>"`
+**`subsystem:`** — optional `String`. When omitted or `nil`, the subsystem is the type name — the same string the category defaults to. There is deliberately no bundle-identifier default: it would put `Bundle` into generated code that lands in the caller's file.
 
-**`category:`** — optional `StaticString`. When omitted, defaults to the type name as a string literal (e.g., `"UserService"`).
+**`category:`** — optional `String`. When omitted or `nil`, defaults to the type name (e.g., `"UserService"`).
 
-The `StaticString` requirement means **only string literals are accepted**. You cannot pass a runtime `String`, a constant defined elsewhere, or a string-interpolation expression.
+Both take **any `String` expression**, not only a literal: the expression is copied into the generated getter as written and evaluated there. That is how one module keeps every type under one subsystem without repeating the string:
+
+```swift
+let loggingSubsystem = "com.acme.app"   // once per module; internal is enough
+
+@Loggable(subsystem: loggingSubsystem)
+struct UserService { }
+```
+
+Because the expression is evaluated inside the type, a bare name finds the type's own members first. The macro therefore rejects an argument naming one of the properties it generates — `subsystem: subsystem` would make the getter return itself. Name the constant something else, or qualify it with its module name.
 
 ### Type support
 
@@ -245,7 +255,7 @@ A literal `%` in the format string is automatically escaped to `%%` in the legac
 ## Critical Constraints
 
 1. **`#log` must be inside a type annotated with `@Loggable`** (or one that otherwise provides `Self.logger` and `Self._osLog` with matching shapes). The expansion references `Self.logger` and `Self._osLog` — using it from a free function or top-level script will fail to compile.
-2. **`subsystem:` and `category:` arguments must be string literals.** They are typed as `StaticString?` and the macro extracts the source via `StringLiteralExprSyntax`. Passing a `let constant: String = "..."` will not compile.
+2. **`subsystem:` and `category:` are copied into the generated getters verbatim.** Any `String` expression works — a literal or a module constant — but it is evaluated inside the type, so a name the type itself declares wins over a global of the same name. The macro rejects the names it generates (`subsystem`, `category`) outright.
 3. **`accessLevel` is positional, not labeled.** Write `@Loggable(.public)`, not `@Loggable(accessLevel: .public)`. The other two parameters are labeled.
 4. **Both macros require `canImport(os)`.** They are unavailable on Linux/Windows. Wrap cross-platform call sites in `#if canImport(os)`.
 5. **Generated members are `nonisolated`.** This is intentional — it lets you log from any isolation domain. Do not try to redeclare `logger` with a different isolation; the synthesized one is final.
@@ -259,10 +269,10 @@ A literal `%` in the format string is automatically escaped to `%%` in the legac
 | `#log(.info, category: .netwrok, ...)` (typo) | Compile error at the call site: type `LogCategory` has no member `netwrok`. | Fix the name, or declare it: `extension LogCategory { static let netwrok = ... }` (don't). |
 | `#log(.info, category: .network, ...)` in a type without `@Loggable` | Compile error: `logger(for:)` not found on `Self`. | Annotate the enclosing type with `@Loggable`. |
 | Expecting `category: .network` to change the subsystem | The subsystem always stays the enclosing type's own; only the category varies. | Pass an explicit `subsystem:` on `@Loggable` if you need a different one. |
-| `@Loggable(subsystem: someConstant)` | Compile error: macro expects a string literal. | Inline the literal: `@Loggable(subsystem: "com.acme.app")`. |
+| `@Loggable(subsystem: subsystem)` with a global named `subsystem` | Compile error from the macro: inside the type that name is the generated `subsystem` property, which would return itself. | Rename the constant (`loggingSubsystem`), or qualify it with its module name. |
 | `@Loggable(accessLevel: .public)` | Compile error: unknown argument label. | Drop the label: `@Loggable(.public)`. |
 | Expecting `.sensitive` to redact on iOS 13 | The legacy `os_log` API has no `sensitive`; the macro maps it to `%{private}@`. | If you truly need redaction on iOS 13, that is what you get — just be aware the wire-format collapses to `private`. |
-| Logger doesn't appear in Console for the right subsystem | The default subsystem falls back to the type name when `bundleIdentifier` is `nil` (e.g., command-line tool, unit test). | Pass an explicit `subsystem:` argument. |
+| Logger doesn't appear in Console under the app's subsystem | With no `subsystem:`, the subsystem is the type name — there is no bundle-identifier default. | Pass `subsystem:`, ideally one module constant shared by every type. |
 | Mixing `import os` and `import FoundationToolbox` and getting `Logger` ambiguity | Both modules expose `Logger`-related symbols; the macro emits fully-qualified `os.Logger` to avoid this. Your own code may still need disambiguation. | Use `os.Logger` explicitly when you write hand-rolled code beside the macros. |
 | Calling `#log` inside a closure captured by an `@escaping` parameter, expecting it to capture nothing | Each `#log` expansion still references `Self.logger`. In a class, that captures `self` strongly via the metatype. The cost is the same as referring to a static member. | Not usually a problem; if you need to avoid it, hoist the logger into a local before the closure: `let logger = Self.logger` and call `logger.debug(...)` directly. |
 

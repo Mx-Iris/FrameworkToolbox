@@ -199,6 +199,28 @@ nonisolated func sendInBackground(_ client: NetworkClient) {
     client.send()
 }
 
+// MARK: - Subsystem and category named through module constants
+
+// The arguments are copied into `nonisolated` getters. The constants are left
+// on the main actor like everything else here, and a `String` constant is still
+// readable from those getters without being marked `nonisolated` — measured, in
+// this Swift 6 target. Callers in such a module need write nothing extra.
+let uploadSubsystem = "com.example.upload"
+let uploadCategory = "Upload"
+
+@Loggable(subsystem: uploadSubsystem, category: uploadCategory)
+@Signpostable(subsystem: uploadSubsystem, category: uploadCategory)
+struct ReportUploader {
+    nonisolated func upload() {
+        #log(.info, "uploading")
+        #signpost(.event, "upload")
+    }
+}
+
+nonisolated func uploadInBackground(_ uploader: ReportUploader) {
+    uploader.upload()
+}
+
 _ = describe(.cash)
 _ = deduplicate([], [], [])
 _ = distinctEntries([])

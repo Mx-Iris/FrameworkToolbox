@@ -882,7 +882,235 @@ struct LoggableMacroTests {
         }
     }
 
+    /// Any `String` expression is copied into the getters as written — a module
+    /// constant, or a member of a namespace — not only a literal.
+    @Test func subsystemAndCategoryFromConstants() {
+        assertMacro {
+            """
+            @Loggable(subsystem: loggingSubsystem, category: LogNames.network)
+            struct MyService { }
+            """
+        } expansion: {
+            """
+            struct MyService { 
+
+                private nonisolated static var category: String {
+                    LogNames.network
+                }
+
+                private nonisolated static var subsystem: String {
+                    loggingSubsystem
+                }
+
+                private nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                private nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return os.Logger(os.OSLog.disabled)
+                    }
+                    return _enabledLogger
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+
+                private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return os.Logger(os.OSLog.disabled)
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
+            }
+            """
+        }
+    }
+
+    /// `nil` is the parameters' default, so spelling it out means the type name.
+    @Test func explicitNilFallsBackToTheTypeName() {
+        assertMacro {
+            """
+            @Loggable(subsystem: nil, category: nil)
+            struct MyService { }
+            """
+        } expansion: {
+            """
+            struct MyService { 
+
+                private nonisolated static var category: String {
+                    "MyService"
+                }
+
+                private nonisolated static var subsystem: String {
+                    "MyService"
+                }
+
+                private nonisolated static let _enabledOSLog = os.OSLog(subsystem: subsystem, category: category)
+
+                private nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return _enabledOSLog
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static let _enabledLogger = os.Logger(_enabledOSLog)
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return os.Logger(os.OSLog.disabled)
+                    }
+                    return _enabledLogger
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+
+                private nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                private nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return os.Logger(os.OSLog.disabled)
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
+            }
+            """
+        }
+    }
+
+    /// Inside the generated getter a bare `subsystem` is the getter itself, not a
+    /// constant of that name declared outside the type: it would recurse forever.
+    @Test func argumentNamingAGeneratedPropertyIsRejected() {
+        assertMacro {
+            """
+            @Loggable(subsystem: subsystem, category: `category`)
+            struct MyService { }
+            """
+        } diagnostics: {
+            """
+            @Loggable(subsystem: subsystem, category: `category`)
+                                                      ┬─────────
+                                 │                    ╰─ 🛑 'category' would resolve to the static property 'category' that @Loggable generates, not to a declaration of that name outside the type; rename that declaration, or qualify it with its module name
+                                 ┬────────
+                                 ╰─ 🛑 'subsystem' would resolve to the static property 'subsystem' that @Loggable generates, not to a declaration of that name outside the type; rename that declaration, or qualify it with its module name
+            struct MyService { }
+            """
+        }
+    }
+
     // MARK: Protocol declarations
+
+    @Test func protocolSubsystemFromConstant() {
+        assertMacro {
+            """
+            @Loggable(subsystem: loggingSubsystem)
+            protocol Service { }
+            """
+        } expansion: {
+            """
+            protocol Service { 
+
+                nonisolated static var category: String {
+                    get
+                }
+
+                nonisolated static var subsystem: String {
+                    get
+                }
+
+                nonisolated static var _osLog: os.OSLog {
+                    get
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated static var logger: os.Logger {
+                    get
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated var logger: os.Logger {
+                    get
+                }
+            }
+
+            extension Service {
+                nonisolated static var category: String {
+                    String(describing: self)
+                }
+
+                nonisolated static var subsystem: String {
+                    loggingSubsystem
+                }
+
+                nonisolated static var _osLog: os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(for: self, subsystem: subsystem, category: category)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated static var logger: os.Logger {
+                    guard LoggableMacro._isEnabled(category: category) else {
+                        return os.Logger(os.OSLog.disabled)
+                    }
+                    return LoggableMacro._sharedLogger(for: self, subsystem: subsystem, category: category)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated var logger: os.Logger {
+                    Self.logger
+                }
+
+                nonisolated static func _osLog(for category: OSToolbox.LogCategory) -> os.OSLog {
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return .disabled
+                    }
+                    return LoggableMacro._sharedOSLog(subsystem: subsystem, category: category.name)
+                }
+
+                @available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+                nonisolated static func logger(for category: OSToolbox.LogCategory) -> os.Logger {
+                    guard LoggableMacro._isEnabled(category: category.name) else {
+                        return os.Logger(os.OSLog.disabled)
+                    }
+                    return LoggableMacro._sharedLogger(subsystem: subsystem, category: category.name)
+                }
+            }
+            """
+        }
+    }
 
     @Test func protocolDefault() {
         assertMacro {

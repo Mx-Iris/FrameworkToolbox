@@ -1,4 +1,6 @@
+import SwiftDiagnostics
 import SwiftSyntax
+import SwiftSyntaxMacros
 
 // Attribute- and declaration-reading helpers shared by `@Loggable` and
 // `@Signpostable`. They started out `private` inside `LoggableMacro.swift`;
@@ -65,21 +67,65 @@ func protocolAccessLevel(from declaration: some DeclGroupSyntax) -> String {
     return "internal"
 }
 
-/// Extracts a string literal argument by its label, returning the raw source form
-/// (including quotes). Returns `nil` when the label is missing or the argument is
-/// not a string literal.
-func extractStringLiteral(labeled label: String, from node: AttributeSyntax) -> String? {
-    guard let arguments = node.arguments,
-          case let .argumentList(argumentList) = arguments else {
+// MARK: - The `subsystem:` and `category:` names
+
+/// Reads a `subsystem:` or `category:` argument as the source text of the getter
+/// the macro generates for it.
+///
+/// Any `String` expression works, not only a literal: the text is transplanted
+/// into the generated getter and type-checked there, so a constant declared once
+/// in the module can name the subsystem of every type in it. Returns `nil` — the
+/// caller then falls back to the type name — when the argument is missing or is
+/// the `nil` literal, and also when it is a bare reference to one of
+/// `generatedNames`. That last case is diagnosed on the argument: inside the
+/// generated getter, unqualified lookup finds the type's own static properties
+/// before anything declared outside the type, so `subsystem: subsystem` would
+/// make the getter return itself, and `subsystem: category` would silently read
+/// the generated category instead of a constant of that name.
+func extractNameExpression(
+    labeled label: String,
+    from node: AttributeSyntax,
+    macroName: String,
+    generatedNames: Set<String>,
+    in context: some MacroExpansionContext
+) -> String? {
+    guard let expression = extractExpression(labeled: label, from: node),
+          !expression.is(NilLiteralExprSyntax.self) else {
         return nil
     }
-    for argument in argumentList {
-        if argument.label?.text == label,
-           let stringLiteral = argument.expression.as(StringLiteralExprSyntax.self) {
-            return stringLiteral.trimmedDescription
+    if let reference = expression.as(DeclReferenceExprSyntax.self), reference.argumentNames == nil {
+        let referencedName = reference.baseName.text.filter { $0 != "`" }
+        if generatedNames.contains(referencedName) {
+            context.diagnose(Diagnostic(
+                node: expression,
+                message: NameArgumentDiagnostic(macroName: macroName, referencedName: referencedName)
+            ))
+            return nil
         }
     }
-    return nil
+    return expression.trimmedDescription
+}
+
+/// The error ``extractNameExpression(labeled:from:macroName:generatedNames:in:)``
+/// attaches to a `subsystem:` or `category:` argument naming one of the static
+/// properties the macro itself generates.
+struct NameArgumentDiagnostic: DiagnosticMessage {
+    let macroName: String
+    let referencedName: String
+
+    var message: String {
+        """
+        '\(referencedName)' would resolve to the static property '\(referencedName)' that \
+        @\(macroName) generates, not to a declaration of that name outside the type; rename that \
+        declaration, or qualify it with its module name
+        """
+    }
+
+    var diagnosticID: MessageID {
+        MessageID(domain: macroName, id: "nameArgumentReferencesGeneratedProperty")
+    }
+
+    var severity: DiagnosticSeverity { .error }
 }
 
 /// Extracts a boolean literal argument by its label.
@@ -100,9 +146,8 @@ func extractBoolLiteral(labeled label: String, from node: AttributeSyntax) -> Bo
 }
 
 /// Extracts an argument by its label as raw source text, whatever expression it
-/// is. Unlike ``extractStringLiteral(labeled:from:)`` and
-/// ``extractBoolLiteral(labeled:from:)`` this does not require a literal — the
-/// text is transplanted into the expansion and re-type-checked there.
+/// is. Unlike ``extractBoolLiteral(labeled:from:)`` this does not require a
+/// literal — the text is transplanted into the expansion and re-type-checked there.
 func extractExpression(labeled label: String, from node: AttributeSyntax) -> ExprSyntax? {
     guard let arguments = node.arguments,
           case let .argumentList(argumentList) = arguments else {

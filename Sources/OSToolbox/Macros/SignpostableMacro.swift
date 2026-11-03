@@ -48,12 +48,17 @@ import FrameworkToolbox
 ///     `OSLog.disabled` / `OSSignposter.disabled` constants, any other
 ///     expression is evaluated per call site and combined with
 ///     ``SignpostingControl``'s runtime switches.
-///   - subsystem: The subsystem string literal. Defaults to `nil`, which uses
-///     `"<TypeName>"`. As with `@Loggable`, there is no bundle-identifier
-///     fallback on purpose: deriving one would name `Bundle` in the expansion,
-///     and the expansion lands in the caller's file.
-///   - category: Override the auto-generated category with a string literal.
-///     Defaults to `nil`, which generates `"<TypeName>"`.
+///   - subsystem: The subsystem. Defaults to `nil`, which uses `"<TypeName>"`.
+///     As with `@Loggable`, there is no bundle-identifier fallback on purpose:
+///     deriving one would name `Bundle` in the expansion, and the expansion
+///     lands in the caller's file. Any `String` expression works, not only a
+///     literal: it is copied into the generated `signpostSubsystem` getter as
+///     written, so a module constant can name it. An argument naming
+///     `signpostSubsystem` or `signpostCategory` is rejected, since inside the
+///     getter that name is the generated property, not a declaration outside
+///     the type.
+///   - category: Overrides the auto-generated category. Defaults to `nil`, which
+///     generates `"<TypeName>"`. Takes any `String` expression, as `subsystem` does.
 ///
 /// To have signposts show up in Instruments' default track, use the system's
 /// points-of-interest category — either for the whole type or per call site:
@@ -96,8 +101,8 @@ import FrameworkToolbox
 public macro Signpostable(
     _ accessLevel: AccessLevel = .private,
     isEnabled: Bool = true,
-    subsystem: StaticString? = nil,
-    category: StaticString? = nil
+    subsystem: String? = nil,
+    category: String? = nil
 ) = #externalMacro(module: "OSToolboxMacros", type: "SignpostableMacro")
 
 /// Overload of `@Signpostable` that exposes the `asProtocolRequirement` switch
@@ -108,8 +113,8 @@ public macro Signpostable(
     _ accessLevel: AccessLevel = .private,
     asProtocolRequirement: Bool,
     isEnabled: Bool = true,
-    subsystem: StaticString? = nil,
-    category: StaticString? = nil
+    subsystem: String? = nil,
+    category: String? = nil
 ) = #externalMacro(module: "OSToolboxMacros", type: "SignpostableMacro")
 
 #endif

@@ -10,6 +10,11 @@ public struct LoggableMacro: MemberMacro, ExtensionMacro {
     /// which is why the generated code carries a legacy `os_log` path at all.
     static let loggerAvailability = "@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)"
 
+    /// The static properties the `subsystem:` and `category:` arguments end up
+    /// in. Inside their getters a bare name resolves to these first, so an
+    /// argument naming one of them is rejected rather than transplanted.
+    static let generatedNameProperties: Set<String> = ["category", "subsystem"]
+
     /// The disabled `os.Logger` every generated handle falls back to.
     ///
     /// Deliberately not `Logger.disabled`. That property only exists in
@@ -52,7 +57,8 @@ public struct LoggableMacro: MemberMacro, ExtensionMacro {
             usesRuntimeCache: isInGenericContext(
                 declaration: declaration,
                 lexicalContext: context.lexicalContext
-            )
+            ),
+            context: context
         )
     }
 
@@ -69,7 +75,7 @@ public struct LoggableMacro: MemberMacro, ExtensionMacro {
             return []
         }
 
-        let members = buildProtocolDefaultImplementations(node: node, declaration: declaration)
+        let members = buildProtocolDefaultImplementations(node: node, declaration: declaration, context: context)
         let memberBlock = members
             .map { indent($0.trimmedDescription, by: 4) }
             .joined(separator: "\n\n")
@@ -83,17 +89,33 @@ public struct LoggableMacro: MemberMacro, ExtensionMacro {
     }
 }
 
+/// `@Loggable`'s reading of a `subsystem:` or `category:` argument.
+private func extractLoggableNameExpression(
+    labeled label: String,
+    from node: AttributeSyntax,
+    in context: some MacroExpansionContext
+) -> String? {
+    extractNameExpression(
+        labeled: label,
+        from: node,
+        macroName: "Loggable",
+        generatedNames: LoggableMacro.generatedNameProperties,
+        in: context
+    )
+}
+
 // MARK: - Concrete (struct/class/enum/actor) generation
 
 private func buildConcreteMembers(
     node: AttributeSyntax,
     declaration: some DeclGroupSyntax,
-    usesRuntimeCache: Bool
+    usesRuntimeCache: Bool,
+    context: some MacroExpansionContext
 ) -> [DeclSyntax] {
     let accessLevel = extractAccessLevel(from: node)
     let accessPrefix = accessLevel == "internal" ? "" : "\(accessLevel) "
-    let customSubsystem = extractStringLiteral(labeled: "subsystem", from: node)
-    let customCategory = extractStringLiteral(labeled: "category", from: node)
+    let customSubsystem = extractLoggableNameExpression(labeled: "subsystem", from: node, in: context)
+    let customCategory = extractLoggableNameExpression(labeled: "category", from: node, in: context)
     let enablement = extractEnablement(from: node)
 
     let typeNameLiteral = quoteString(staticTypeName(from: declaration))
@@ -297,12 +319,13 @@ private func buildProtocolRequirements() -> [DeclSyntax] {
 /// runtime-cache shape with the generic branch.
 private func buildProtocolDefaultImplementations(
     node: AttributeSyntax,
-    declaration: some DeclGroupSyntax
+    declaration: some DeclGroupSyntax,
+    context: some MacroExpansionContext
 ) -> [DeclSyntax] {
     let accessLevel = protocolAccessLevel(from: declaration)
     let accessPrefix = accessLevel == "internal" ? "" : "\(accessLevel) "
-    let customSubsystem = extractStringLiteral(labeled: "subsystem", from: node)
-    let customCategory = extractStringLiteral(labeled: "category", from: node)
+    let customSubsystem = extractLoggableNameExpression(labeled: "subsystem", from: node, in: context)
+    let customCategory = extractLoggableNameExpression(labeled: "category", from: node, in: context)
     let enablement = extractEnablement(from: node)
 
     let typeNameExpression = "String(describing: self)"
