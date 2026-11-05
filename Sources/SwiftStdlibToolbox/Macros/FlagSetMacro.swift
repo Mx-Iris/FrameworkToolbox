@@ -56,6 +56,11 @@
 /// > each case's position is part of that format. Write every position out,
 /// > never reuse a retired one, and pin the shipped values with a test: an
 /// > implicit raw value moves when a case is inserted above it.
+///
+/// > Note: Nothing this macro generates can be named inside the arguments of
+/// > an attached macro, because name lookup there skips macro expansions:
+/// > `@Test(arguments: [Permissions.read])` does not compile. Pass the `Flag`
+/// > cases instead and build the set with `init(_:)` in the function body.
 @attached(member, names: named(rawValue), named(init), arbitrary)
 @attached(extension, conformances: OptionSet)
 public macro FlagSet() = #externalMacro(

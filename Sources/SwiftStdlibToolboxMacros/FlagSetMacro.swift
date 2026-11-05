@@ -60,9 +60,11 @@ extension FlagSetMacro: ExtensionMacro {
             return []
         }
 
-        // `nonisolated`: in a module whose default isolation is `MainActor`,
-        // the conformance would otherwise be main-actor isolated, and the set
-        // unusable as an `OptionSet` anywhere else.
+        // `nonisolated` as on `@Equatable`'s conformance. Measured in
+        // `DefaultMainActorIsolationClient`, this one is not strictly needed:
+        // with every witness `nonisolated`, the compiler does not infer the
+        // conformance to be main-actor isolated. `@Equatable`'s was inferred
+        // that way without it, so this does not rely on the inference.
         let conformance: DeclSyntax = """
         nonisolated extension \(type.trimmed): Swift.OptionSet {}
         """
@@ -207,6 +209,14 @@ extension FlagSetMacro.Reading {
         let memberAccess = self.memberAccess
         let initializerAccess = min(memberAccess, FlagSetMacro.AccessLevel(flag.modifiers) ?? .internal)
 
+        // Every member is `nonisolated`. In a module whose default isolation
+        // is `MainActor`, a structure is main-actor isolated and so is all it
+        // declares, generated members included: without it, the `OptionSet`
+        // witnesses make the conformance main-actor isolated, and the statics
+        // and `init(_:)` cannot be used from a `nonisolated` function — each
+        // measured in `DefaultMainActorIsolationClient`. `nonisolated` on a
+        // `let` of an integer type is accepted everywhere: the compiler only
+        // rejects it on mutable storage and on non-`Sendable` types.
         var declarations: [DeclSyntax] = [
             "nonisolated \(raw: memberAccess.modifier)let rawValue: \(rawValueType)",
             """

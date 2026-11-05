@@ -4,6 +4,7 @@
 - **创建日期**: 2026-11-05
 - **最后更新**: 2026-11-05
 - **实现分支**: `feature/flag-set-macro`
+- **配套文档**: [使用指南 `FlagSet.md`](../FlagSet.md)
 
 ## 摘要
 
@@ -51,8 +52,8 @@ public static let isSpecialized = Self(.isSpecialized)
   这个标志会变成空集，`contains` 永远为真。位宽按拼写判断：`Int8` … `UInt128` 各按其宽度，
   `Int` / `UInt` 按 64；别名等认不出的拼写不检查。
 - **隔离**：照 `@Equatable` 的做法，让生成的遵循与成员在默认 MainActor 隔离的模块里也能从后台使用。
-  实测五处都得标 `nonisolated`：遵循所在的 extension、`rawValue`、`init(rawValue:)`、`init(_:)` 与各个 static
-  （见决策日志）。
+  实测必须标 `nonisolated` 的是四处：`rawValue`、`init(rawValue:)`、`init(_:)` 与各个 static；遵循所在的
+  extension 也标了，在这套设置下可省，保留是为了不依赖推断（见决策日志）。
 - **测试**：展开快照（含每条报错与 Fix-It）；行为测试（每个 case 的位、static 与同名 case 造出的集合相等、
   集合运算、`Codable` 编出整数）；`SwiftStdlibToolboxClient` 与 `DefaultMainActorIsolationClient` 钉住公开用法、
   可用性与隔离；干净构建无警告。
@@ -82,7 +83,7 @@ public static let isSpecialized = Self(.isSpecialized)
 - [x] 2. 报错与 Fix-It：非 struct、缺 `Flag`、`Flag` 没写原始类型、位置越界；每条一个快照测试。
 - [x] 3. 行为测试与客户端钉住：运行时行为测试；`SwiftStdlibToolboxClient` 与 `DefaultMainActorIsolationClient`；
   隔离与文档注释可见性的实测；干净构建无警告。
-- [ ] 4. 文档：`CLAUDE.md`、使用指南 `Documentations/FlagSet.md`、文档索引。
+- [x] 4. 文档：`CLAUDE.md`、使用指南 `Documentations/FlagSet.md`、文档索引。
 
 ## 决策日志
 
@@ -101,5 +102,5 @@ public static let isSpecialized = Self(.isSpecialized)
 | 2026-11-05 | 读不通结构体（不是 struct、缺 `Flag`、缺原始类型）时 extension 角色也不加 `OptionSet` 遵循 | 报错由 member 角色负责；成员没生成还加遵循，只会在宏的报错后面堆一串「不遵循协议」的错误 |
 | 2026-11-05 | 位置推不出的 case 不检查：跟在 `#if` 后面、且各分支走完位置不同的隐式值，以及跟在非整数字面量原始值后面的隐式值 | 宏不知道哪个分支生效，猜错会误报；漏查只是回到没有这条检查时的状态 |
 | 2026-11-05 | 构建与测试经 workspace 用本地的预编译 swift-syntax 603.0.1（MxIris-DeveloperTool/swift-syntax-builder 的 `release/603.0.1`），不从源码编译 | 用户要求。workspace 与预编译包都放在仓库外 agent 自己的目录里；Xcode 解析时会改写仓库的 `Package.resolved`，每次都还原，不提交 |
-| 2026-11-05 | 生成的 extension、`rawValue`、`init(rawValue:)`、`init(_:)` 与 static 全部标 `nonisolated` | 在 `DefaultMainActorIsolationClient` 里实测：全部去掉时，从 `nonisolated` 函数用一个留在主线程上的集合，报 `main actor-isolated conformance of 'UploadOptions' to 'OptionSet' cannot be used in nonisolated context`、static `can not be referenced from a nonisolated context`、`call to main actor-isolated initializer 'init(_:)'`；只去掉两个 `OptionSet` witness 上的，遵循照样变成主线程隔离，`init(_:)` 也调不了 `init(rawValue:)`。把 `nonisolated` 用在 `let` 上不会报错：编译器只拒绝可变存储与非 `Sendable` 类型（`TypeCheckAttr.cpp`） |
+| 2026-11-05 | 生成的 extension、`rawValue`、`init(rawValue:)`、`init(_:)` 与 static 全部标 `nonisolated` | 在 `DefaultMainActorIsolationClient` 里实测，从 `nonisolated` 函数用一个留在主线程上的集合：全部去掉时报 `main actor-isolated conformance of 'UploadOptions' to 'OptionSet' cannot be used in nonisolated context`、static `can not be referenced from a nonisolated context`、`call to main actor-isolated initializer 'init(_:)'`，后两条直接指向各自声明的隔离；只去掉两个 `OptionSet` witness 上的，遵循照样变成主线程隔离，`init(_:)` 也调不了 `init(rawValue:)`；**只去掉 extension 上的，照样编得过**——witness 都是 `nonisolated` 时，遵循不会被推断成主线程隔离。extension 上的仍保留：它无害，`@Equatable` 的遵循没有它就被隔离过，不必依赖这条推断。（功能分支上「测试钉住」那次提交的说明写成了「五处去掉任何一处都编不过」，不对，以本行为准。）把 `nonisolated` 用在 `let` 上不会报错：编译器只拒绝可变存储与非 `Sendable` 类型（`TypeCheckAttr.cpp`） |
 | 2026-11-05 | 行为测试不在 `@Test(arguments:)` 里写生成的成员，改传 `Flag` 的 case | 写了就报 `has no member`：挂在声明上的宏的参数里，名字查找不展开别的宏（`NameLookupRequests.cpp`）。这条限制写进使用指南；RuntimeViewer 现有的「每个标志的位值不变」测试正是这种写法，换用本宏时要跟着改 |
