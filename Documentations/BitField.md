@@ -70,6 +70,10 @@ public struct ContextDescriptorFlags: RawRepresentable, Hashable, Sendable {
 
 `bits:` 写不成 `Self.kindShift..<…`：一来宏要在展开时就拿到数字，二来挂在声明上的宏的参数里，名字查找引用宿主自己的成员会形成循环（`@Projection` 实测为 circular reference）。所以位置只能写字面量，`Bits` 那一套常量迁移时就删掉。
 
+### 可选字段里的 `.none` 是 `nil`
+
+属性声明成 `T?`、而 `T` 自己就有一个叫 `none` 的 case 时（Swift ABI 的 `SpecialProtocolKind` 就有），裸写的 `.none` 指的是 `Optional.none`，即「认不得」，不是那个 case：读出 `SpecialProtocolKind.none` 时 `flags.specialProtocol == .none` 为假，认不得时反而为真；`switch` 里的 `case .none:` 也只匹配 `nil`。编译器只给一条警告（`assuming you mean 'Optional<SpecialProtocolKind>.none'; did you mean 'SpecialProtocolKind.none' instead?`），照样编译通过。要的是那个 case，就写 `.some(.none)` 或全名 `SpecialProtocolKind.none`，`switch` 里写 `case .some(.none):`。把属性从非可选改成可选时，调用方原本写对了的 `.none` 会全部悄悄变成 `nil`，所以改之前先把它们找出来。
+
 ## 与 `@FlagSet` 一起用
 
 每个选项占一位、可以自由组合的，用 `@FlagSet`；一个字里分段存着不同东西的，用 `@BitField`。两者可以用在同一个类型上：`@FlagSet` 生成的 `rawValue` 正好是 `@BitField` 读的存储。
@@ -92,6 +96,6 @@ public struct ValueWitnessFlags: Hashable, Sendable {
 ## 从手写版迁移
 
 1. 每个访问器改成 `@BitField(bits: …) var 名字: 类型`，删掉 getter。
-2. 原先 `Kind(rawValue: …)!` 强制解包的，改成可选或加 `default:`。这会改变公开属性的类型，下游对它的穷举 `switch` 要补 `nil` 分支。
+2. 原先 `Kind(rawValue: …)!` 强制解包的，改成可选或加 `default:`。这会改变公开属性的类型，下游对它的穷举 `switch` 要补 `nil` 分支；枚举有 `none` case 的，下游写的 `.none` 还会变成 `nil`（见上文「可选字段里的 `.none` 是 `nil`」）。
 3. 删掉不再用的掩码与位置常量。
 4. 补一条把每个属性读一遍的测试，越界的区间只有这样才会被发现。
