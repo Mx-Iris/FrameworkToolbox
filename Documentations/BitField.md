@@ -1,6 +1,6 @@
 # `@BitField` —— 用法契约与陷阱
 
-`@BitField` 贴在属性上，让它从所在类型的 `rawValue` 里读出某几位。它是 C++ `FLAGSET_DEFINE_FLAG_ACCESSORS` / `FLAGSET_DEFINE_FIELD_ACCESSORS`（`swift/Basic/FlagSet.h`）在 Swift 里的对应物。手写这种访问器要移位、掩码、转换三步，漏掉一步照样编译通过；用了宏，每个访问器只剩「占哪几位」和「是什么类型」两样。设计与取舍见提案 [`@BitField`：按位的范围生成 flag word 的访问器](Evolutions/draft-bit-field-macro.md)。
+`@BitField` 贴在属性上，让它从所在类型的 `rawValue` 里读出某几位。它是 C++ `FLAGSET_DEFINE_FLAG_ACCESSORS` / `FLAGSET_DEFINE_FIELD_ACCESSORS`（`swift/Basic/FlagSet.h`）在 Swift 里的对应物。手写这种访问器要移位、掩码、转换三步，漏掉一步照样编译通过；用了宏，每个访问器只剩「占哪几位」和「是什么类型」两样。设计与取舍见提案 [`@BitField`：按位的范围生成 flag word 的访问器](Evolutions/0015-bit-field-macro.md)。
 
 ```swift
 public struct ContextDescriptorFlags: RawRepresentable, Hashable, Sendable {

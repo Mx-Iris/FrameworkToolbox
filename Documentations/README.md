@@ -83,7 +83,7 @@
 - [0014 —— `@FlagSet`：由嵌套的 `Flag` 枚举生成 OptionSet](Evolutions/0014-flag-set-macro.md)（Implemented）
   嵌套枚举 `Flag` 的原始值即位的位置，宏据此生成 `rawValue`、`init(rawValue:)`、`init(_:)` 与每个 case 对应的 `static let`，
   文档注释与 `@available` 随 case 转到 static 上；越界的位（`1 << 64` 是 0，标志会静默变成空集）在 case 那一行报错。
-- [draft —— `@BitField`：按位的范围生成 flag word 的访问器](Evolutions/draft-bit-field-macro.md)（In Progress）
+- [0015 —— `@BitField`：按位的范围生成 flag word 的访问器](Evolutions/0015-bit-field-macro.md)（Implemented）
   C++ `FLAGSET_DEFINE_FLAG_ACCESSORS` / `FLAGSET_DEFINE_FIELD_ACCESSORS` 在 Swift 里的对应物：贴在属性上写 `bits: 2..<8`，移位、掩码和类型转换由宏与重载决议生成；认不得的值要么得到 `nil`、要么取 `default:`，没有崩溃这一档。第一个使用方是 MachOSwiftSection 的 ABI 层。
 
 ## 专题说明

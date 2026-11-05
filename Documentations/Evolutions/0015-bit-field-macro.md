@@ -1,6 +1,6 @@
-# Draft - `@BitField`：按位的范围生成 flag word 的访问器
+# 0015 - `@BitField`：按位的范围生成 flag word 的访问器
 
-- **状态**: In Progress
+- **状态**: Implemented
 - **创建日期**: 2026-11-05
 - **最后更新**: 2026-11-05
 - **实现分支**: `feature/bit-field-macro`
@@ -161,3 +161,4 @@ MachOSwiftSection 的 ABI 层。它的迁移是那边的另一份提案，等这
 | 2026-11-05 | 更正方案外的一处假设：在后台读取时，读出来的枚举不必标 `nonisolated` | 在默认 MainActor 隔离的模块里实测：带 raw value 的枚举对 `RawRepresentable` 的遵循不被隔离，`nonisolated` 的结构体读一个留在主线程上的枚举能编过。留在主线程上的结构体，它的 bit field 从 `nonisolated` 函数里读报 `main actor-isolated property … can not be referenced from a nonisolated context`，与手写的计算属性一样。两种写法都钉在 `DefaultMainActorIsolationClient` 里 |
 | 2026-11-05 | 越界的位用 exit test 钉住 | `precondition` 只在读取时触发，exit test 确认它确实让进程以失败退出，而不是读出一个截断的值 |
 | 2026-11-05 | 实现完成，待用户看过后收尾 | 完整验证在清空构建产物与编译缓存后重建跑：13 个测试 target 共 824 个测试全部通过（Swift Testing 773 个、XCTest 51 个，比 `@FlagSet` 落地时多出本次的 27 个），12 个客户端 target 全部编过，原始退出码为 0。新文件零警告；构建里另有 7 条警告，都在没改动的旧文件里（`OSLogFormatSupport.swift`、`DynamicObjectTests.swift`）。没有偏离方案、没有没做的项，实现中补充的决定见以上几行。文档：使用指南 `BitField.md` 已登记为配套文档，更新了 `CLAUDE.md` 与两份索引；不另写实现说明，实现决策都在本提案与 `CLAUDE.md` 里；没有新术语 |
+| 2026-11-05 | In Progress → Implemented，编号 0015，合入 `main` | 用户看过后收尾。编号取远端共享分支提案编号的最大值 0014 加 1（`origin/work` 是旧分支，没有提案目录）。验证沿用「实现完成」那一行的完整运行，之后只改过提案与索引的文字。没有偏离方案、没有没做的项；MachOSwiftSection 的 ABI 层改用本宏是那边的另一份提案，要等这边发出包含本宏的版本。文档：使用指南 `BitField.md` 已登记为配套文档；不写实现说明；没有新术语 |
