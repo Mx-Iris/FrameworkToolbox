@@ -25,5 +25,6 @@ struct MainPlugin: CompilerPlugin {
         ProjectionMacro.self,
         ProjectionFunctionMacro.self,
         FlagSetMacro.self,
+        BitFieldMacro.self,
     ]
 }

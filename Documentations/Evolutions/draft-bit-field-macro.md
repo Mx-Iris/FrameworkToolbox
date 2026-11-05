@@ -1,6 +1,6 @@
 # Draft - `@BitField`：按位的范围生成 flag word 的访问器
 
-- **状态**: Accepted
+- **状态**: In Progress
 - **创建日期**: 2026-11-05
 - **最后更新**: 2026-11-05
 - **实现分支**: `feature/bit-field-macro`
@@ -130,8 +130,8 @@ MachOSwiftSection 的 ABI 层。它的迁移是那边的另一份提案，等这
 
 每一步各自能构建、测试通过，单独提交。
 
-- [ ] 1. 宏的声明与实现：`bits:` 的两种写法、`default:`、生成的 getter 与 `#sourceLocation`；运行时的重载辅助；注册进插件；展开快照测试。
-- [ ] 2. 报错与 Fix-It：每条一个快照测试。
+- [x] 1. 宏的声明与实现：`bits:` 的两种写法、`default:`、生成的 getter 与 `#sourceLocation`；运行时的重载辅助；注册进插件；展开快照测试。
+- [x] 2. 报错与 Fix-It：每条一个快照测试。（与第 1 步同一个提交：快照都在 `BitFieldMacroTests.swift` 一个文件里。）
 - [ ] 3. 行为测试与客户端钉住：上表每一行；`SwiftStdlibToolboxClient` 与 `DefaultMainActorIsolationClient`；干净构建无警告。
 - [ ] 4. 文档：DocC、`CLAUDE.md`、使用指南 `Documentations/BitField.md`、两份索引。
 
@@ -149,3 +149,10 @@ MachOSwiftSection 的 ABI 层。它的迁移是那边的另一份提案，等这
 | 2026-11-05 | 认不得的值没有「崩溃」这一档：要么声明成可选，要么写 `default:` | 这些位多半来自外部输入，将来的新 kind 也会落进来。MachOSwiftSection 的 `KeyPathComponentHeader` 注释早就写明「输入是任意的二进制内容，不能强制解包」。危险要写在调用点上，不能是默认行为 |
 | 2026-11-05 | 第一版不生成 setter | 宏看不到 `rawValue` 能不能改，生成 `set` 需要另外的表态；第一个使用方只有一个可写的 flag word，它的手写版是对的 |
 | 2026-11-05 | 用户批准，开始实现 | — |
+| 2026-11-05 | 构建与测试经 workspace 用本地预编译的 swift-syntax 603.0.1，不从源码编译 | 与 `@FlagSet` 那次一致。workspace 与预编译包都在仓库外 agent 自己的目录里；`SwiftStdlibToolboxTests` 没有 Xcode 自动生成的 scheme，所以在 workspace 里另写了测试 scheme；Xcode 解析时改写的 `Package.resolved` 每次都还原，不提交 |
+| 2026-11-05 | 宏声明四个重载：`bits:` 收 `Int` 或 `Range<Int>`，各有一个带 `default:` 的版本 | 宏参数按声明做类型检查，单个位置与区间是两种类型；`default:` 是泛型参数 `Value`，由参数自身推断，因为声明里写不出属性的类型 |
+| 2026-11-05 | 除方案里那条「非可选 `RawRepresentable` 没写 `default:`」之外，再加两个不可用重载：读不了的类型（raw value 不是整数的枚举、`Bool?` 等），以及把 `default:` 用在不是非可选 `RawRepresentable` 的属性上 | 不加时这两种错误是 `no exact matches in call`，指向一个调用方没写过的调用；加了以后消息直接说该怎么写，`#sourceLocation` 照样把它放到属性那一行 |
+| 2026-11-05 | 生成的调用写成 `SwiftStdlibToolbox._BitFieldAccess.value(…)`，属性的类型写成 `(Type).self` | 带模块名，调用方类型里的同名成员截不走这次调用（`SwiftStdlibToolboxClient` 用一个同名的嵌套类型钉住）；类型加括号，`Kind?` 这类带后缀的类型接 `.self` 时不出错 |
+| 2026-11-05 | 一次声明多个变量时，宏自己不报错 | 宏系统先报 `accessor macro can only be applied to a single variable`，轮不到宏；swift-macro-testing 的快照里看到的就是这一条 |
+| 2026-11-05 | 「只能用在属性上」用贴在 subscript 上的情形来测，不用函数 | accessor macro 只能贴在属性或 subscript 上，函数在宏运行之前就被拒绝，swift-macro-testing 也不会对函数调用它；subscript 会走到宏 |
+| 2026-11-05 | 属性已有 accessor（含 `willSet` / `didSet`）时报错，报在属性名上 | 宏加了 getter 之后编译器会丢掉观察器，静默丢掉比报错更糟。swift-macro-testing 把这条画在快照顶部：swift-syntax 是对改写过、已不在文件里的那份声明展开的，位置对不上文件。编译器里落在哪一行见下一步的实测 |
