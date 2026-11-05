@@ -1,6 +1,6 @@
 # Draft - `@FlagSet`：由嵌套的 `Flag` 枚举生成 OptionSet
 
-- **状态**: Accepted
+- **状态**: In Progress
 - **创建日期**: 2026-11-05
 - **最后更新**: 2026-11-05
 - **实现分支**: `feature/flag-set-macro`
@@ -71,9 +71,9 @@ public static let isSpecialized = Self(.isSpecialized)
 
 每一步各自能构建、测试通过，单独提交。
 
-- [ ] 1. 宏的声明与实现：member 与 extension 两个角色，文档注释、`@available`、`#if` 随 case 转到 static 上，
+- [x] 1. 宏的声明与实现：member 与 extension 两个角色，文档注释、`@available`、`#if` 随 case 转到 static 上，
   访问级别与 `@inlinable`；注册进插件；展开快照测试。
-- [ ] 2. 报错与 Fix-It：非 struct、缺 `Flag`、`Flag` 没写原始类型、位置越界；每条一个快照测试。
+- [x] 2. 报错与 Fix-It：非 struct、缺 `Flag`、`Flag` 没写原始类型、位置越界；每条一个快照测试。
 - [ ] 3. 行为测试与客户端钉住：运行时行为测试；`SwiftStdlibToolboxClient` 与 `DefaultMainActorIsolationClient`；
   隔离与文档注释可见性的实测；干净构建无警告。
 - [ ] 4. 文档：`CLAUDE.md`、使用指南 `Documentations/FlagSet.md`、文档索引。
@@ -91,3 +91,7 @@ public static let isSpecialized = Self(.isSpecialized)
 | 2026-11-05 | 保持 `static let`，不改成计算属性 | 与手写版一致；编译器对 static 存储属性免除可用性限制（`lib/Sema/TypeCheckAttr.cpp`：「Globals and statics are lazily initialized」），case 上的任何 `@available` 都能原样转过去 |
 | 2026-11-05 | 补上落地步骤 | 精简提案原本没有分步；按方案拆成四步，每步各自能构建、测试通过 |
 | 2026-11-05 | 用户批准，开始实现 | — |
+| 2026-11-05 | 「没写原始类型」的报错另认两种写法：首个继承项是常见协议（`CaseIterable`、`Sendable` 等）时同样报缺，Fix-It 在最前面补 `Int, `；首个继承项是 `String`、`Double` 这类非整数原始类型时报在那个类型上 | 原始类型必须写在第一位，宏只看得到拼写；不认出这两种，错误会落在生成代码里（`'<<' cannot be applied…`、`does not conform to 'SetAlgebra'`），调用方看不懂 |
+| 2026-11-05 | 读不通结构体（不是 struct、缺 `Flag`、缺原始类型）时 extension 角色也不加 `OptionSet` 遵循 | 报错由 member 角色负责；成员没生成还加遵循，只会在宏的报错后面堆一串「不遵循协议」的错误 |
+| 2026-11-05 | 位置推不出的 case 不检查：跟在 `#if` 后面、且各分支走完位置不同的隐式值，以及跟在非整数字面量原始值后面的隐式值 | 宏不知道哪个分支生效，猜错会误报；漏查只是回到没有这条检查时的状态 |
+| 2026-11-05 | 构建与测试经 workspace 用本地的预编译 swift-syntax 603.0.1（MxIris-DeveloperTool/swift-syntax-builder 的 `release/603.0.1`），不从源码编译 | 用户要求。workspace 与预编译包都放在仓库外 agent 自己的目录里；Xcode 解析时会改写仓库的 `Package.resolved`，每次都还原，不提交 |

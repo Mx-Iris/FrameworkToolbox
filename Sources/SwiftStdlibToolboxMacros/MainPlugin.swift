@@ -24,5 +24,6 @@ struct MainPlugin: CompilerPlugin {
         DefaultedCasesMacro.self,
         ProjectionMacro.self,
         ProjectionFunctionMacro.self,
+        FlagSetMacro.self,
     ]
 }
