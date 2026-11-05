@@ -80,6 +80,9 @@
 - [0013 —— `@Loggable` / `@Signpostable` 的 subsystem 与 category 接受任意 `String` 表达式](Evolutions/0013-name-argument-expressions.md)（Implemented）
   参数从只认字面量的 `StaticString?` 改为 `String?`，表达式原样放进生成的 getter，一个模块用一个常量就能统一 subsystem；
   参数若与宏生成的属性同名（`subsystem: subsystem`），getter 会解析成自己，宏在参数上直接报错。
+- [draft —— `@FlagSet`：由嵌套的 `Flag` 枚举生成 OptionSet](Evolutions/draft-flag-set-macro.md)（Accepted）
+  嵌套枚举 `Flag` 的原始值即位的位置，宏据此生成 `rawValue`、`init(rawValue:)`、`init(_:)` 与每个 case 对应的 `static let`，
+  文档注释与 `@available` 随 case 转到 static 上；越界的位（`1 << 64` 是 0，标志会静默变成空集）在 case 那一行报错。
 
 ## 专题说明
 

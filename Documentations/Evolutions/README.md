@@ -44,5 +44,6 @@ SPM library product，使用方以源码依赖并重新编译，未开启 librar
 | [0011](0011-add-completion-handler-sendable.md) | `@AddCompletionHandler` 可选地把 completion 标成 `@Sendable` | Implemented |
 | [0012](0012-coding-codable.md) | `CodingCodable`：只遵循 `NSCoding` 的类也能走 Codable，并补全归档错误信息 | Implemented |
 | [0013](0013-name-argument-expressions.md) | `@Loggable` / `@Signpostable` 的 subsystem 与 category 接受任意 `String` 表达式 | Implemented |
+| [draft](draft-flag-set-macro.md) | `@FlagSet`：由嵌套的 `Flag` 枚举生成 OptionSet | Accepted |
 
 `Specs/` 与 `Plans/` 是提案制确立前的产物，见[上级索引](../README.md)，保持原样不迁移。
