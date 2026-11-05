@@ -132,7 +132,7 @@ MachOSwiftSection 的 ABI 层。它的迁移是那边的另一份提案，等这
 
 - [x] 1. 宏的声明与实现：`bits:` 的两种写法、`default:`、生成的 getter 与 `#sourceLocation`；运行时的重载辅助；注册进插件；展开快照测试。
 - [x] 2. 报错与 Fix-It：每条一个快照测试。（与第 1 步同一个提交：快照都在 `BitFieldMacroTests.swift` 一个文件里。）
-- [ ] 3. 行为测试与客户端钉住：上表每一行；`SwiftStdlibToolboxClient` 与 `DefaultMainActorIsolationClient`；干净构建无警告。
+- [x] 3. 行为测试与客户端钉住：上表每一行；`SwiftStdlibToolboxClient` 与 `DefaultMainActorIsolationClient`；干净构建无警告。
 - [ ] 4. 文档：DocC、`CLAUDE.md`、使用指南 `Documentations/BitField.md`、两份索引。
 
 ## 决策日志
@@ -156,3 +156,6 @@ MachOSwiftSection 的 ABI 层。它的迁移是那边的另一份提案，等这
 | 2026-11-05 | 一次声明多个变量时，宏自己不报错 | 宏系统先报 `accessor macro can only be applied to a single variable`，轮不到宏；swift-macro-testing 的快照里看到的就是这一条 |
 | 2026-11-05 | 「只能用在属性上」用贴在 subscript 上的情形来测，不用函数 | accessor macro 只能贴在属性或 subscript 上，函数在宏运行之前就被拒绝，swift-macro-testing 也不会对函数调用它；subscript 会走到宏 |
 | 2026-11-05 | 属性已有 accessor（含 `willSet` / `didSet`）时报错，报在属性名上 | 宏加了 getter 之后编译器会丢掉观察器，静默丢掉比报错更糟。swift-macro-testing 把这条画在快照顶部：swift-syntax 是对改写过、已不在文件里的那份声明展开的，位置对不上文件。编译器里落在哪一行见下一步的实测 |
+| 2026-11-05 | 实测报错的位置与措辞 | 在 `SwiftStdlibToolboxClient` 里临时放一个编不过的文件，读完错误即删：三条不可用重载的消息都报在属性那一行；`default: .first` 报 `cannot infer contextual base in reference to member 'first'`，在宏参数那一行；属性已有 accessor 时，宏的报错落在属性名上 |
+| 2026-11-05 | 更正方案外的一处假设：在后台读取时，读出来的枚举不必标 `nonisolated` | 在默认 MainActor 隔离的模块里实测：带 raw value 的枚举对 `RawRepresentable` 的遵循不被隔离，`nonisolated` 的结构体读一个留在主线程上的枚举能编过。留在主线程上的结构体，它的 bit field 从 `nonisolated` 函数里读报 `main actor-isolated property … can not be referenced from a nonisolated context`，与手写的计算属性一样。两种写法都钉在 `DefaultMainActorIsolationClient` 里 |
+| 2026-11-05 | 越界的位用 exit test 钉住 | `precondition` 只在读取时触发，exit test 确认它确实让进程以失败退出，而不是读出一个截断的值 |
