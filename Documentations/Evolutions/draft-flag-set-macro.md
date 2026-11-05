@@ -50,13 +50,19 @@ public static let isSpecialized = Self(.isSpecialized)
   某个 case 的位置为负或不小于原始类型的位宽。后者不报就是静默错误：`1 << 64` 与 `1 << -1` 都是 0，
   这个标志会变成空集，`contains` 永远为真。位宽按拼写判断：`Int8` … `UInt128` 各按其宽度，
   `Int` / `UInt` 按 64；别名等认不出的拼写不检查。
-- **隔离**：照 `@Equatable` 的做法，让生成的遵循与成员在默认 MainActor 隔离的模块里也能从后台使用；
-  具体加在哪几处，以 `DefaultMainActorIsolationClient` 的实测为准。
-- **测试**：展开快照（含每条报错与 Fix-It）；行为测试（每个 static 的位、`Self(flag)` 与对应 static 相等、
-  `Codable` 编出整数）；`SwiftStdlibToolboxClient` 与 `DefaultMainActorIsolationClient` 钉住公开用法与隔离；
-  干净构建无警告。
-- **实现时要实测的一点**：转到 static 上的文档注释在 Quick Help 与符号图里是否可见。不可见也不改方案
-  ——文档仍写在 case 上——只在使用指南里写明。
+- **隔离**：照 `@Equatable` 的做法，让生成的遵循与成员在默认 MainActor 隔离的模块里也能从后台使用。
+  实测五处都得标 `nonisolated`：遵循所在的 extension、`rawValue`、`init(rawValue:)`、`init(_:)` 与各个 static
+  （见决策日志）。
+- **测试**：展开快照（含每条报错与 Fix-It）；行为测试（每个 case 的位、static 与同名 case 造出的集合相等、
+  集合运算、`Codable` 编出整数）；`SwiftStdlibToolboxClient` 与 `DefaultMainActorIsolationClient` 钉住公开用法、
+  可用性与隔离；干净构建无警告。
+- **文档注释的可见性（已实测）**：从客户端模块抽出的符号图里，生成的 static 带着 case 的文档注释，
+  弃用标记也在；DocC 读的就是这份信息。Xcode 的 Quick Help 要交互操作，没有实测。
+- **一条做不到的事**：生成的成员在**挂在声明上的宏**的参数里不可见，例如
+  `@Test(arguments: [Permissions.read])` 报 `type 'Permissions' has no member 'read'`。编译器在宏参数里做名字
+  查找时一律不展开别的宏，也不取已展开的结果（`lib/AST/NameLookupRequests.cpp`，为了不让展开互相依赖成环），
+  宏这边绕不过去。实测测试函数体里的 `#expect(Permissions.read == …)` 不受影响。调用方改传 `Flag` 的 case，
+  在函数体里再造集合；使用指南里写明。
 - **文档**：宏声明上的 DocC 注释；`CLAUDE.md` 的 `SwiftStdlibToolbox` 一行与一条 Key Patterns；新建使用
   指南 `Documentations/FlagSet.md`，写契约与陷阱（持久化的位要显式写原始值并加测试钉住、越界移位、
   arm64_32 的 watchOS 上 `Int` 只有 32 位）。
@@ -74,7 +80,7 @@ public static let isSpecialized = Self(.isSpecialized)
 - [x] 1. 宏的声明与实现：member 与 extension 两个角色，文档注释、`@available`、`#if` 随 case 转到 static 上，
   访问级别与 `@inlinable`；注册进插件；展开快照测试。
 - [x] 2. 报错与 Fix-It：非 struct、缺 `Flag`、`Flag` 没写原始类型、位置越界；每条一个快照测试。
-- [ ] 3. 行为测试与客户端钉住：运行时行为测试；`SwiftStdlibToolboxClient` 与 `DefaultMainActorIsolationClient`；
+- [x] 3. 行为测试与客户端钉住：运行时行为测试；`SwiftStdlibToolboxClient` 与 `DefaultMainActorIsolationClient`；
   隔离与文档注释可见性的实测；干净构建无警告。
 - [ ] 4. 文档：`CLAUDE.md`、使用指南 `Documentations/FlagSet.md`、文档索引。
 
@@ -95,3 +101,5 @@ public static let isSpecialized = Self(.isSpecialized)
 | 2026-11-05 | 读不通结构体（不是 struct、缺 `Flag`、缺原始类型）时 extension 角色也不加 `OptionSet` 遵循 | 报错由 member 角色负责；成员没生成还加遵循，只会在宏的报错后面堆一串「不遵循协议」的错误 |
 | 2026-11-05 | 位置推不出的 case 不检查：跟在 `#if` 后面、且各分支走完位置不同的隐式值，以及跟在非整数字面量原始值后面的隐式值 | 宏不知道哪个分支生效，猜错会误报；漏查只是回到没有这条检查时的状态 |
 | 2026-11-05 | 构建与测试经 workspace 用本地的预编译 swift-syntax 603.0.1（MxIris-DeveloperTool/swift-syntax-builder 的 `release/603.0.1`），不从源码编译 | 用户要求。workspace 与预编译包都放在仓库外 agent 自己的目录里；Xcode 解析时会改写仓库的 `Package.resolved`，每次都还原，不提交 |
+| 2026-11-05 | 生成的 extension、`rawValue`、`init(rawValue:)`、`init(_:)` 与 static 全部标 `nonisolated` | 在 `DefaultMainActorIsolationClient` 里实测：全部去掉时，从 `nonisolated` 函数用一个留在主线程上的集合，报 `main actor-isolated conformance of 'UploadOptions' to 'OptionSet' cannot be used in nonisolated context`、static `can not be referenced from a nonisolated context`、`call to main actor-isolated initializer 'init(_:)'`；只去掉两个 `OptionSet` witness 上的，遵循照样变成主线程隔离，`init(_:)` 也调不了 `init(rawValue:)`。把 `nonisolated` 用在 `let` 上不会报错：编译器只拒绝可变存储与非 `Sendable` 类型（`TypeCheckAttr.cpp`） |
+| 2026-11-05 | 行为测试不在 `@Test(arguments:)` 里写生成的成员，改传 `Flag` 的 case | 写了就报 `has no member`：挂在声明上的宏的参数里，名字查找不展开别的宏（`NameLookupRequests.cpp`）。这条限制写进使用指南；RuntimeViewer 现有的「每个标志的位值不变」测试正是这种写法，换用本宏时要跟着改 |
