@@ -3,7 +3,7 @@
 `@FlagSet` 贴在结构体上，把它变成一个 `OptionSet`：选项就是嵌套枚举 `Flag` 的各个 case，每个 case 的
 原始值是它那一位的位置。手写这种选项集合时，每加一个标志要改两处（case 与 static），两处对不上不会报错；
 用了宏，枚举就是唯一的定义处。设计与取舍见提案
-[`@FlagSet`：由嵌套的 `Flag` 枚举生成 OptionSet](Evolutions/draft-flag-set-macro.md)。
+[`@FlagSet`：由嵌套的 `Flag` 枚举生成 OptionSet](Evolutions/0014-flag-set-macro.md)。
 
 ```swift
 @FlagSet
