@@ -83,7 +83,7 @@
 - [0014 —— `@FlagSet`：由嵌套的 `Flag` 枚举生成 OptionSet](Evolutions/0014-flag-set-macro.md)（Implemented）
   嵌套枚举 `Flag` 的原始值即位的位置，宏据此生成 `rawValue`、`init(rawValue:)`、`init(_:)` 与每个 case 对应的 `static let`，
   文档注释与 `@available` 随 case 转到 static 上；越界的位（`1 << 64` 是 0，标志会静默变成空集）在 case 那一行报错。
-- [draft —— `@BitField`：按位的范围生成 flag word 的访问器](Evolutions/draft-bit-field-macro.md)（Accepted）
+- [draft —— `@BitField`：按位的范围生成 flag word 的访问器](Evolutions/draft-bit-field-macro.md)（In Progress）
   C++ `FLAGSET_DEFINE_FLAG_ACCESSORS` / `FLAGSET_DEFINE_FIELD_ACCESSORS` 在 Swift 里的对应物：贴在属性上写 `bits: 2..<8`，移位、掩码和类型转换由宏与重载决议生成；认不得的值要么得到 `nil`、要么取 `default:`，没有崩溃这一档。第一个使用方是 MachOSwiftSection 的 ABI 层。
 
 ## 专题说明
@@ -95,6 +95,7 @@
 - [类型化的 NS 集合句柄 —— 用法契约与实现决策](TypedObjectiveCCollections.md) —— 六个泛型 struct 给 `NSArray` / `NSDictionary` / `NSSet` 一族补回元素类型；引用语义、变更方法为什么不是 `mutating`、为什么用 `init(validating:)` 而不是 `as?`。
 - [五个枚举宏 —— 用法契约与实现决策](EnumMacros.md) —— `@Bijection` / `@CaseTag` / `@MirroredCases` / `@DefaultedCases` / `@Projection` 各自的契约与陷阱；为什么宏只认 `Int?` 不认 `Optional<Int>`，`@Bijection` 的 `borrowing` 与条件性 `copy` 绕的是哪个编译器崩溃，以及 `.recurring` 在没有期待类型时为什么有歧义。
 - [`@FlagSet` —— 用法契约与陷阱](FlagSet.md) —— 由嵌套 `Flag` 枚举生成的选项集合：`Flag` 怎么写、文档注释为什么写在 case 上、持久化的位为什么要显式写值并用测试钉住，以及 `@Test(arguments:)` 里为什么看不到生成的 static。
+- [`@BitField` —— 用法契约与陷阱](BitField.md) —— 从 `rawValue` 的某几位读出属性的值：`bits:` 怎么从 C++ 表格或掩码翻写、属性的类型怎么决定读法、为什么非可选的枚举必须写 `default:` 且要写全名、越界的位为什么只在运行时拦下，以及在默认 MainActor 隔离的模块里怎么读。
 - [指定排序定义 —— 用法契约与陷阱](ComparisonSelection.md) —— 一个类型怎么带多套排序规则、调用点怎么选；为什么必须是 `static var`、什么时候写裸 keyPath、`by:` 与 `using:` 的分工。
 - [`NotificationCenter.Backport` —— 类型化通知消息的用法契约与陷阱](NotificationCenterBackport.md) —— 两种消息怎么选、与 `Notification` 互通的规则、六条签名上看不出的契约（主线程假定、token 即生命周期、序列缓冲与弱持有 subject 等）、Foundation 预置的 32 个系统消息（以及它们的简写为什么在 26 的上下文里会选 Foundation 原生的），以及与原生 API 的差异和迁回步骤。
 - [存储层重构与 `@UserDefault` 宏](StorageLayer.md) —— `@Keychain` 宏发布后，运行时与编码协议都是 Keychain 专用的；这篇记录如何把存储层抽象出来以容纳 `@UserDefault`。

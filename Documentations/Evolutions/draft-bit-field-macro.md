@@ -4,6 +4,7 @@
 - **创建日期**: 2026-11-05
 - **最后更新**: 2026-11-05
 - **实现分支**: `feature/bit-field-macro`
+- **配套文档**: [使用指南 `BitField.md`](../BitField.md)
 
 ## 摘要
 
@@ -133,7 +134,7 @@ MachOSwiftSection 的 ABI 层。它的迁移是那边的另一份提案，等这
 - [x] 1. 宏的声明与实现：`bits:` 的两种写法、`default:`、生成的 getter 与 `#sourceLocation`；运行时的重载辅助；注册进插件；展开快照测试。
 - [x] 2. 报错与 Fix-It：每条一个快照测试。（与第 1 步同一个提交：快照都在 `BitFieldMacroTests.swift` 一个文件里。）
 - [x] 3. 行为测试与客户端钉住：上表每一行；`SwiftStdlibToolboxClient` 与 `DefaultMainActorIsolationClient`；干净构建无警告。
-- [ ] 4. 文档：DocC、`CLAUDE.md`、使用指南 `Documentations/BitField.md`、两份索引。
+- [x] 4. 文档：DocC、`CLAUDE.md`、使用指南 `Documentations/BitField.md`、两份索引。
 
 ## 决策日志
 
