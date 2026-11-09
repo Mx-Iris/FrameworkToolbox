@@ -1,6 +1,6 @@
 # Draft - 让 ObjCRuntimeToolbox 的多份副本共用一份运行时状态
 
-- **状态**: Accepted
+- **状态**: Deferred
 - **创建日期**: 2026-11-09
 - **最后更新**: 2026-11-09
 - **实现分支 / PR**: `feature/objc-runtime-shared-state-across-copies`
@@ -8,6 +8,8 @@
 ## 摘要
 
 `ObjCRuntimeToolbox-Static` 让必须自包含的二进制不必经 rpath 加载 framework，代价是一条限制：同一个进程里只能有一个二进制嵌入它。原因是 `DynamicSubclass` 与 `RuntimeMethodHook` 的共享状态放在 Swift 全局变量里，每嵌入一次就多一份互不相识的状态。本提案把这些状态挪进 ObjC 运行时——运行时在进程里只有一个，selector 与类按名字全进程唯一——让任意多份副本（静态、动态混用也一样）读写同一份状态，从而去掉这条限制。
+
+**已暂缓。** 实现第一步就发现，把该 product 声明为 `.static` 之后，同一次构建里两个镜像都链接它会直接编译失败，所以同一进程里的两份副本只可能来自分开构建的镜像（预编译的 framework、在别处编译的注入 dylib 或插件）。等这种情形真的出现时再按下面的方案实现；那时复现环境要改为单独编译 dylib、由宿主在运行时 `dlopen`，不能沿用同一个 SwiftPM 构建。
 
 ## 方案
 
@@ -56,3 +58,4 @@
 | 2026-11-09 | 用户批准，开始实现 | — |
 | 2026-11-09 | `ObjCRuntimeToolbox-Static` 显式声明 `type: .static` | 不写类型时由构建系统决定：同一次构建里有两个镜像链接它，就被悄悄改建成 `@rpath/libObjCRuntimeToolbox-Static.dylib`（实测：可执行文件与 dylib 都改为经 rpath 加载它），正好违背这个 product「自包含」的用途 |
 | 2026-11-09 | 发现：声明为 `.static` 后，同一次构建里两个镜像都链接它会直接报错（"linked as a static library by … This will result in duplication of library code"），单个镜像则正常静态嵌入、不依赖 rpath | 实测于 SwiftPM 的 Swift Build 后端。同一构建内因此不会出现两份副本，本提案剩下的收益只在分开构建的镜像（预编译的 framework、在别处编译的注入 dylib 或插件）上；第 1 步的复现环境也得改成单独编译 dylib、由宿主在运行时 `dlopen`。是否继续交用户决定 |
+| 2026-11-09 | 暂缓（Deferred），只保留 `.static` 修正 | 同一构建内的重复链接已由构建错误拦住，剩下的分开构建情形眼下没有使用方；翻案条件是出现了分开构建、又要在同一进程里各带一份副本的镜像 |
