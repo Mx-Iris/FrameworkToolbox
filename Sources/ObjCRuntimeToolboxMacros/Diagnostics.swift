@@ -110,12 +110,17 @@ func extractStringLiteral(from expression: ExprSyntax) -> String? {
 ///
 /// `macroName` names the macro in every message so the two macro families that
 /// share this pass each report themselves rather than a sibling.
+///
+/// `ownershipConvention` says how the generated code stands in for or calls the
+/// method, which decides the method families it can honour — see
+/// ``OwnershipConvention``.
 @discardableResult
 func diagnoseUnsupportedFunctionShape(
     _ functionDeclaration: FunctionDeclSyntax,
     in context: some MacroExpansionContext,
     overrideMarker: OverrideMarker?,
-    macroName: String = "@DynamicSubclassOverride"
+    macroName: String = "@DynamicSubclassOverride",
+    ownershipConvention: OwnershipConvention = .blockImplementation
 ) -> Bool {
     var canProceed = true
 
@@ -224,6 +229,25 @@ func diagnoseUnsupportedFunctionShape(
             )
             canProceed = false
         }
+    }
+
+    // 7. Method family — ownership the generated code cannot hand over.
+    if let methodFamily = ownershipTransferringFamily(
+        of: functionDeclaration,
+        explicitSelector: overrideMarker?.explicitSelector
+    ), !ownershipConvention.honours(methodFamily) {
+        let selector = FunctionShape(from: functionDeclaration)
+            .selectorString(explicitSelector: overrideMarker?.explicitSelector)
+        context.emit(
+            ownershipTransferringFamilyDiagnostic(
+                selector: selector,
+                methodFamily: methodFamily,
+                convention: ownershipConvention,
+                macroName: macroName
+            ),
+            at: functionDeclaration.name
+        )
+        canProceed = false
     }
 
     return canProceed

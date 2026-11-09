@@ -39,11 +39,18 @@ import ObjectiveC
 /// ## Object ownership
 ///
 /// Object returns are taken through `Unmanaged` and released according to
-/// Objective-C's method families: selectors beginning `alloc`, `new`, `copy` or
-/// `mutableCopy` return +1 and are consumed with `takeRetainedValue()`;
-/// everything else is +0 and uses `takeUnretainedValue()`. Getting this wrong
-/// is the classic way a hand-written proxy over-releases, so it is derived
-/// rather than left to the call site.
+/// Objective-C's method families: a method in the `alloc`, `new`, `copy` or
+/// `mutableCopy` family returns +1 and is consumed with `takeRetainedValue()`;
+/// everything else is +0 and uses `takeUnretainedValue()`. Membership follows
+/// ARC's naming rule — leading underscores aside, the family's name followed by
+/// anything but a lowercase letter — so `_newItem` is +1 and `copyright` is +0.
+/// Getting this wrong is the classic way a hand-written proxy over-releases, so
+/// it is derived rather than left to the call site.
+///
+/// A requirement in the `init` family is rejected at compile time: an
+/// initialiser takes over the reference to its receiver, and a proxy calls into
+/// an object it does not own. Construct such objects with ``DynamicObject``
+/// instead — `ObjC.ClassName(...)` sends `alloc` and the initialiser together.
 ///
 /// ## Example
 ///

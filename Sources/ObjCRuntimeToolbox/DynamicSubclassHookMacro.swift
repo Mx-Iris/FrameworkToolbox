@@ -120,6 +120,13 @@ import ObjectiveC
 /// * `throws`, `async`, `mutating`, `@MainActor`, actor-isolated hook methods.
 /// * Parameters / return types using `inout`, Swift tuples (arity > 1),
 ///   bare Swift closure types, or other shapes not Objective-C representable.
+/// * Overrides of a method in the alloc, copy, mutableCopy, new or init family
+///   that returns an object. Such a method hands its caller a reference to the
+///   result (an initialiser also takes over its receiver's), and the block the
+///   override is installed as returns its object autoreleased, so the caller
+///   would release it once too often. Membership follows ARC's naming rule:
+///   `copyWithZone:` and `_newItem` are in, `copyright` is not, and a family
+///   method returning `Void` — the `copy:` action — is fine.
 /// * `adopts:` entries that aren't `<Type>.self`.
 /// * Missing `of:`, missing both `prefix:` and `suffix:`, or any unknown
 ///   argument label.
@@ -258,7 +265,8 @@ public macro DynamicSubclassHook<BaseClass: NSObject>(
 /// `throws`, `async`, `mutating`, `@MainActor`, actor-isolated, non-ObjC
 /// representable parameters / return types (`inout`, multi-element tuples,
 /// bare Swift closures), non-`_` first parameter labels (without an
-/// `explicitSelector`), reserved baseline selectors (`class`,
+/// `explicitSelector`), methods in the alloc, copy, mutableCopy, new or init
+/// family that return an object, reserved baseline selectors (`class`,
 /// `respondsToSelector:`, `conformsToProtocol:`), and duplicate selectors
 /// within the same hook are all caught and reported with diagnostics
 /// anchored to the user's source token.

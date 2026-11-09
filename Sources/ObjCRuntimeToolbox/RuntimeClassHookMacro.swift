@@ -125,6 +125,14 @@ public macro RuntimeClassHook(_ className: String) = #externalMacro(
 /// multi-element tuples, bare Swift closures) are all rejected, as is a non-`_`
 /// first parameter label without an explicit selector.
 ///
+/// So is a replacement for a method in the alloc, copy, mutableCopy, new or init
+/// family that returns an object. Such a method hands its caller a reference to
+/// the result — an initialiser also takes over its receiver's — and the block
+/// the replacement is installed as returns its object autoreleased, so the
+/// caller would release it once too often. Membership follows ARC's naming
+/// rule, explicit selectors included: `copyItem` and `_newItem` are in,
+/// `copyright` is not, and a family method returning `Void` is fine.
+///
 /// - Parameters:
 ///   - explicitSelector: Objective-C selector to use instead of the one derived
 ///     from the Swift signature. Pass when the signature cannot naturally

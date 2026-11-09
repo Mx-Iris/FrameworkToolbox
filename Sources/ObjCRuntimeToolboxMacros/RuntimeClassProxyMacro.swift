@@ -195,7 +195,8 @@ private func buildMethodMember(
         functionDeclaration,
         in: context,
         overrideMarker: nil,
-        macroName: runtimeClassProxyMacroName
+        macroName: runtimeClassProxyMacroName,
+        ownershipConvention: .directCall
     )
     guard canProceed else { return nil }
 
@@ -285,6 +286,25 @@ private func buildPropertyMember(
                 """
             ),
             at: propertyTypeSyntax
+        )
+        return nil
+    }
+
+    // A getter is a method like any other: named into the init family and returning an object, it
+    // would take over the reference to the host it is called on.
+    let returnsObject = !ObjCTypeEncoding.isKnownType(propertyTypeText)
+        || ObjCTypeEncoding.encoding(forTypeText: propertyTypeText) == "@"
+    if returnsObject, let methodFamily = ObjCMethodFamily(selectorName: propertyName),
+       !OwnershipConvention.directCall.honours(methodFamily)
+    {
+        context.emit(
+            ownershipTransferringFamilyDiagnostic(
+                selector: propertyName,
+                methodFamily: methodFamily,
+                convention: .directCall,
+                macroName: runtimeClassProxyMacroName
+            ),
+            at: identifierPattern
         )
         return nil
     }
@@ -450,18 +470,13 @@ private func buildDispatchBody(
     return lines.map { indentation + $0 }.joined(separator: "\n")
 }
 
-/// Objective-C's method families: these four return +1 and the caller owns the
-/// result. Everything else returns +0.
+/// Objective-C's method families: a method in one of them returns +1 and the
+/// caller owns the result. Everything else returns +0. Membership follows ARC's
+/// naming rule — ``ObjCMethodFamily`` — so `newspaper` is out and `_newItem` is
+/// in. The init family never reaches here: a proxy cannot call an initialiser,
+/// and `diagnoseUnsupportedFunctionShape` rejects one.
 private func selectorReturnsRetainedValue(_ selectorString: String) -> Bool {
-    for family in ["alloc", "new", "copy", "mutableCopy"] {
-        guard selectorString.hasPrefix(family) else { continue }
-        // `newspaper` is not the `new` family; the character after the prefix
-        // must not be a lowercase letter.
-        let remainder = selectorString.dropFirst(family.count)
-        if let next = remainder.first, next.isLowercase { continue }
-        return true
-    }
-    return false
+    ObjCMethodFamily(selectorName: selectorString) != nil
 }
 
 // MARK: - Optional Handling
