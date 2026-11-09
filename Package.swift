@@ -88,6 +88,18 @@ let package = Package(
             targets: ["CoreFoundationToolbox"]
         ),
         .library(
+            // Shows a table of millions of rows without building them: a row
+            // source that fetches any range on demand, a cache that keeps only
+            // the windows around the visible rows, a background row search, and a
+            // controller that runs them for a table. A product of its own rather
+            // than part of `FoundationToolbox`, because most of that library's
+            // users have no such table. It sits on `OSToolbox` alone, for the
+            // logging and signpost macros, and names no UI framework, so a
+            // renderer-agnostic module can depend on it.
+            name: "WindowedRowsToolbox",
+            targets: ["WindowedRowsToolbox"]
+        ),
+        .library(
             // `.dynamic` keeps the runtime side-table (sharedSideTable,
             // sharedSubclassCache, sentinelAssociationKey) as a single
             // process-wide copy. Without it, every dylib that statically
@@ -199,6 +211,12 @@ let package = Package(
             name: "CoreFoundationToolbox",
             dependencies: [
                 "FrameworkToolbox",
+            ]
+        ),
+        .target(
+            name: "WindowedRowsToolbox",
+            dependencies: [
+                "OSToolbox",
             ]
         ),
         .target(
@@ -428,6 +446,12 @@ let package = Package(
             ]
         ),
         .testTarget(
+            name: "WindowedRowsToolboxTests",
+            dependencies: [
+                "WindowedRowsToolbox",
+            ]
+        ),
+        .testTarget(
             name: "ObjCRuntimeToolboxTests",
             dependencies: [
                 "ObjCRuntimeToolbox",
@@ -496,7 +520,7 @@ extension Target.Dependency {
     )
 }
 
-// Applied here rather than on each target: there are 39 of them, and a setting that has to
+// Applied here rather than on each target: there are 41 of them, and a setting that has to
 // be remembered every time a target is added is a setting that will be forgotten.
 // `PointerAuthenticationSupport` is excluded because it is a C target with no Swift to
 // compile.

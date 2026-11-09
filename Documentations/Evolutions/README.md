@@ -48,5 +48,6 @@ SPM library product，使用方以源码依赖并重新编译，未开启 librar
 | [0015](0015-bit-field-macro.md) | `@BitField`：按位的范围生成 flag word 的访问器 | Implemented |
 | [0016](0016-runtime-proxy-coverage.md) | 补齐 runtime proxy：init、类方法、block 参数与按对象核对的 proxy | Implemented |
 | [draft](draft-objc-runtime-shared-state-across-copies.md) | 让 ObjCRuntimeToolbox 的多份副本共用一份运行时状态（暂不实现） | Deferred |
+| [draft](draft-windowed-rows-toolbox.md) | WindowedRowsToolbox：上百万行的表格按需取行 | In Progress |
 
 `Specs/` 与 `Plans/` 是提案制确立前的产物，见[上级索引](../README.md)，保持原样不迁移。
