@@ -54,3 +54,5 @@
 | 2026-11-09 | 共享状态放进 ObjC 运行时，不采用「第一个加载的副本当主、其余副本转发给它」 | 转发要把整套 API（含 Swift 闭包与泛型）变成跨副本的约定；放进运行时只需约定几个 key 的名字与值的形状 |
 | 2026-11-09 | 走轻量档 | 不改公开 API，只改内部存储方式与一处宏展开 |
 | 2026-11-09 | 用户批准，开始实现 | — |
+| 2026-11-09 | `ObjCRuntimeToolbox-Static` 显式声明 `type: .static` | 不写类型时由构建系统决定：同一次构建里有两个镜像链接它，就被悄悄改建成 `@rpath/libObjCRuntimeToolbox-Static.dylib`（实测：可执行文件与 dylib 都改为经 rpath 加载它），正好违背这个 product「自包含」的用途 |
+| 2026-11-09 | 发现：声明为 `.static` 后，同一次构建里两个镜像都链接它会直接报错（"linked as a static library by … This will result in duplication of library code"），单个镜像则正常静态嵌入、不依赖 rpath | 实测于 SwiftPM 的 Swift Build 后端。同一构建内因此不会出现两份副本，本提案剩下的收益只在分开构建的镜像（预编译的 framework、在别处编译的注入 dylib 或插件）上；第 1 步的复现环境也得改成单独编译 dylib、由宿主在运行时 `dlopen`。是否继续交用户决定 |

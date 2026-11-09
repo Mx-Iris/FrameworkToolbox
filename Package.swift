@@ -111,16 +111,29 @@ let package = Package(
             // an rpath). The target has no runtime dependency of its own, so
             // nothing else comes along with it.
             //
+            // `type: .static` has to be spelled out. Left automatic, the build
+            // system decides, and when two images in one build link the
+            // product it quietly builds it as
+            // `@rpath/libObjCRuntimeToolbox-Static.dylib` instead — measured
+            // with an executable and a dylib that both linked it, which then
+            // both loaded it through @rpath, exactly what this product exists
+            // to avoid. Spelled `.static`, the same build fails instead
+            // ("linked as a static library by … This will result in
+            // duplication of library code").
+            //
             // The price is the single-copy guarantee `.dynamic` gives: the
             // runtime state is per image, so exactly one image per *process*
-            // may embed it. An app and a framework or plug-in it loads each
-            // linking this product, or one linking this and another the
-            // dynamic product, gives two independent copies — the same method
-            // can then be hooked twice, and `DynamicSubclass` reference counts
-            // diverge so restoring an object's original class goes wrong.
-            // Separate processes (app extensions, helper tools) each carrying
-            // their own copy is fine.
+            // may embed it. Within one build the error above enforces that;
+            // what no build can see is an image built separately — a prebuilt
+            // framework, or a dylib or plug-in built elsewhere and loaded into
+            // the same process — carrying a copy of its own, or one linking
+            // the dynamic product. Two copies keep independent state: the
+            // same method can then be hooked twice, and `DynamicSubclass`
+            // reference counts diverge so restoring an object's original
+            // class goes wrong. Separate processes (app extensions, helper
+            // tools) each carrying their own copy is fine.
             name: "ObjCRuntimeToolbox-Static",
+            type: .static,
             targets: ["ObjCRuntimeToolbox"]
         ),
     ],
