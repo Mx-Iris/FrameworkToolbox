@@ -88,6 +88,8 @@
 - [draft —— 让 `ObjCRuntimeToolbox` 的多份副本共用一份运行时状态](Evolutions/draft-objc-runtime-shared-state-across-copies.md)（Deferred，**暂不实现**）
   `ObjCRuntimeToolbox-Static` 要求同一进程只能嵌一份；方案是把动态子类与方法 hook 的共享状态从 Swift 全局变量挪进 ObjC 运行时（关联对象、按名字唯一的 selector 与类）。
   暂缓的原因：声明为 `.static` 后，同一构建内的重复链接会直接编译失败，两份副本只可能来自分开构建的镜像。文内留有方案、实测结果与翻案条件。
+- [draft —— 补齐 runtime proxy：init、类方法、block 参数与按对象核对的 proxy](Evolutions/draft-runtime-proxy-coverage.md)（Accepted）
+  `@RuntimeClassProxy` 新增 `init?` 与 `static` 要求、block 参数编码为 `@?`，另加按对象自己的类核对的 `@RuntimeObjectProxy`，让类型编码一律由声明推出。
 
 ## 专题说明
 
