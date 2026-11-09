@@ -30,3 +30,43 @@ nonisolated func installAndReadInBackground(_ host: DefaultIsolationHost) -> Int
     try? DefaultIsolationHostHooks.install()
     return DefaultIsolationHostSurfaceImplementation(host)?.level()
 }
+
+// Initialisers, class methods, block parameters and `@RuntimeObjectProxy`: each
+// generated witness has to be `nonisolated` too, or it inherits the protocol's
+// isolation and cannot be reached from the function below.
+
+@objc(DefaultIsolationConstructible)
+nonisolated final class DefaultIsolationConstructible: NSObject {
+    @objc let level: Int
+
+    @objc init(level: Int) {
+        self.level = level
+    }
+
+    @objc class func make() -> DefaultIsolationConstructible {
+        DefaultIsolationConstructible(level: 2)
+    }
+
+    @objc dynamic func deliver(_ handler: @escaping (Int) -> Void) {
+        handler(level)
+    }
+}
+
+@RuntimeClassProxy("DefaultIsolationConstructible")
+protocol DefaultIsolationConstructibleSurface {
+    init?(level: Int)
+    static func make() -> DefaultIsolationConstructible?
+    func deliver(_ handler: @escaping @convention(block) (Int) -> Void)
+}
+
+@RuntimeObjectProxy
+protocol DefaultIsolationLevelled {
+    func level() -> Int?
+}
+
+nonisolated func constructAndReadInBackground() -> Int? {
+    let constructed = DefaultIsolationConstructibleSurfaceImplementation(level: 3)
+    constructed?.deliver { _ in }
+    _ = DefaultIsolationConstructibleSurfaceImplementation.make()
+    return DefaultIsolationLevelledImplementation(DefaultIsolationHost())?.level()
+}

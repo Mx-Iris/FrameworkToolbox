@@ -41,10 +41,11 @@ enum OwnershipConvention {
     /// over nothing from its receiver, so it cannot stand in for a method in any of the families.
     case blockImplementation
 
-    /// A direct call through the method's implementation, as `@RuntimeClassProxy` generates. The
-    /// call takes over the reference a method in the alloc, copy, mutableCopy or new family hands
-    /// back, but it calls into an object it does not own, so it cannot give an initialiser its
-    /// receiver.
+    /// A direct call through the method's implementation, as `@RuntimeClassProxy` and
+    /// `@RuntimeObjectProxy` generate for methods and properties. The call takes over the reference
+    /// a method in the alloc, copy, mutableCopy or new family hands back, but it calls into an
+    /// object it does not own, so it cannot give an initialiser its receiver. An `init?`
+    /// requirement can: it calls the initialiser on the object it has just allocated.
     case directCall
 
     func honours(_ methodFamily: ObjCMethodFamily) -> Bool {
@@ -109,7 +110,7 @@ func ownershipTransferringFamilyDiagnostic(
             "initializerCannotBeProxied",
             """
             \(macroName): '\(selector)' is in the init family, which takes over the reference to its receiver, and a proxy calls into an object it does not own. \
-            Create the object with DynamicObject instead: ObjC.ClassName(...) sends alloc and the initialiser together.
+            Declare it as an initialiser instead — init?(frame:) for initWithFrame: — which sends alloc and the initialiser together.
             """
         )
     }

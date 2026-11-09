@@ -10,7 +10,30 @@ import SwiftSyntaxMacros
 /// with one signature-checked `@convention(c)` dispatch per requirement.
 public enum RuntimeClassProxyMacro {}
 
+/// `@RuntimeObjectProxy` — peer macro on a protocol.
+///
+/// Generates the same `struct <ProtocolName>Implementation` as
+/// `@RuntimeClassProxy`, checked against the class of each object it wraps
+/// rather than against a class named up front.
+public enum RuntimeObjectProxyMacro {}
+
 let runtimeClassProxyMacroName = "@RuntimeClassProxy"
+let runtimeObjectProxyMacroName = "@RuntimeObjectProxy"
+
+/// What a generated proxy calls into.
+private enum ProxyHost {
+    /// One class, named in the attribute and checked once.
+    case namedClass(String)
+    /// Whatever class each wrapped object turns out to have, checked once per class.
+    case wrappedObjectsClass
+
+    var macroName: String {
+        switch self {
+        case .namedClass: runtimeClassProxyMacroName
+        case .wrappedObjectsClass: runtimeObjectProxyMacroName
+        }
+    }
+}
 
 extension RuntimeClassProxyMacro: PeerMacro {
     public static func expansion(
@@ -18,48 +41,91 @@ extension RuntimeClassProxyMacro: PeerMacro {
         providingPeersOf declaration: some DeclSyntaxProtocol,
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
-        guard let protocolDeclaration = declaration.as(ProtocolDeclSyntax.self) else {
-            context.emit(
-                .error(
-                    "proxyMustBeProtocol",
-                    """
-                    \(runtimeClassProxyMacroName) can only be applied to a protocol. \
-                    Protocol requirements have no bodies, which is what lets the declaration stay plain Swift with nothing to stub out.
-                    """
-                ),
-                at: node
-            )
+        guard let protocolDeclaration = proxiedProtocol(declaration, attribute: node, macroName: runtimeClassProxyMacroName, in: context),
+              let className = parseProxyClassNameArgument(node, in: context)
+        else {
             return []
         }
+        return [expandProxy(of: protocolDeclaration, attribute: node, host: .namedClass(className), in: context)]
+    }
+}
 
-        guard let className = parseProxyClassNameArgument(node, in: context) else {
+extension RuntimeObjectProxyMacro: PeerMacro {
+    public static func expansion(
+        of node: AttributeSyntax,
+        providingPeersOf declaration: some DeclSyntaxProtocol,
+        in context: some MacroExpansionContext
+    ) throws -> [DeclSyntax] {
+        guard let protocolDeclaration = proxiedProtocol(declaration, attribute: node, macroName: runtimeObjectProxyMacroName, in: context) else {
             return []
         }
+        return [expandProxy(of: protocolDeclaration, attribute: node, host: .wrappedObjectsClass, in: context)]
+    }
+}
 
-        let protocolName = protocolDeclaration.name.text
-        let implementationTypeName = "\(protocolName)Implementation"
+private func proxiedProtocol(
+    _ declaration: some DeclSyntaxProtocol,
+    attribute: AttributeSyntax,
+    macroName: String,
+    in context: some MacroExpansionContext
+) -> ProtocolDeclSyntax? {
+    guard let protocolDeclaration = declaration.as(ProtocolDeclSyntax.self) else {
+        context.emit(
+            .error(
+                "proxyMustBeProtocol",
+                """
+                \(macroName) can only be applied to a protocol. \
+                Protocol requirements have no bodies, which is what lets the declaration stay plain Swift with nothing to stub out.
+                """
+            ),
+            at: attribute
+        )
+        return nil
+    }
+    return protocolDeclaration
+}
 
-        let members = collectProxyMembers(in: protocolDeclaration, attribute: node, in: context)
+private func expandProxy(
+    of protocolDeclaration: ProtocolDeclSyntax,
+    attribute: AttributeSyntax,
+    host: ProxyHost,
+    in context: some MacroExpansionContext
+) -> DeclSyntax {
+    let protocolName = protocolDeclaration.name.text
+    let implementationTypeName = "\(protocolName)Implementation"
 
-        let requirementEntries = members
-            .flatMap { $0.requirements }
-            .map { requirement in
-                ".init(selector: NSSelectorFromString(\(stringLiteral(requirement.selectorString))), typeEncoding: \(requirement.typeEncodingExpression))"
-            }
-            .joined(separator: ",\n        ")
+    let members = collectProxyMembers(
+        in: protocolDeclaration,
+        attribute: attribute,
+        host: host,
+        implementationTypeName: implementationTypeName,
+        in: context
+    )
 
-        let memberImplementations = members
-            .map { $0.implementationText }
-            .joined(separator: "\n\n    ")
+    let requirementEntries = members
+        .flatMap { $0.requirements }
+        .map { requirement in
+            // Instance methods keep the two-argument spelling every existing
+            // expansion has; only a class method says which kind it is.
+            let classMethodArgument = requirement.isInstanceMethod ? "" : ", isInstanceMethod: false"
+            return ".init(selector: NSSelectorFromString(\(stringLiteral(requirement.selectorString))), typeEncoding: \(requirement.typeEncodingExpression)\(classMethodArgument))"
+        }
+        .joined(separator: ",\n        ")
 
-        let requirementsArrayText = members.isEmpty ? "[]" : "[\n        \(requirementEntries),\n    ]"
+    let memberImplementations = members
+        .map { $0.implementationText }
+        .joined(separator: "\n\n    ")
 
-        // `nonisolated` because a proxy calls into its host synchronously from
-        // wherever its caller runs. In a module whose default isolation is
-        // `MainActor` an unmarked struct would be main-actor isolated, and a
-        // background thread could not even construct one; anywhere else the
-        // struct was nonisolated already.
-        let generated: DeclSyntax = """
+    let requirementsArrayText = members.isEmpty ? "[]" : "[\n        \(requirementEntries),\n    ]"
+
+    // `nonisolated` because a proxy calls into its host synchronously from
+    // wherever its caller runs. In a module whose default isolation is
+    // `MainActor` an unmarked struct would be main-actor isolated, and a
+    // background thread could not even construct one; anywhere else the
+    // struct was nonisolated already.
+    switch host {
+    case .namedClass(let className):
+        return """
         /// Signature-checked caller for `\(raw: className)`, generated by `\(raw: runtimeClassProxyMacroName)`.
         nonisolated struct \(raw: implementationTypeName): \(raw: protocolName) {
             /// Name of the Objective-C class this proxy calls into.
@@ -90,8 +156,31 @@ extension RuntimeClassProxyMacro: PeerMacro {
             \(raw: memberImplementations)
         }
         """
+    case .wrappedObjectsClass:
+        return """
+        /// Signature-checked caller for objects of whatever class they turn out to have, generated by `\(raw: runtimeObjectProxyMacroName)`.
+        nonisolated struct \(raw: implementationTypeName): \(raw: protocolName) {
+            /// Every method this proxy dispatches, with the signature it assumes.
+            static let methodRequirements: [ObjCRuntimeToolbox.RuntimeClassProxySupport.MethodRequirement] = \(raw: requirementsArrayText)
 
-        return [generated]
+            /// The object being called into.
+            let host: AnyObject
+
+            /// Wraps `host`, or fails when its class does not have every
+            /// requirement with the signature this proxy was generated against.
+            /// Checked once per class; a mismatch is logged with both encodings.
+            init?(_ host: AnyObject) {
+                guard ObjCRuntimeToolbox.RuntimeClassProxySupport.validate(
+                    classOf: host,
+                    requirements: Self.methodRequirements,
+                    proxyTypeName: \(literal: implementationTypeName)
+                ) else { return nil }
+                self.host = host
+            }
+
+            \(raw: memberImplementations)
+        }
+        """
     }
 }
 
@@ -134,6 +223,7 @@ private struct ProxyRequirement {
     let selectorString: String
     /// Source text evaluating to the encoding — see `ObjCTypeEncoding.methodEncodingExpression`.
     let typeEncodingExpression: String
+    var isInstanceMethod = true
 }
 
 private struct ProxyMember {
@@ -141,23 +231,67 @@ private struct ProxyMember {
     let implementationText: String
 }
 
+/// Who receives a dispatched message.
+private enum DispatchReceiver {
+    /// The wrapped object, for an instance method or property.
+    case host
+    /// The proxied class itself, for a `static` requirement.
+    case proxiedClass
+
+    var isInstanceMethod: Bool { self == .host }
+}
+
 private func collectProxyMembers(
     in protocolDeclaration: ProtocolDeclSyntax,
     attribute: AttributeSyntax,
+    host: ProxyHost,
+    implementationTypeName: String,
     in context: some MacroExpansionContext
 ) -> [ProxyMember] {
     var collected: [ProxyMember] = []
 
     for member in protocolDeclaration.memberBlock.members {
         if let functionDeclaration = member.decl.as(FunctionDeclSyntax.self) {
-            if let proxyMember = buildMethodMember(functionDeclaration, in: context) {
+            let isStatic = declaresStatic(functionDeclaration.modifiers)
+            if isStatic, !diagnoseClassLevelRequirement(at: Syntax(functionDeclaration.name), host: host, in: context) {
+                continue
+            }
+            if let proxyMember = buildMethodMember(
+                functionDeclaration,
+                receiver: isStatic ? .proxiedClass : .host,
+                macroName: host.macroName,
+                in: context
+            ) {
                 collected.append(proxyMember)
             }
             continue
         }
 
         if let variableDeclaration = member.decl.as(VariableDeclSyntax.self) {
-            if let proxyMember = buildPropertyMember(variableDeclaration, in: context) {
+            let isStatic = declaresStatic(variableDeclaration.modifiers)
+            if isStatic, !diagnoseClassLevelRequirement(at: Syntax(variableDeclaration.bindingSpecifier), host: host, in: context) {
+                continue
+            }
+            if let proxyMember = buildPropertyMember(
+                variableDeclaration,
+                receiver: isStatic ? .proxiedClass : .host,
+                macroName: host.macroName,
+                in: context
+            ) {
+                collected.append(proxyMember)
+            }
+            continue
+        }
+
+        if let initializerDeclaration = member.decl.as(InitializerDeclSyntax.self) {
+            guard diagnoseClassLevelRequirement(at: Syntax(initializerDeclaration.initKeyword), host: host, in: context) else {
+                continue
+            }
+            if let proxyMember = buildInitializerMember(
+                initializerDeclaration,
+                implementationTypeName: implementationTypeName,
+                in: context
+            ) {
                 collected.append(proxyMember)
             }
             continue
@@ -166,7 +300,7 @@ private func collectProxyMembers(
         context.emit(
             .warning(
                 "unsupportedProxyMember",
-                "\(runtimeClassProxyMacroName): only methods and properties can be proxied. This requirement is not implemented by the generated type, so the protocol will not be satisfied."
+                "\(host.macroName): only methods, properties and initialisers can be proxied. This requirement is not implemented by the generated type, so the protocol will not be satisfied."
             ),
             at: member.decl
         )
@@ -176,7 +310,7 @@ private func collectProxyMembers(
         context.emit(
             .warning(
                 "emptyProxyProtocol",
-                "\(runtimeClassProxyMacroName): the protocol declares nothing to proxy. The generated type will validate an empty requirement list and dispatch nothing."
+                "\(host.macroName): the protocol declares nothing to proxy. The generated type will validate an empty requirement list and dispatch nothing."
             ),
             at: attribute
         )
@@ -185,17 +319,46 @@ private func collectProxyMembers(
     return collected
 }
 
+private func declaresStatic(_ modifiers: DeclModifierListSyntax) -> Bool {
+    modifiers.contains { modifier in
+        modifier.name.tokenKind == .keyword(.static) || modifier.name.tokenKind == .keyword(.class)
+    }
+}
+
+/// An initialiser or a `static` requirement needs a class to send `alloc` or the
+/// class method to, which only `@RuntimeClassProxy` names.
+private func diagnoseClassLevelRequirement(
+    at anchor: Syntax,
+    host: ProxyHost,
+    in context: some MacroExpansionContext
+) -> Bool {
+    guard case .wrappedObjectsClass = host else { return true }
+    context.emit(
+        .error(
+            "classLevelRequirementNeedsAClass",
+            """
+            \(runtimeObjectProxyMacroName) calls into the objects it is handed and names no class, so it has no class to send a class method or alloc to. \
+            Declare this requirement in a \(runtimeClassProxyMacroName)("ClassName") protocol instead.
+            """
+        ),
+        at: anchor
+    )
+    return false
+}
+
 // MARK: - Methods
 
 private func buildMethodMember(
     _ functionDeclaration: FunctionDeclSyntax,
+    receiver: DispatchReceiver,
+    macroName: String,
     in context: some MacroExpansionContext
 ) -> ProxyMember? {
     let canProceed = diagnoseUnsupportedFunctionShape(
         functionDeclaration,
         in: context,
         overrideMarker: nil,
-        macroName: runtimeClassProxyMacroName,
+        macroName: macroName,
         ownershipConvention: .directCall
     )
     guard canProceed else { return nil }
@@ -210,7 +373,7 @@ private func buildMethodMember(
             .error(
                 "proxyReturnMustBeOptional",
                 """
-                \(runtimeClassProxyMacroName): a returning proxy method must declare an optional return type. \
+                \(macroName): a returning proxy method must declare an optional return type. \
                 Dispatch into a class resolved at runtime can fail, and there is no honest default to invent — write '\(returnTypeSyntax.wrappedInOptional)' and handle nil (or '?? someDefault') at the call site.
                 """
             ),
@@ -225,24 +388,163 @@ private func buildMethodMember(
         parameterTypeTexts: shape.parameters.map { $0.typeText }
     )
 
-    let declaredParameterList = shape.parameters.map { parameter in
-        let label = parameter.externalLabel == parameter.internalName
-            ? parameter.externalLabel
-            : "\(parameter.externalLabel) \(parameter.internalName)"
-        return "\(label): \(parameter.typeText)"
-    }.joined(separator: ", ")
-
     let returnClauseText = shape.returnTypeText.map { " -> \($0)" } ?? ""
     let bodyText = buildDispatchBody(
         selectorString: selectorString,
+        receiver: receiver,
         parameterTypeTexts: shape.parameters.map { $0.typeText },
         argumentExpressions: shape.parameters.map { $0.internalName },
         declaredReturnTypeText: shape.returnTypeText
     )
 
+    let staticKeyword = receiver == .proxiedClass ? "static " : ""
     let implementationText = """
-    nonisolated func \(shape.baseName)(\(declaredParameterList))\(returnClauseText) {
+    nonisolated \(staticKeyword)func \(shape.baseName)(\(declaredParameterListText(shape.parameters)))\(returnClauseText) {
     \(bodyText)
+        }
+    """
+
+    return ProxyMember(
+        requirements: [ProxyRequirement(
+            selectorString: selectorString,
+            typeEncodingExpression: typeEncoding,
+            isInstanceMethod: receiver.isInstanceMethod
+        )],
+        implementationText: implementationText
+    )
+}
+
+/// A parameter list as the protocol declared it, for the generated member that satisfies it.
+private func declaredParameterListText(_ parameters: [FunctionShape.Parameter]) -> String {
+    parameters.map { parameter in
+        let label = parameter.externalLabel == parameter.internalName
+            ? parameter.externalLabel
+            : "\(parameter.externalLabel) \(parameter.internalName)"
+        return "\(label): \(parameter.typeText)"
+    }.joined(separator: ", ")
+}
+
+// MARK: - Initialisers
+
+/// `init?(…)`: sends `alloc` to the proxied class and the initialiser to what it
+/// returns, then wraps the result.
+///
+/// Unlike a method in the init family, which a proxy would call on an object it
+/// does not own, the initialiser here runs on the object the proxy has just
+/// allocated, so the reference it takes over is one the proxy has to give. The
+/// two references change hands as raw pointers, out of reach of Swift's own
+/// reference counting — see `RuntimeClassProxySupport.construct`.
+private func buildInitializerMember(
+    _ initializerDeclaration: InitializerDeclSyntax,
+    implementationTypeName: String,
+    in context: some MacroExpansionContext
+) -> ProxyMember? {
+    let macroName = runtimeClassProxyMacroName
+    var canProceed = true
+
+    if initializerDeclaration.optionalMark?.text != "?" {
+        context.emit(
+            .error(
+                "proxyInitializerMustBeFailable",
+                """
+                \(macroName): a proxied initialiser must be failable, 'init?'. \
+                Constructing an instance of a class resolved at runtime can fail — the class can be missing, or its initialiser can return nil.
+                """
+            ),
+            at: initializerDeclaration.optionalMark.map(Syntax.init) ?? Syntax(initializerDeclaration.initKeyword)
+        )
+        canProceed = false
+    }
+
+    if let genericParameterClause = initializerDeclaration.genericParameterClause {
+        context.emit(
+            .error(
+                "proxyInitializerCannotBeGeneric",
+                "\(macroName): a proxied initialiser cannot be generic — Objective-C has no generic methods to call."
+            ),
+            at: genericParameterClause
+        )
+        canProceed = false
+    }
+
+    if let effects = initializerDeclaration.signature.effectSpecifiers {
+        if let asyncSpecifier = effects.asyncSpecifier {
+            context.emit(
+                .error(
+                    "asyncNotSupported",
+                    "\(macroName) does not support 'async' initialisers — an Objective-C initialiser returns synchronously."
+                ),
+                at: asyncSpecifier
+            )
+            canProceed = false
+        }
+        if let throwsClause = effects.throwsClause {
+            context.emit(
+                .error(
+                    "throwsNotSupported",
+                    "\(macroName) does not support 'throws' initialisers — a failing Objective-C initialiser returns nil, which 'init?' already reports."
+                ),
+                at: throwsClause
+            )
+            canProceed = false
+        }
+    }
+
+    let parameterList = initializerDeclaration.signature.parameterClause.parameters
+    if let firstParameter = parameterList.first, firstParameter.firstName.text == "_" {
+        context.emit(
+            .error(
+                "proxyInitializerFirstParameterNeedsLabel",
+                """
+                \(macroName): an initialiser's first parameter needs a label, because the label names the selector — \
+                init(frame:) calls initWithFrame:, the way Swift imports Objective-C initialisers.
+                """
+            ),
+            at: firstParameter.firstName
+        )
+        canProceed = false
+    }
+
+    for parameter in parameterList where !diagnoseObjcRepresentable(parameter.type, role: "parameter", in: context, macroName: macroName) {
+        canProceed = false
+    }
+
+    guard canProceed else { return nil }
+
+    let parameters = parameterList.map { parameter in
+        FunctionShape.Parameter(
+            externalLabel: parameter.firstName.text,
+            internalName: parameter.secondName?.text ?? parameter.firstName.text,
+            typeText: parameter.type.trimmedDescription,
+            typeSyntax: parameter.type
+        )
+    }
+
+    let selectorString = initializerSelector(for: parameters)
+    let typeEncoding = ObjCTypeEncoding.methodEncodingExpression(
+        returnTypeText: "AnyObject",
+        parameterTypeTexts: parameters.map { $0.typeText }
+    )
+    let conventionParameterTypes = (["UnsafeMutableRawPointer", "Selector"] + parameters.map { $0.typeText })
+        .joined(separator: ", ")
+    let callArguments = (["allocatedInstance", "selector"] + parameters.map { $0.internalName })
+        .joined(separator: ", ")
+
+    // `nonisolated` like every other witness here: one for a requirement of a
+    // main-actor-isolated protocol inherits that isolation otherwise.
+    let implementationText = """
+    nonisolated init?(\(declaredParameterListText(parameters))) {
+            let selector = NSSelectorFromString(\(stringLiteral(selectorString)))
+            guard Self.isSupported, let constructed = ObjCRuntimeToolbox.RuntimeClassProxySupport.construct(
+                className: Self.runtimeClassName,
+                initialiser: selector,
+                typeEncoding: \(typeEncoding),
+                proxyTypeName: \(stringLiteral(implementationTypeName)),
+                initialising: { initialiserImplementation, allocatedInstance in
+                    unsafeBitCast(initialiserImplementation, to: (@convention(c) (\(conventionParameterTypes)) -> UnsafeMutableRawPointer?).self)(\(callArguments))
+                }
+            ) else { return nil }
+            self.host = constructed
         }
     """
 
@@ -252,10 +554,25 @@ private func buildMethodMember(
     )
 }
 
+/// The selector Swift imports as this initialiser: `init()` is `init`, and
+/// `init(layerSource:rows:)` is `initWithLayerSource:rows:` — `With` and the first
+/// label capitalised, then each further label.
+private func initializerSelector(for parameters: [FunctionShape.Parameter]) -> String {
+    guard let firstParameter = parameters.first else { return "init" }
+    let firstLabel = firstParameter.externalLabel
+    var selector = "initWith\(firstLabel.prefix(1).uppercased())\(firstLabel.dropFirst()):"
+    for parameter in parameters.dropFirst() {
+        selector += (parameter.externalLabel == "_" ? "" : parameter.externalLabel) + ":"
+    }
+    return selector
+}
+
 // MARK: - Properties
 
 private func buildPropertyMember(
     _ variableDeclaration: VariableDeclSyntax,
+    receiver: DispatchReceiver,
+    macroName: String,
     in context: some MacroExpansionContext
 ) -> ProxyMember? {
     guard let binding = variableDeclaration.bindings.first,
@@ -265,7 +582,7 @@ private func buildPropertyMember(
         context.emit(
             .error(
                 "proxyPropertyNeedsExplicitType",
-                "\(runtimeClassProxyMacroName): a proxied property needs an explicit type annotation."
+                "\(macroName): a proxied property needs an explicit type annotation."
             ),
             at: variableDeclaration
         )
@@ -281,9 +598,21 @@ private func buildPropertyMember(
             .error(
                 "proxyPropertyMustBeOptional",
                 """
-                \(runtimeClassProxyMacroName): a proxied property must be optional. \
+                \(macroName): a proxied property must be optional. \
                 Reading a class resolved at runtime can fail, and there is no honest default to invent — write '\(propertyTypeSyntax.wrappedInOptional)' and handle nil at the call site.
                 """
+            ),
+            at: propertyTypeSyntax
+        )
+        return nil
+    }
+
+    // Its getter would return a block, which is not supported — see `diagnoseObjcRepresentable`.
+    guard !ObjCTypeEncoding.isBlockType(propertyTypeText) else {
+        context.emit(
+            .error(
+                "blockNotSupportedHere",
+                "\(macroName) property cannot be a block. Blocks are supported as parameters only."
             ),
             at: propertyTypeSyntax
         )
@@ -302,7 +631,7 @@ private func buildPropertyMember(
                 selector: propertyName,
                 methodFamily: methodFamily,
                 convention: .directCall,
-                macroName: runtimeClassProxyMacroName
+                macroName: macroName
             ),
             at: identifierPattern
         )
@@ -311,18 +640,34 @@ private func buildPropertyMember(
 
     let hasSetter = binding.accessorBlock.map(accessorBlockDeclaresSetter) ?? false
 
+    if hasSetter, receiver == .proxiedClass {
+        context.emit(
+            .error(
+                "staticProxyPropertyMustBeReadOnly",
+                "\(macroName): a static property must be read-only, '{ get }'. It reads a class method; setting one is not supported."
+            ),
+            at: variableDeclaration.bindingSpecifier
+        )
+        return nil
+    }
+
     let getterSelectorString = propertyName
     let getterEncoding = ObjCTypeEncoding.methodEncodingExpression(
         returnTypeText: propertyTypeText,
         parameterTypeTexts: []
     )
 
-    var requirements = [ProxyRequirement(selectorString: getterSelectorString, typeEncodingExpression: getterEncoding)]
+    var requirements = [ProxyRequirement(
+        selectorString: getterSelectorString,
+        typeEncodingExpression: getterEncoding,
+        isInstanceMethod: receiver.isInstanceMethod
+    )]
 
     let implementationText: String
     if hasSetter {
         let getterBody = buildDispatchBody(
             selectorString: getterSelectorString,
+            receiver: receiver,
             parameterTypeTexts: [],
             argumentExpressions: [],
             declaredReturnTypeText: propertyTypeText,
@@ -337,6 +682,7 @@ private func buildPropertyMember(
 
         let setterBody = buildDispatchBody(
             selectorString: setterSelectorString,
+            receiver: receiver,
             parameterTypeTexts: [propertyTypeText],
             argumentExpressions: ["newValue"],
             declaredReturnTypeText: nil,
@@ -356,12 +702,14 @@ private func buildPropertyMember(
     } else {
         let getterBody = buildDispatchBody(
             selectorString: getterSelectorString,
+            receiver: receiver,
             parameterTypeTexts: [],
             argumentExpressions: [],
             declaredReturnTypeText: propertyTypeText
         )
+        let staticKeyword = receiver == .proxiedClass ? "static " : ""
         implementationText = """
-        nonisolated var \(propertyName): \(propertyTypeText) {
+        nonisolated \(staticKeyword)var \(propertyName): \(propertyTypeText) {
         \(getterBody)
             }
         """
@@ -392,10 +740,11 @@ private func setterSelectorName(forPropertyNamed propertyName: String) -> String
 
 // MARK: - Dispatch Emission
 
-/// The shared body: resolve the implementation off the host's real class, cast
-/// it to the signature the encoding was derived from, and call it.
+/// The shared body: resolve the implementation off the receiver's real class,
+/// cast it to the signature the encoding was derived from, and call it.
 private func buildDispatchBody(
     selectorString: String,
+    receiver: DispatchReceiver,
     parameterTypeTexts: [String],
     argumentExpressions: [String],
     declaredReturnTypeText: String?,
@@ -405,10 +754,27 @@ private func buildDispatchBody(
     let isVoidReturn = declaredReturnTypeText == nil
     let failureReturn = isVoidReturn ? "return" : "return nil"
 
-    var conventionParameterTypes = ["AnyObject", "Selector"]
+    // An instance requirement can only be reached through a proxy that was
+    // constructed, which `isSupported` already gated; a `static` one is reached
+    // through the type, so it checks for itself.
+    let receiverTypeText: String
+    let receiverExpression: String
+    let implementationLookup: String
+    switch receiver {
+    case .host:
+        receiverTypeText = "AnyObject"
+        receiverExpression = "host"
+        implementationLookup = "guard let implementation = ObjCRuntimeToolbox.RuntimeClassProxySupport.implementation(of: selector, on: host) else { \(failureReturn) }"
+    case .proxiedClass:
+        receiverTypeText = "AnyClass"
+        receiverExpression = "proxiedClass"
+        implementationLookup = "guard Self.isSupported, let proxiedClass = ObjCRuntimeToolbox.RuntimeClassProxySupport.runtimeClass(named: Self.runtimeClassName), let implementation = ObjCRuntimeToolbox.RuntimeClassProxySupport.classMethodImplementation(of: selector, on: proxiedClass) else { \(failureReturn) }"
+    }
+
+    var conventionParameterTypes = [receiverTypeText, "Selector"]
     conventionParameterTypes.append(contentsOf: parameterTypeTexts)
 
-    var callArguments = ["host", "selector"]
+    var callArguments = [receiverExpression, "selector"]
     callArguments.append(contentsOf: argumentExpressions)
     let callArgumentList = callArguments.joined(separator: ", ")
 
@@ -428,7 +794,7 @@ private func buildDispatchBody(
             let parameterList = conventionParameterTypes.joined(separator: ", ")
             lines = [
                 "let selector = \(selectorExpression)",
-                "guard let implementation = ObjCRuntimeToolbox.RuntimeClassProxySupport.implementation(of: selector, on: host) else { \(failureReturn) }",
+                implementationLookup,
                 "return ObjCRuntimeToolbox.RuntimeClassProxySupport._returnValue(",
                 "    \(ObjCTypeEncoding.metatypeExpression(forTypeText: unwrappedReturnTypeText)),",
                 "    transfersOwnership: \(transfersOwnership),",
@@ -444,7 +810,7 @@ private func buildDispatchBody(
             let castSuffix = unwrappedReturnTypeText == "AnyObject" ? "" : " as? \(unwrappedReturnTypeText)"
             lines = [
                 "let selector = \(selectorExpression)",
-                "guard let implementation = ObjCRuntimeToolbox.RuntimeClassProxySupport.implementation(of: selector, on: host) else { \(failureReturn) }",
+                implementationLookup,
                 "let dispatchFunction = unsafeBitCast(implementation, to: (\(conventionSignature)).self)",
                 "return dispatchFunction(\(callArgumentList))?.\(consume)()\(castSuffix)",
             ]
@@ -452,7 +818,7 @@ private func buildDispatchBody(
             let conventionSignature = "@convention(c) (\(conventionParameterTypes.joined(separator: ", "))) -> \(unwrappedReturnTypeText)"
             lines = [
                 "let selector = \(selectorExpression)",
-                "guard let implementation = ObjCRuntimeToolbox.RuntimeClassProxySupport.implementation(of: selector, on: host) else { \(failureReturn) }",
+                implementationLookup,
                 "let dispatchFunction = unsafeBitCast(implementation, to: (\(conventionSignature)).self)",
                 "return dispatchFunction(\(callArgumentList))",
             ]
@@ -461,7 +827,7 @@ private func buildDispatchBody(
         let conventionSignature = "@convention(c) (\(conventionParameterTypes.joined(separator: ", "))) -> Void"
         lines = [
             "let selector = \(selectorExpression)",
-            "guard let implementation = ObjCRuntimeToolbox.RuntimeClassProxySupport.implementation(of: selector, on: host) else { \(failureReturn) }",
+            implementationLookup,
             "let dispatchFunction = unsafeBitCast(implementation, to: (\(conventionSignature)).self)",
             "dispatchFunction(\(callArgumentList))",
         ]
@@ -473,8 +839,9 @@ private func buildDispatchBody(
 /// Objective-C's method families: a method in one of them returns +1 and the
 /// caller owns the result. Everything else returns +0. Membership follows ARC's
 /// naming rule — ``ObjCMethodFamily`` — so `newspaper` is out and `_newItem` is
-/// in. The init family never reaches here: a proxy cannot call an initialiser,
-/// and `diagnoseUnsupportedFunctionShape` rejects one.
+/// in. The init family never reaches here: a method or property in it is
+/// rejected by `diagnoseUnsupportedFunctionShape`, and an `init?` requirement is
+/// built by `buildInitializerMember`, which hands the references over itself.
 private func selectorReturnsRetainedValue(_ selectorString: String) -> Bool {
     ObjCMethodFamily(selectorName: selectorString) != nil
 }

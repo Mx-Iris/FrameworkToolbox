@@ -61,6 +61,27 @@ struct ObjCTypeEncodingDerivationTests {
         #expect(ObjCTypeEncoding.encoding(forTypeText: "NSRange") == "{_NSRange=QQ}")
     }
 
+    @Test func blocksEncodeAsBlocks() {
+        // A block is `@?` whatever its own signature. It used to reach the
+        // fallback overload of `_ObjCTypeEncoding.of`, which answers `?` and
+        // matches no live method.
+        for spelling in [
+            "@escaping @convention(block) (Bool) -> Void",
+            "@convention(block) () -> Void",
+            "(@convention(block) (Int) -> Void)?",
+            "@escaping @Sendable @convention(block) (NSString) -> Void",
+        ] {
+            #expect(ObjCTypeEncoding.encoding(forTypeText: spelling) == "@?", "\(spelling)")
+            #expect(ObjCTypeEncoding.isKnownType(spelling), "\(spelling)")
+        }
+        #expect(ObjCTypeEncoding.methodEncoding(
+            returnTypeText: nil,
+            parameterTypeTexts: ["NSURL", "@escaping @convention(block) (ObjCBool) -> Void"]
+        ) == "v@:@@?")
+        // An array of blocks is an array.
+        #expect(ObjCTypeEncoding.encoding(forTypeText: "[@convention(block) () -> Void]") == "@")
+    }
+
     @Test func unknownIdentifiersAreAssumedToBeObjects() {
         // A wrong guess here cannot corrupt a host: struct encodings never look
         // like `@`, so the install-time comparison rejects the batch instead.

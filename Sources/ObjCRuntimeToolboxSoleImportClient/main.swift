@@ -19,6 +19,26 @@ protocol GuardedProcessInfoProxy {
     var processName: String? { get }
 }
 
+// `@RuntimeClassProxy` initialisers, class methods and block parameters —
+// `UnsafeMutableRawPointer` and the class object in the generated code — and
+// `@RuntimeObjectProxy`, whose `init?(_:)` checks the class it is handed.
+@RuntimeClassProxy("NSDate")
+protocol GuardedDateProxy {
+    init?(timeIntervalSinceReferenceDate: Double)
+    static func date() -> AnyObject?
+}
+
+@RuntimeObjectProxy
+protocol GuardedStringProxy {
+    var length: Int? { get }
+    func enumerateLinesUsingBlock(_ block: @escaping @convention(block) (String, UnsafeMutablePointer<ObjCBool>) -> Void)
+}
+
+if let guardedDate = GuardedDateProxyImplementation(timeIntervalSinceReferenceDate: 0) {
+    print(guardedDate.host)
+}
+print(GuardedStringProxyImplementation("guarded" as NSString)?.length ?? 0)
+
 // `@DynamicSubclassHook` — reaches it from the generated override bodies. Also
 // pins that `NSObject` itself is nameable through the re-export.
 @objc(GuardedSpeakerSoleImportClient)

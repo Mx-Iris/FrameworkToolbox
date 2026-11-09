@@ -157,7 +157,7 @@ struct RuntimeClassProxyMethodFamilyTests {
             protocol DockTile {
                 func initWithImage(_ image: AnyObject?) -> AnyObject?
                      ┬────────────
-                     ╰─ 🛑 @RuntimeClassProxy: 'initWithImage:' is in the init family, which takes over the reference to its receiver, and a proxy calls into an object it does not own. Create the object with DynamicObject instead: ObjC.ClassName(...) sends alloc and the initialiser together.
+                     ╰─ 🛑 @RuntimeClassProxy: 'initWithImage:' is in the init family, which takes over the reference to its receiver, and a proxy calls into an object it does not own. Declare it as an initialiser instead — init?(frame:) for initWithFrame: — which sends alloc and the initialiser together.
             }
             """
         }
@@ -179,7 +179,7 @@ struct RuntimeClassProxyMethodFamilyTests {
                 var initialImage: AnyObject? { get }
                 var initImage: AnyObject? { get }
                     ┬────────
-                    ╰─ 🛑 @RuntimeClassProxy: 'initImage' is in the init family, which takes over the reference to its receiver, and a proxy calls into an object it does not own. Create the object with DynamicObject instead: ObjC.ClassName(...) sends alloc and the initialiser together.
+                    ╰─ 🛑 @RuntimeClassProxy: 'initImage' is in the init family, which takes over the reference to its receiver, and a proxy calls into an object it does not own. Declare it as an initialiser instead — init?(frame:) for initWithFrame: — which sends alloc and the initialiser together.
             }
             """
         }

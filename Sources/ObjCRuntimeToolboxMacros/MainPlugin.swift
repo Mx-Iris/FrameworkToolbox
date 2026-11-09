@@ -9,6 +9,7 @@ struct MainPlugin: CompilerPlugin {
         RuntimeClassHookMacro.self,
         RuntimeMethodReplacementMacro.self,
         RuntimeClassProxyMacro.self,
+        RuntimeObjectProxyMacro.self,
         NonisolatedHookContainerMacro.self,
         MainActorHookContainerMacro.self,
     ]

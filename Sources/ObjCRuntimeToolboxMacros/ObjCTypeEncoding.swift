@@ -63,6 +63,8 @@ enum ObjCTypeEncoding {
     static func encoding(forTypeText typeText: String?) -> String {
         guard let typeText else { return "v" }
 
+        if isBlockType(typeText) { return "@?" }
+
         let normalizedTypeText = stripOptionalityAndSugar(from: typeText)
         if normalizedTypeText.isEmpty { return "v" }
 
@@ -85,6 +87,7 @@ enum ObjCTypeEncoding {
     /// encoding. `nil` (`Void`) counts as known.
     static func isKnownType(_ typeText: String?) -> Bool {
         guard let typeText else { return true }
+        if isBlockType(typeText) { return true }
         let normalizedTypeText = stripOptionalityAndSugar(from: typeText)
         if normalizedTypeText.isEmpty { return true }
         if encodingTable[normalizedTypeText] != nil { return true }
@@ -131,6 +134,28 @@ enum ObjCTypeEncoding {
         let needsParentheses = unwrapped.hasPrefix("any ") || unwrapped.hasPrefix("some ")
             || unwrapped.hasPrefix("@") || unwrapped.containsSubstring("->") || unwrapped.containsSubstring("&")
         return needsParentheses ? "(\(unwrapped)).self" : "\(unwrapped).self"
+    }
+
+    // MARK: - Blocks
+
+    /// Whether a written type is an Objective-C block: `@convention(block) (…) -> …`, optionally
+    /// optional and optionally marked `@escaping` or `@Sendable`. A block is an object the runtime
+    /// encodes as `@?`, whatever its own signature.
+    ///
+    /// Read from the spelling because the compiler offers no other way: a block type conforms to no
+    /// protocol an overload of `_ObjCTypeEncoding.of` could be constrained on, so it used to fall to
+    /// the fallback overload, encode as `?`, and fail every comparison with the live method.
+    static func isBlockType(_ typeText: String) -> Bool {
+        var remainder = strippingOptionality(from: typeText)
+        var didStrip = true
+        while didStrip {
+            didStrip = false
+            for attribute in ["@escaping", "@Sendable"] where remainder.hasPrefix(attribute) {
+                remainder = String(remainder.dropFirst(attribute.count)).trimmedWhitespace
+                didStrip = true
+            }
+        }
+        return remainder.hasPrefix("@convention(block)")
     }
 
     // MARK: - Normalisation

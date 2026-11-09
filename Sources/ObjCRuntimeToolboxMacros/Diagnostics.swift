@@ -258,12 +258,16 @@ func diagnoseUnsupportedFunctionShape(
 /// `TypeSyntax`: `inout`, tuple arity > 0, function-without-`@convention(block)`,
 /// and identifier types that look like outer generic parameters.
 @discardableResult
-private func diagnoseObjcRepresentable(
+func diagnoseObjcRepresentable(
     _ typeSyntax: TypeSyntax,
     role: String,
     in context: some MacroExpansionContext,
     macroName: String
 ) -> Bool {
+    if ObjCTypeEncoding.isBlockType(typeSyntax.trimmedDescription) {
+        return diagnoseBlockType(typeSyntax, role: role, in: context, macroName: macroName)
+    }
+
     if let attributed = typeSyntax.as(AttributedTypeSyntax.self) {
         for specifier in attributed.specifiers {
             switch specifier {
@@ -317,5 +321,46 @@ private func diagnoseObjcRepresentable(
         return false
     }
 
+    return true
+}
+
+/// An Objective-C block, `@convention(block) (…) -> …`: passed as an object and encoded `@?`.
+///
+/// Only as a parameter, and only one that may escape. Objective-C may keep any block it is handed,
+/// and a block Swift makes from a non-escaping closure is checked when the call returns: a callee
+/// that kept it traps the process. An optional block is escaping already. A block coming back is not
+/// supported — the generated code reads an object return through `Unmanaged`, which says nothing
+/// about the block's own signature.
+private func diagnoseBlockType(
+    _ typeSyntax: TypeSyntax,
+    role: String,
+    in context: some MacroExpansionContext,
+    macroName: String
+) -> Bool {
+    guard role == "parameter" else {
+        context.emit(
+            .error(
+                "blockNotSupportedHere",
+                "\(macroName) \(role) cannot be a block. Blocks are supported as parameters only."
+            ),
+            at: typeSyntax
+        )
+        return false
+    }
+
+    let isOptional = typeSyntax.is(OptionalTypeSyntax.self) || typeSyntax.is(ImplicitlyUnwrappedOptionalTypeSyntax.self)
+    let isEscaping = typeSyntax.as(AttributedTypeSyntax.self)?.attributes.contains { attributeListEntry in
+        attributeListEntry.as(AttributeSyntax.self)?.attributeName.trimmedDescription == "escaping"
+    } ?? false
+    guard isOptional || isEscaping else {
+        context.emit(
+            .error(
+                "blockParameterMustEscape",
+                "\(macroName): a block parameter must be '@escaping'. Objective-C may keep any block it is handed, and a block made from a non-escaping closure traps the process when the callee keeps it."
+            ),
+            at: typeSyntax
+        )
+        return false
+    }
     return true
 }

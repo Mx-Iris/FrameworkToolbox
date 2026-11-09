@@ -1,6 +1,6 @@
 # Draft - 补齐 runtime proxy：init、类方法、block 参数与按对象核对的 proxy
 
-- **状态**: Accepted
+- **状态**: In Progress
 - **创建日期**: 2026-11-09
 - **最后更新**: 2026-11-09
 - **实现分支**: `feature/runtime-proxy-coverage`
@@ -100,3 +100,7 @@ DockApplicationUninstallingImplementation(uninstaller)?.uninstallBundleAtURL(url
 |------|------|------|
 | 2026-11-09 | Created as Draft | LaunchpadAwakener 的 payload 里剩下的 11 处手写类型编码，全部出自 proxy 表达不了的四种调用；用户同意按需给 ObjCRuntimeToolbox 增加功能 |
 | 2026-11-09 | 用户批准，开始实现；实现中的问题自行决定，做完由用户验收 | 用户要求一路做完、不再逐项询问 |
+| 2026-11-09 | 类簇只支持「公开类自己也实现了 initialiser」的情形；公开类没有实现的（如 `ISIcon`），proxy 照常报告不可用 | `isSupported` 对类名核对全部要求，initialiser 也不例外；为类簇单开一条推迟到构造时才核对的路径，会让 `isSupported` 不再代表「能用」。真实类簇 `NSDate` 的公开类实现了 initialiser，测试里能构造出来 |
+| 2026-11-09 | initialiser 返回的对象不是类名所指类的实例时，构造失败、返回 nil | proxy 的实例方法是对类名核对的，换成别的类的对象再调用就失去了核对的意义；与 `init?(_:)` 拒绝无关对象同一个理由 |
+| 2026-11-09 | block 参数必须写 `@escaping` 或为可选，否则编译期报错；block 类型的属性与返回值一律报错 | Swift 由非逃逸闭包做出的 block 会在调用返回时检查是否被留下，被调用方留下就让进程崩溃，而 Objective-C 可以留下它收到的任何 block。可选的闭包本来就是逃逸的。读回 block 的路径无法核对 block 自己的签名 |
+| 2026-11-09 | 生成的 `init?` 与 `static` 成员都标 `nonisolated`；`static var` 只能只读 | 默认 `MainActor` 隔离的模块里，协议要求的实现会继承协议的隔离，`DefaultMainActorIsolationClient` 已为此加了用例；设置类属性的需求目前没有用例 |
