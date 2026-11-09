@@ -146,6 +146,13 @@ final class RuntimeInvocation {
     func invoke() {
         guard !isInvoked else { return }
         isInvoked = true
+        if consumesReceiver {
+            // An initialiser takes over the reference to its receiver: it hands that reference back as
+            // its result, or releases it when it returns nil or another object. Every reference this
+            // side holds is released by its own owner afterwards, so the initialiser gets one of its
+            // own to take.
+            _ = Unmanaged.passRetained(target)
+        }
         NSInvocationBridge.invoke(invocation, withTarget: target)
     }
 
@@ -210,23 +217,33 @@ final class RuntimeInvocation {
         return Unmanaged.passRetained(object).takeUnretainedValue()
     }
 
-    /// Whether the selector returns a +1 reference under ARC's naming rules.
+    /// The selector's ARC method family, or `nil` for a method outside all of them.
+    private var methodFamily: ObjCMethodFamily? {
+        ObjCMethodFamily(selectorName: NSStringFromSelector(selector))
+    }
+
+    /// Whether the returned object comes with a reference the caller owns.
     ///
     /// See the Objective-C memory management conventions: methods in the
-    /// `alloc` / `new` / `copy` / `mutableCopy` families return an owned
-    /// reference, everything else returns an autoreleased one.
+    /// `alloc`, `copy`, `mutableCopy`, `new` and `init` families return an
+    /// owned reference, everything else returns an autoreleased one. The
+    /// family is decided by ARC's naming rule — ``ObjCMethodFamily`` — not by a
+    /// bare prefix, which would count `copyright` in and `_newItem` out.
     private var isRetainingMethod: Bool {
-        let selectorName = NSStringFromSelector(selector)
-        return selectorName == "alloc"
-            || selectorName.hasPrefix("new")
-            || selectorName.hasPrefix("copy")
-            || selectorName.hasPrefix("mutableCopy")
+        methodFamily != nil
+    }
+
+    /// Whether the method takes over the reference to its receiver, which
+    /// only an initialiser does: an instance method in the `init` family that
+    /// returns an object.
+    private var consumesReceiver: Bool {
+        methodFamily == .`init` && returnsObject && !object_isClass(target)
     }
 
     /// `alloc` returns an object that is not yet initialised, so describing it
     /// would send it a message it cannot answer.
     private var isAllocating: Bool {
-        NSStringFromSelector(selector) == "alloc"
+        methodFamily == .alloc
     }
 }
 

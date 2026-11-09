@@ -54,6 +54,16 @@ public typealias ObjC = DynamicObject
 /// let same = ObjC.NSProcessInfo.processInfo.processorCount.asInt
 /// ```
 ///
+/// ## Who owns what
+///
+/// References follow Objective-C's method families, decided by ARC's naming
+/// rule — leading underscores aside, the family's name followed by anything but
+/// a lowercase letter. An object returned by a method in the `alloc`, `copy`,
+/// `mutableCopy`, `new` or `init` family is taken over and released once; any
+/// other is retained for as long as the wrapper holds it. An initialiser is
+/// handed a reference to its receiver to take over, so `ObjC.ClassName(...)` is
+/// balanced whether the initialiser returns `self`, `nil` or another object.
+///
 /// ## Errors do not throw, they propagate
 ///
 /// An unrecognised selector is recorded on the wrapper and every subsequent
@@ -232,8 +242,9 @@ public class DynamicObject: CustomDebugStringConvertible {
         os_log(.debug, log: dynamicInvocationLog, "call [%{public}@ %{public}@]", String(describing: type(of: target)), selectorName)
 
         // `init` has to be preceded by `alloc`, since the class object cannot
-        // receive it directly.
-        if target is AnyClass, selectorName.hasPrefix("init") {
+        // receive it directly. Decided by the method family rather than a bare
+        // prefix, so a class method such as `+initials` is still sent to the class.
+        if target is AnyClass, ObjCMethodFamily(selectorName: selectorName) == .`init` {
             guard let allocatedInstance = allocateInstance(ofClass: target) else { return }
             target = allocatedInstance
         }
