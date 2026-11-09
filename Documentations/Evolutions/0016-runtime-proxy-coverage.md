@@ -1,6 +1,6 @@
-# Draft - 补齐 runtime proxy：init、类方法、block 参数与按对象核对的 proxy
+# 0016 - 补齐 runtime proxy：init、类方法、block 参数与按对象核对的 proxy
 
-- **状态**: In Progress
+- **状态**: Implemented
 - **创建日期**: 2026-11-09
 - **最后更新**: 2026-11-09
 - **实现分支**: `feature/runtime-proxy-coverage`
@@ -104,3 +104,5 @@ DockApplicationUninstallingImplementation(uninstaller)?.uninstallBundleAtURL(url
 | 2026-11-09 | initialiser 返回的对象不是类名所指类的实例时，构造失败、返回 nil | proxy 的实例方法是对类名核对的，换成别的类的对象再调用就失去了核对的意义；与 `init?(_:)` 拒绝无关对象同一个理由 |
 | 2026-11-09 | block 参数必须写 `@escaping` 或为可选，否则编译期报错；block 类型的属性与返回值一律报错 | Swift 由非逃逸闭包做出的 block 会在调用返回时检查是否被留下，被调用方留下就让进程崩溃，而 Objective-C 可以留下它收到的任何 block。可选的闭包本来就是逃逸的。读回 block 的路径无法核对 block 自己的签名 |
 | 2026-11-09 | 生成的 `init?` 与 `static` 成员都标 `nonisolated`；`static var` 只能只读 | 默认 `MainActor` 隔离的模块里，协议要求的实现会继承协议的隔离，`DefaultMainActorIsolationClient` 已为此加了用例；设置类属性的需求目前没有用例 |
+| 2026-11-09 | 实现完成，合进 `main`，落地编号 0016，发布 0.18.0 | 整个包的构建与测试通过；LaunchpadAwakener 改用后，payload 在 macOS 27.2 与 26.6.2 的 Dock 里核对、构造、调用全部正常，其中环境对象在两个版本上类名不同，都由 `@RuntimeObjectProxy` 核对通过 |
+| 2026-11-09 | 不另写使用指南，不加术语 | 用法写在两个宏的文档注释里，与 `@RuntimeClassProxy` 原有的写法一致；维护要点写进 `CLAUDE.md` 的「Runtime proxies」一条。本库没有术语表，这次也没有新的概念需要定名 |
