@@ -104,6 +104,10 @@ let package = Package(
             type: .dynamic,
             targets: ["ObjCRuntimeToolbox"]
         ),
+        .library(
+            name: "ObjCRuntimeToolbox-Static",
+            targets: ["ObjCRuntimeToolbox"]
+        ),
     ],
     dependencies: [
         // Floor is 600.0.0 because `@Loggable` / `@Signpostable` read
