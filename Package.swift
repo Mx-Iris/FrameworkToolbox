@@ -105,6 +105,21 @@ let package = Package(
             targets: ["ObjCRuntimeToolbox"]
         ),
         .library(
+            // Statically linked twin of the product above, for an image that
+            // must be self-contained — nothing to look up through @rpath at
+            // load time (an injected dylib, a helper executable nested without
+            // an rpath). The target has no runtime dependency of its own, so
+            // nothing else comes along with it.
+            //
+            // The price is the single-copy guarantee `.dynamic` gives: the
+            // runtime state is per image, so exactly one image per *process*
+            // may embed it. An app and a framework or plug-in it loads each
+            // linking this product, or one linking this and another the
+            // dynamic product, gives two independent copies — the same method
+            // can then be hooked twice, and `DynamicSubclass` reference counts
+            // diverge so restoring an object's original class goes wrong.
+            // Separate processes (app extensions, helper tools) each carrying
+            // their own copy is fine.
             name: "ObjCRuntimeToolbox-Static",
             targets: ["ObjCRuntimeToolbox"]
         ),
