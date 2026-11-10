@@ -90,6 +90,7 @@
 - [0017 —— WindowedRowsToolbox：上百万行的表格按需取行](Evolutions/0017-windowed-rows-toolbox.md)（Implemented）
   把 MachOKitUI 详情表的按需取行机制搬来、按行的类型泛型：行的来源、按窗口的缓存、后台搜索，以及串起它们的控制器。
   新 product 只依赖 `OSToolbox`，不碰界面框架；类型不标 `@available`，因为宏生成的成员会比外层类型更早可用。
+  **2026-11-10 起这个模块在 UIFoundation**，改名 `UIFoundationWindowedRows`，本库从 0.20.0 起不再提供。
 - [draft —— 让 `ObjCRuntimeToolbox` 的多份副本共用一份运行时状态](Evolutions/draft-objc-runtime-shared-state-across-copies.md)（Deferred，**暂不实现**）
   `ObjCRuntimeToolbox-Static` 要求同一进程只能嵌一份；方案是把动态子类与方法 hook 的共享状态从 Swift 全局变量挪进 ObjC 运行时（关联对象、按名字唯一的 selector 与类）。
   暂缓的原因：声明为 `.static` 后，同一构建内的重复链接会直接编译失败，两份副本只可能来自分开构建的镜像。文内留有方案、实测结果与翻案条件。
@@ -107,7 +108,6 @@
 - [指定排序定义 —— 用法契约与陷阱](ComparisonSelection.md) —— 一个类型怎么带多套排序规则、调用点怎么选；为什么必须是 `static var`、什么时候写裸 keyPath、`by:` 与 `using:` 的分工。
 - [`NotificationCenter.Backport` —— 类型化通知消息的用法契约与陷阱](NotificationCenterBackport.md) —— 两种消息怎么选、与 `Notification` 互通的规则、六条签名上看不出的契约（主线程假定、token 即生命周期、序列缓冲与弱持有 subject 等）、Foundation 预置的 32 个系统消息（以及它们的简写为什么在 26 的上下文里会选 Foundation 原生的），以及与原生 API 的差异和迁回步骤。
 - [存储层重构与 `@UserDefault` 宏](StorageLayer.md) —— `@Keychain` 宏发布后，运行时与编码协议都是 Keychain 专用的；这篇记录如何把存储层抽象出来以容纳 `@UserDefault`。
-- [WindowedRowsToolbox —— 用法契约与陷阱](WindowedRowsToolbox.md) —— 上百万行的表格怎么只持有看得见的几个窗口：最小用法、七条签名上看不出的契约（`fetch` 必须是纯函数、别在主线程读行数、两种事件要转交缓存、扫描全部行时绕开缓存等），以及表格那边的约定。
 
 ## 设计文档（Specs，归档）
 

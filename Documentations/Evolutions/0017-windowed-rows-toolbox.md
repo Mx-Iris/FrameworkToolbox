@@ -4,7 +4,8 @@
 - **创建日期**: 2026-11-09
 - **最后更新**: 2026-11-10
 - **所属愿景**: 无
-- **配套文档**: [WindowedRowsToolbox —— 用法契约与陷阱](../WindowedRowsToolbox.md)
+- **配套文档**: 使用指南 2026-11-10 随模块搬到 UIFoundation，在它的 `Documentations/WindowedRows.md`；
+  之前是本库的 `Documentations/WindowedRowsToolbox.md`
 - **关联提案**: MachOKitUI 的 `extract-windowed-rows`（把 windowed 机制抽成可复用组件），本提案是它的第 1 步
 
 ## 摘要
@@ -74,3 +75,4 @@ controller.setSource(source)
 | 2026-11-09 | 控制器的事件与 MachOKitUI 详情表视图模型原有的事件一一对应 | 视图模型改用控制器以后，它的测试照旧能钉住事件的顺序，不用改测试 |
 | 2026-11-10 | 实现完成，合进 `main`，落地编号 0017，发布 0.19.0 | 用户批准发版。整个包的构建与测试通过；UIFoundation 的 `WindowedTable` 建在它上面，MachOKitUI 改用这两层后，默认与全部 trait 的全量测试都与改前一致。原定的版本号 0.18.0 已随 0016 发布，所以这一版是 0.19.0 |
 | 2026-11-10 | 不另写实现说明，不加术语 | 使用指南 `WindowedRowsToolbox.md` 随实现写好，契约与实现要点都在里面；本库没有术语表，窗口、占位行这些说法在指南里都解释过 |
+| 2026-11-10 | 模块搬到 UIFoundation，改名 `UIFoundationWindowedRows`；本库删掉它，发 0.20.0 | 本库是 Apple 框架的工具箱，这个模块不是，放在这里格格不入。当初不放 UIFoundation，是怕 MachOKitUICore 因此依赖一个界面库；搬过去后它是一个不依赖 UIFoundation 别的 target 的独立 target，依赖它不会带进 AppKit。代码与测试原样搬走，只有日志的 subsystem 跟着改名。决策记录见 UIFoundation 的提案 `windowed-rows-module` |
