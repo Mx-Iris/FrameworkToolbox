@@ -1,6 +1,6 @@
 # WindowedRowsToolbox —— 用法契约与陷阱
 
-> 面向使用方。决策记录见提案 [WindowedRowsToolbox：上百万行的表格按需取行](Evolutions/draft-windowed-rows-toolbox.md)。
+> 面向使用方。决策记录见提案 [WindowedRowsToolbox：上百万行的表格按需取行](Evolutions/0017-windowed-rows-toolbox.md)。
 
 ## 什么时候用
 

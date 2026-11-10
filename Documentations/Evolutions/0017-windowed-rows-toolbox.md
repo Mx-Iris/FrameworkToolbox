@@ -1,8 +1,8 @@
-# Draft - WindowedRowsToolbox：上百万行的表格按需取行
+# 0017 - WindowedRowsToolbox：上百万行的表格按需取行
 
-- **状态**: In Progress
+- **状态**: Implemented
 - **创建日期**: 2026-11-09
-- **最后更新**: 2026-11-09
+- **最后更新**: 2026-11-10
 - **所属愿景**: 无
 - **配套文档**: [WindowedRowsToolbox —— 用法契约与陷阱](../WindowedRowsToolbox.md)
 - **关联提案**: MachOKitUI 的 `extract-windowed-rows`（把 windowed 机制抽成可复用组件），本提案是它的第 1 步
@@ -72,3 +72,5 @@ controller.setSource(source)
 | 2026-11-09 | 数据层放 FrameworkToolbox，单独一个 product | MachOKitUICore 要能脱离界面单独使用，它已经依赖 FrameworkToolbox；放进 UIFoundation 会让它新增对一个界面库的依赖。用户选定 |
 | 2026-11-09 | 类型不标 `@available`，计时用系统运行时间 | 标了以后，宏生成的成员比外层类型更早可用，编译报错 |
 | 2026-11-09 | 控制器的事件与 MachOKitUI 详情表视图模型原有的事件一一对应 | 视图模型改用控制器以后，它的测试照旧能钉住事件的顺序，不用改测试 |
+| 2026-11-10 | 实现完成，合进 `main`，落地编号 0017，发布 0.19.0 | 用户批准发版。整个包的构建与测试通过；UIFoundation 的 `WindowedTable` 建在它上面，MachOKitUI 改用这两层后，默认与全部 trait 的全量测试都与改前一致。原定的版本号 0.18.0 已随 0016 发布，所以这一版是 0.19.0 |
+| 2026-11-10 | 不另写实现说明，不加术语 | 使用指南 `WindowedRowsToolbox.md` 随实现写好，契约与实现要点都在里面；本库没有术语表，窗口、占位行这些说法在指南里都解释过 |

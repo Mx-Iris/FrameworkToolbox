@@ -87,12 +87,12 @@
   C++ `FLAGSET_DEFINE_FLAG_ACCESSORS` / `FLAGSET_DEFINE_FIELD_ACCESSORS` 在 Swift 里的对应物：贴在属性上写 `bits: 2..<8`，移位、掩码和类型转换由宏与重载决议生成；认不得的值要么得到 `nil`、要么取 `default:`，没有崩溃这一档。第一个使用方是 MachOSwiftSection 的 ABI 层。
 - [0016 —— 补齐 runtime proxy：init、类方法、block 参数与按对象核对的 proxy](Evolutions/0016-runtime-proxy-coverage.md)（Implemented）
   `@RuntimeClassProxy` 新增 `init?` 与 `static` 要求、block 参数编码为 `@?`，另加按对象自己的类核对的 `@RuntimeObjectProxy`，让类型编码一律由声明推出。
+- [0017 —— WindowedRowsToolbox：上百万行的表格按需取行](Evolutions/0017-windowed-rows-toolbox.md)（Implemented）
+  把 MachOKitUI 详情表的按需取行机制搬来、按行的类型泛型：行的来源、按窗口的缓存、后台搜索，以及串起它们的控制器。
+  新 product 只依赖 `OSToolbox`，不碰界面框架；类型不标 `@available`，因为宏生成的成员会比外层类型更早可用。
 - [draft —— 让 `ObjCRuntimeToolbox` 的多份副本共用一份运行时状态](Evolutions/draft-objc-runtime-shared-state-across-copies.md)（Deferred，**暂不实现**）
   `ObjCRuntimeToolbox-Static` 要求同一进程只能嵌一份；方案是把动态子类与方法 hook 的共享状态从 Swift 全局变量挪进 ObjC 运行时（关联对象、按名字唯一的 selector 与类）。
   暂缓的原因：声明为 `.static` 后，同一构建内的重复链接会直接编译失败，两份副本只可能来自分开构建的镜像。文内留有方案、实测结果与翻案条件。
-- [draft —— WindowedRowsToolbox：上百万行的表格按需取行](Evolutions/draft-windowed-rows-toolbox.md)（In Progress）
-  把 MachOKitUI 详情表的按需取行机制搬来、按行的类型泛型：行的来源、按窗口的缓存、后台搜索，以及串起它们的控制器。
-  新 product 只依赖 `OSToolbox`，不碰界面框架；类型不标 `@available`，因为宏生成的成员会比外层类型更早可用。
 
 ## 专题说明
 
