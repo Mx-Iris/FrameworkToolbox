@@ -111,7 +111,7 @@ private nonisolated static func logger(for category: FoundationToolbox.LogCatego
 
 ## 消息前缀 `[Category]`
 
-配套提案：[`LogCategory` 可以让 `#log` 在消息开头标出 `[Category]`](Evolutions/draft-log-category-message-prefix.md)。
+配套提案：[0018 —— `LogCategory` 可以让 `#log` 在消息开头标出 `[Category]`](Evolutions/0018-log-category-message-prefix.md)。
 
 消息文字本身不带 category，使用方于是逐条手写标签（`#log(.debug, "[EngineMirroring] …")`）。现在声明 category 时可以
 要求 `#log` 自动加上：

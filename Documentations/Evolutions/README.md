@@ -49,6 +49,6 @@ SPM library product，使用方以源码依赖并重新编译，未开启 librar
 | [0016](0016-runtime-proxy-coverage.md) | 补齐 runtime proxy：init、类方法、block 参数与按对象核对的 proxy | Implemented |
 | [0017](0017-windowed-rows-toolbox.md) | WindowedRowsToolbox：上百万行的表格按需取行 | Implemented |
 | [draft](draft-objc-runtime-shared-state-across-copies.md) | 让 ObjCRuntimeToolbox 的多份副本共用一份运行时状态（暂不实现） | Deferred |
-| [draft](draft-log-category-message-prefix.md) | `LogCategory` 可以让 `#log` 在消息开头标出 `[Category]` | Accepted |
+| [0018](0018-log-category-message-prefix.md) | `LogCategory` 可以让 `#log` 在消息开头标出 `[Category]` | Implemented |
 
 `Specs/` 与 `Plans/` 是提案制确立前的产物，见[上级索引](../README.md)，保持原样不迁移。

@@ -1,6 +1,6 @@
-# Draft - `LogCategory` 可以让 `#log` 在消息开头标出 `[Category]`
+# 0018 - `LogCategory` 可以让 `#log` 在消息开头标出 `[Category]`
 
-- **状态**: In Progress
+- **状态**: Implemented
 - **创建日期**: 2026-11-11
 - **最后更新**: 2026-11-11
 - **实现分支**: `feature/log-category-message-prefix`
@@ -104,3 +104,4 @@ extension LogCategory {
 | 2026-11-11 | `DefaultMainActorIsolationClient` 里的 category 写成 `nonisolated static let` | 实测：默认 MainActor 隔离的模块里，普通的 `static let` category 被推断成 MainActor 隔离，从 `nonisolated` 函数里 `#log(category:)` 报错，且报在展开代码上。改动前的展开同样在这里读 category，不是新问题，但值得钉住并写进文档 |
 | 2026-11-11 | 实现完成，待用户看过后收尾 | 干净构建加全部 13 个测试 target 通过（889 个测试） |
 | 2026-11-11 | 不另写使用指南与实现说明，不加术语，README 不改 | 调用方要守的契约写进随库发布的 `loggable-and-log` skill 与 `LoggableCategories.md` 新增的一节，维护者要知道的写进 `CLAUDE.md`；没有新术语；README 只列出 skill，不涉及具体功能 |
+| 2026-11-11 | 落地，编号 0018，状态改为 Implemented | 用户看过后收尾。插件的版本号建立以来没有随 skill 改动变过，这次也不动；后续项照旧留在上文 |
