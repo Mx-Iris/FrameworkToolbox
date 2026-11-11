@@ -48,6 +48,9 @@ if #available(SwiftStdlib 5.7, *) {
 
 extension LogCategory {
     static let startup = LogCategory("startup")
+
+    // Every message `#log(category:)` sends here starts with "[StartupPhase] ".
+    static let startupPhase = LogCategory("StartupPhase", prefixesMessages: true)
 }
 
 @Loggable
@@ -55,6 +58,15 @@ struct DiagnosticsService {
     func run() {
         #log(.debug, "plain message")
         #log(.info, category: .startup, "categorised message")
+
+        // Logged as "[StartupPhase] prefixed message".
+        #log(.info, category: .startupPhase, "prefixed message")
+
+        // The expansion binds the category to a closure parameter of this
+        // very name, and still takes a caller's variable of that name: the
+        // argument is evaluated outside the closure.
+        let selectedLogCategory = LogCategory.startupPhase
+        #log(.info, category: selectedLogCategory, "category held in a variable")
     }
 }
 

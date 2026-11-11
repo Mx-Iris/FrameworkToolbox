@@ -49,9 +49,10 @@ extension LogCategory {
   - 运行时：`_messagePrefix(for:)` 的两种结果；`LoggingControl` 的按 category 开关仍按名字匹配，与前缀开关无关
     （放进 `ProcessWideSwitchTests`）。
   - 端到端：经 `OSLogStore` 读回本进程刚打的日志，确认渲染出的文字就是 `[Name] message`，没打开前缀的 category 原样输出。
+    它看不到打码与否，`public` 只由快照钉住，见决策日志。
   - 编译守卫：`OSToolboxNoFoundationClient`（展开不依赖 Foundation）、`DefaultMainActorIsolationClient`（Swift 6、默认
     MainActor 隔离）、`FoundationToolboxSoleImportClient`（只 import 一个 product）各用一个打开前缀的 category；
-    `OSToolboxClient` 加示例。
+    `OSToolboxClient` 加示例，含调用方变量与闭包参数同名的写法。
 - **文档**：`LogCategory` 与 `#log(category:)` 的文档注释、`Documentations/LoggableCategories.md` 新增一节、随库发布的
   `loggable-and-log` skill、项目 `CLAUDE.md` 的 Logging 一条。
 
@@ -76,7 +77,7 @@ extension LogCategory {
 
 1. [x] `LogCategory.prefixesMessages` 与 `LoggableMacro._messagePrefix(for:)`，加运行时测试。
 2. [x] `#log(category:)` 的展开插入前缀（两条分支），更新与新增宏快照。
-3. [ ] 编译守卫、示例与 `OSLogStore` 端到端测试。
+3. [x] 编译守卫、示例与 `OSLogStore` 端到端测试。
 4. [ ] 文档注释、`LoggableCategories.md`、`loggable-and-log` skill、`CLAUDE.md`。
 
 ## 决策日志
@@ -89,3 +90,5 @@ extension LogCategory {
 | 2026-11-11 | category 绑定为外层闭包的参数，不是闭包里的 `let` | 实参在闭包外求值，调用方自己名为 `selectedLogCategory` 的变量也能当 category 传；`let selectedLogCategory = selectedLogCategory` 会引用到自己 |
 | 2026-11-11 | 生成代码写全 `OSToolbox.LoggableMacro`；前缀插值逐个节点构造，不从模板字面量解析 | 展开落在调用方文件里，按宏的惯例写全模块名。第一版从解析出的 `"\(x)"` 取第一个片段，取到的是插值前的空字符串片段，前缀悄无声息地消失，快照测试才抓到 |
 | 2026-11-11 | 有内容的多行消息不留快照，记为后续项 | 新系统分支已核对正确（前缀接过结束符的缩进），但旧系统分支把消息里的换行原样抄进单行的格式串字面量，编不过——不写 `category:` 时同样如此，是早于本提案的缺陷。raw 字符串内容里含 `"` 或 `\` 时同理 |
+| 2026-11-11 | 端到端测试只核对渲染出的文字，不核对打码 | 实测：把前缀故意插成 `.private`，条目的格式串是 `%{private}srendered %{public}s`，文字却照样以名字开头——`xcodebuild` 拉起的 xctest 进程里私有参数不打码。让前缀文字变空时这条测试会红，已核对 |
+| 2026-11-11 | `DefaultMainActorIsolationClient` 里的 category 写成 `nonisolated static let` | 实测：默认 MainActor 隔离的模块里，普通的 `static let` category 被推断成 MainActor 隔离，从 `nonisolated` 函数里 `#log(category:)` 报错，且报在展开代码上。改动前的展开同样在这里读 category，不是新问题，但值得钉住并写进文档 |

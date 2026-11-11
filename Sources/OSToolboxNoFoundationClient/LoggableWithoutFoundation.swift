@@ -11,6 +11,7 @@ import OSToolbox
 
 extension LogCategory {
     static let startup = LogCategory("startup")
+    static let startupPhase = LogCategory("StartupPhase", prefixesMessages: true)
 }
 
 @Loggable
@@ -56,6 +57,12 @@ struct InterpolatingServiceWithoutFoundation {
 
     func emitUnderACategory(count: Int) {
         #log(.debug, category: .startup, "count=\(count, privacy: .public)")
+    }
+
+    // A category's `[name] ` prefix reaches the legacy branch as one more C
+    // string segment, so it must not need Foundation either.
+    func emitUnderAPrefixingCategory(count: Int) {
+        #log(.debug, category: .startupPhase, "count=\(count, privacy: .public)")
     }
 }
 

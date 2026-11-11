@@ -39,9 +39,19 @@ print(guardedSettings.launchCount, guardedSettings.token.isEmpty)
 // `FoundationToolboxClient` already covers; repeated once here so that a
 // regression in the chain fails this target too, without its Foundation import
 // masking the cause.
+// `#log(category:)` names `OSToolbox.LogCategory` and
+// `OSToolbox.LoggableMacro` in the caller's file, so the module-qualified
+// spelling has to resolve through the re-exports as well.
+extension LogCategory {
+    static let soleImportGuard = LogCategory("SoleImportGuard", prefixesMessages: true)
+}
+
 @Loggable
 struct GuardedService {
-    func run() { #log(.debug, "sole-import guard ran") }
+    func run() {
+        #log(.debug, "sole-import guard ran")
+        #log(.debug, category: .soleImportGuard, "sole-import guard ran under a prefixing category")
+    }
 }
 
 GuardedService().run()
