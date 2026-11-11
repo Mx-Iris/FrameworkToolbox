@@ -68,9 +68,9 @@ extension LogCategory {
 
 - `LogCategory("x")`，以及把 `LogCategory.init` 当函数值用：不变。
 - 不写 `category:` 的 `#log`：展开逐字不变。
-- 写了 `category:` 的 `#log`：每一处的展开都会变，多一个局部常量和一个前缀参数。没打开前缀时那个参数是空串，输出文字
-  不变，只有 `log show --style json` 里的 `formatString` 多一个 `%{public}s`。目前只有本库自己的 Client target 用到
-  `category:`。
+- 写了 `category:` 的 `#log`：每一处的展开都会变，外层闭包多一个参数，消息多一个前缀插值。没打开前缀时那个插值是空串，
+  输出文字不变，只有 `log show --style json` 里的 `formatString` 多一个 `%{public}s`。目前只有本库自己的 Client target
+  用到 `category:`。
 - 名字相同、前缀开关不同的两个 `LogCategory` 不再相等。
 
 ### 落地步骤
@@ -78,7 +78,17 @@ extension LogCategory {
 1. [x] `LogCategory.prefixesMessages` 与 `LoggableMacro._messagePrefix(for:)`，加运行时测试。
 2. [x] `#log(category:)` 的展开插入前缀（两条分支），更新与新增宏快照。
 3. [x] 编译守卫、示例与 `OSLogStore` 端到端测试。
-4. [ ] 文档注释、`LoggableCategories.md`、`loggable-and-log` skill、`CLAUDE.md`。
+4. [x] 文档注释、`LoggableCategories.md`、`loggable-and-log` skill、`CLAUDE.md`。
+
+### 后续项
+
+- `#log` 与 `#signpost` 的旧系统分支共用一段格式串代码，它把消息片段的源码原样抄进单行的格式串字面量：有内容的多行
+  消息，以及内容里含 `"` 或 `\` 的 raw 字符串消息，整个展开都编不过。早于本提案，与 `category:` 无关；修好后给多行消息
+  补上快照。
+- 顺带发现的过时文档，未在本分支改：`LoggableCategories.md`「相关文件」的路径还是 `FoundationToolbox`；`loggable-and-log`
+  skill 里 `@Loggable` 生成物示例写着 `FoundationToolbox.LogCategory`，旧系统分支示例写着 `%{public}@`，「class 用
+  `Bundle(for:)`」与「Reference: source files」也已过时；`CLAUDE.md` 说 category 缓存在 `Loggable.swift`，实际在
+  `LoggableMacroSupport.swift`。
 
 ## 决策日志
 
@@ -92,3 +102,5 @@ extension LogCategory {
 | 2026-11-11 | 有内容的多行消息不留快照，记为后续项 | 新系统分支已核对正确（前缀接过结束符的缩进），但旧系统分支把消息里的换行原样抄进单行的格式串字面量，编不过——不写 `category:` 时同样如此，是早于本提案的缺陷。raw 字符串内容里含 `"` 或 `\` 时同理 |
 | 2026-11-11 | 端到端测试只核对渲染出的文字，不核对打码 | 实测：把前缀故意插成 `.private`，条目的格式串是 `%{private}srendered %{public}s`，文字却照样以名字开头——`xcodebuild` 拉起的 xctest 进程里私有参数不打码。让前缀文字变空时这条测试会红，已核对 |
 | 2026-11-11 | `DefaultMainActorIsolationClient` 里的 category 写成 `nonisolated static let` | 实测：默认 MainActor 隔离的模块里，普通的 `static let` category 被推断成 MainActor 隔离，从 `nonisolated` 函数里 `#log(category:)` 报错，且报在展开代码上。改动前的展开同样在这里读 category，不是新问题，但值得钉住并写进文档 |
+| 2026-11-11 | 实现完成，待用户看过后收尾 | 干净构建加全部 13 个测试 target 通过（889 个测试） |
+| 2026-11-11 | 不另写使用指南与实现说明，不加术语，README 不改 | 调用方要守的契约写进随库发布的 `loggable-and-log` skill 与 `LoggableCategories.md` 新增的一节，维护者要知道的写进 `CLAUDE.md`；没有新术语；README 只列出 skill，不涉及具体功能 |

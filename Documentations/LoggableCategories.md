@@ -158,6 +158,12 @@ extension LogCategory {
 - 写了 `category:` 的 `#log`，展开一律多一个前缀参数。没打开前缀时它是空串，输出文字不变，只有 `log show --style json`
   里的 `formatString` 多一个 `%{public}s`。
 - `LoggingControl` 的开关按 `name` 匹配，同名的 category 不论是否打开前缀都受同一个开关控制；`==` 则把前缀开关算在内。
+- 默认隔离是 MainActor 的模块（Xcode 新建 App 的默认设置）里，`extension LogCategory` 中普通的 `static let` 会被推断成
+  MainActor 隔离，从 `nonisolated` 的代码里 `#log(category:)` 就编不过，报错还落在展开代码上。写成
+  `nonisolated static let`（`LogCategory` 是 `Sendable`，这样写是安全的）。这条与前缀无关、早就存在，守卫在
+  `DefaultMainActorIsolationClient/CategoryLogging.swift`。
+- 测试进程里读回的日志不打码：`xcodebuild` 拉起的 xctest 进程连 `%{private}s` 的参数也照原文记录，所以前缀必须是
+  `public` 这一点只能靠宏快照钉住，端到端测试看不出来。
 
 ## 相关文件
 

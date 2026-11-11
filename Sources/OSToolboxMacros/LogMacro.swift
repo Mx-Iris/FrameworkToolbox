@@ -142,13 +142,13 @@ public struct LogMacro: ExpressionMacro {
         )
 
         var segments = Array(literal.segments)
-        let hasContent = segments.contains { segment in
-            if case .stringSegment(let text) = segment {
-                return !text.content.text.isEmpty
-            }
-            return true
-        }
         if literal.openingQuote.tokenKind == .multilineStringQuote {
+            let hasContent = segments.contains { segment in
+                if case .stringSegment(let text) = segment {
+                    return !text.content.text.isEmpty
+                }
+                return true
+            }
             // An empty multi-line literal has no line to open: the prefix
             // alone, in a one-line literal, is the same string.
             guard hasContent else {

@@ -40,6 +40,7 @@ Skip these macros when:
 | Declare named categories | `extension LogCategory { static let network = LogCategory("network") }` |
 | Emit a log line | `#log(.info, "User \(id, privacy: .private) signed in")` |
 | Emit under a named category | `#log(.info, category: .network, "request issued")` |
+| Start a category's messages with `[Name] ` | `extension LogCategory { static let network = LogCategory("Network", prefixesMessages: true) }` |
 | Available log levels | `.debug` / `.info` / `.default` / `.error` / `.fault` |
 | Available privacy values | `.public` / `.private` / `.sensitive` / `.auto` (each also takes `mask: .hash` / `.none`) |
 | Available format hints | `.fixed` / `.hex` / `.exponential` / `.hybrid` / `.decimal` / `.octal` (numeric) and `.left(columns:)` / `.right(columns:)` (string alignment) |
@@ -189,20 +190,46 @@ Then, inside any `@Loggable` type, pass one as the `category:` argument:
 expands to:
 
 ```swift
-{
+{ (selectedLogCategory: OSToolbox.LogCategory) in
     if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
-        Self.logger(for: .network).debug("request issued")
+        Self.logger(for: selectedLogCategory).debug("\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory), privacy: .public)request issued")
     } else {
-        os_log(.debug, log: Self._osLog(for: .network), "request issued")
+        "\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory))".withCString { legacyArgument0 in
+            os_log(.debug, log: Self._osLog(for: selectedLogCategory), "%{public}srequest issued", legacyArgument0)
+        }
     }
-}()
+}(.network)
 ```
 
 Notes:
 
 - Categories are app-global values, shareable across types; the subsystem always stays the enclosing type's own.
-- The category expression is transplanted verbatim into the expansion, so any `LogCategory` expression works — `.network`, `LogCategory("adhoc")`, or a stored constant — and is evaluated at runtime like a normal function argument.
+- The category expression becomes the argument of the closure the call expands to, so any `LogCategory` expression works — `.network`, `LogCategory("adhoc")`, or a stored constant — and is evaluated once, like a normal function argument. A variable of your own named `selectedLogCategory` can be passed too, since the argument is evaluated outside the closure.
 - The category logger is resolved through a process-wide cache keyed by the subsystem/category pair, so repeated calls reuse one `os.Logger` instance.
+- The leading interpolation carries the category's message prefix (next section). For a category that does not prefix messages it is empty, and the logged text is exactly the message.
+- In a module whose default isolation is the main actor (the Xcode default for new app targets), a category declared as a plain `static let` is main-actor isolated, and logging to it from `nonisolated` code fails with an error pointing at the expansion. Declare it `nonisolated static let` — `LogCategory` is `Sendable`, so that is safe.
+
+### Prefixing messages with the category name
+
+Declare a category with `prefixesMessages: true` and every message `#log(category:)` sends to it starts with the name in brackets:
+
+```swift
+extension LogCategory {
+    static let engineMirroring = LogCategory("EngineMirroring", prefixesMessages: true)
+}
+
+#log(.debug, category: .engineMirroring, "requesting engine list")
+// [EngineMirroring] requesting engine list
+```
+
+This replaces tags written into each message by hand, such as `#log(.debug, "[EngineMirroring] requesting engine list")`. Things to know:
+
+- The prefix is part of the message text, so a `log stream` predicate on `eventMessage` sees it. The os_log category is the name itself, without brackets.
+- Moving a hand-written tag to `category:` also moves those lines out of the type's own category (the type name) into the named one: `log stream --predicate 'category == …'` and `LoggingControl.setEnabled(_:for:)` need the new name.
+- Only `#log(category:)` adds the prefix. `#log` without `category:`, and calls written by hand through `logger(for:)`, do not.
+- The prefix is logged as `public`: a category name is structural, not user data, and `os` would otherwise redact it as `<private>`.
+- The format is fixed — `[` + `name` + `] ` — and the name is used exactly as declared.
+- `LoggingControl`'s per-category switch matches by name, so it reaches a category whether or not it prefixes messages. `==` on `LogCategory` does take `prefixesMessages` into account.
 
 ### Log level mapping
 
@@ -271,6 +298,8 @@ A literal `%` in the format string is automatically escaped to `%%` in the legac
 | `#log(.info, category: .netwrok, ...)` (typo) | Compile error at the call site: type `LogCategory` has no member `netwrok`. | Fix the name, or declare it: `extension LogCategory { static let netwrok = ... }` (don't). |
 | `#log(.info, category: .network, ...)` in a type without `@Loggable` | Compile error: `logger(for:)` not found on `Self`. | Annotate the enclosing type with `@Loggable`. |
 | Expecting `category: .network` to change the subsystem | The subsystem always stays the enclosing type's own; only the category varies. | Pass an explicit `subsystem:` on `@Loggable` if you need a different one. |
+| Expecting `[Name] ` on a `#log` without `category:` | Only `#log(category:)` adds a category's prefix; the type's own category is a `String`, not a `LogCategory`. | Log to a `LogCategory` declared with `prefixesMessages: true`. |
+| Writing the tag by hand as well: `#log(.info, category: .network, "[Network] …")` | The line reads `[Network] [Network] …`. | Drop the hand-written tag once the category prefixes messages. |
 | `let loggingSubsystem = …` in a module with default `MainActor` isolation | `main actor-isolated let 'loggingSubsystem' can not be referenced from a nonisolated context` on every annotated type — a warning in Swift 5, an error in Swift 6. | Declare it `nonisolated let`. |
 | `@Loggable(subsystem: subsystem)` with a global named `subsystem` | Compile error from the macro: inside the type that name is the generated `subsystem` property, which would return itself. | Rename the constant (`loggingSubsystem`), or qualify it with its module name. |
 | `@Loggable(accessLevel: .public)` | Compile error: unknown argument label. | Drop the label: `@Loggable(.public)`. |
