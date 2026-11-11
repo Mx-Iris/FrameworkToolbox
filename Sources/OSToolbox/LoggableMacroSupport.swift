@@ -114,4 +114,19 @@ extension LoggableMacro {
     }
 }
 
+// MARK: - Message prefix
+
+extension LoggableMacro {
+    /// The text `#log(category:)` puts ahead of the message: `"[name] "` for a
+    /// category declared with `prefixesMessages: true`, the empty string
+    /// otherwise.
+    ///
+    /// Named by `#log`'s expansion, never called directly. The expansion passes
+    /// it whether or not the category prefixes anything, since the category is
+    /// a runtime value and the macro only ever sees the expression naming it.
+    public static func _messagePrefix(for category: LogCategory) -> String {
+        category.messagePrefix
+    }
+}
+
 #endif

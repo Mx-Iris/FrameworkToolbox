@@ -89,16 +89,28 @@ struct LegacyOSLogFormat {
 /// Each interpolation segment becomes a `%{privacy}s` specifier. A message that
 /// is not a string literal at all (a variable, a function call) is treated as a
 /// single public segment.
-func buildLegacyOSLogFormat(from expression: ExprSyntax) -> LegacyOSLogFormat {
-    guard let stringLiteral = expression.as(StringLiteralExprSyntax.self) else {
-        return LegacyOSLogFormat(
-            formatLiteral: "\"%{public}s\"",
-            segmentExpressions: [expression.trimmedDescription]
-        )
-    }
-
+///
+/// - Parameter leadingPublicSegment: An expression whose value goes ahead of the
+///   message as a public segment of its own — the prefix `#log(category:)` puts
+///   in front of every message, empty or not.
+func buildLegacyOSLogFormat(
+    from expression: ExprSyntax,
+    leadingPublicSegment: String? = nil
+) -> LegacyOSLogFormat {
     var format = ""
     var segmentExpressions: [String] = []
+
+    if let leadingPublicSegment {
+        format += "%{public}s"
+        segmentExpressions.append(leadingPublicSegment)
+    }
+
+    guard let stringLiteral = expression.as(StringLiteralExprSyntax.self) else {
+        return LegacyOSLogFormat(
+            formatLiteral: "\"\(format)%{public}s\"",
+            segmentExpressions: segmentExpressions + [expression.trimmedDescription]
+        )
+    }
 
     for segment in stringLiteral.segments {
         switch segment {

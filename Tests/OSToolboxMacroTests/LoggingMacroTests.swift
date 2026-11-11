@@ -1570,6 +1570,10 @@ struct LogMacroTests {
     }
 
     // MARK: Category selection
+    //
+    // The category is bound once, as the argument of the closure the expansion
+    // is wrapped in, and the message gains a leading public interpolation for
+    // the category's prefix — `[name] ` or empty, decided at runtime.
 
     @Test func categorySelection() {
         assertMacro {
@@ -1577,15 +1581,17 @@ struct LogMacroTests {
             #log(.debug, category: .network, "Hello")
             """
         } expansion: {
-            """
-            {
+            #"""
+            { (selectedLogCategory: OSToolbox.LogCategory) in
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
-                    Self.logger(for: .network).debug("Hello")
+                    Self.logger(for: selectedLogCategory).debug("\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory), privacy: .public)Hello")
                 } else {
-                    os_log(.debug, log: Self._osLog(for: .network), "Hello")
+                    "\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory))".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog(for: selectedLogCategory), "%{public}sHello", legacyArgument0)
+                    }
                 }
-            }()
-            """
+            }(.network)
+            """#
         }
     }
 
@@ -1596,17 +1602,19 @@ struct LogMacroTests {
             """
         } expansion: {
             #"""
-            {
+            { (selectedLogCategory: OSToolbox.LogCategory) in
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
-                    Self.logger(for: .persistence).error("saved \(count, privacy: .public) items for \(user, privacy: .private)")
+                    Self.logger(for: selectedLogCategory).error("\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory), privacy: .public)saved \(count, privacy: .public) items for \(user, privacy: .private)")
                 } else {
-                    "\(count)".withCString { legacyArgument0 in
-                        "\(user)".withCString { legacyArgument1 in
-                            os_log(.error, log: Self._osLog(for: .persistence), "saved %{public}s items for %{private}s", legacyArgument0, legacyArgument1)
+                    "\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory))".withCString { legacyArgument0 in
+                        "\(count)".withCString { legacyArgument1 in
+                            "\(user)".withCString { legacyArgument2 in
+                                os_log(.error, log: Self._osLog(for: selectedLogCategory), "%{public}ssaved %{public}s items for %{private}s", legacyArgument0, legacyArgument1, legacyArgument2)
+                            }
                         }
                     }
                 }
-            }()
+            }(.persistence)
             """#
         }
     }
@@ -1617,15 +1625,134 @@ struct LogMacroTests {
             #log(.info, category: LogCategory("database"), "query executed")
             """
         } expansion: {
-            """
-            {
+            #"""
+            { (selectedLogCategory: OSToolbox.LogCategory) in
                 if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
-                    Self.logger(for: LogCategory("database")).info("query executed")
+                    Self.logger(for: selectedLogCategory).info("\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory), privacy: .public)query executed")
                 } else {
-                    os_log(.info, log: Self._osLog(for: LogCategory("database")), "query executed")
+                    "\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory))".withCString { legacyArgument0 in
+                        os_log(.info, log: Self._osLog(for: selectedLogCategory), "%{public}squery executed", legacyArgument0)
+                    }
                 }
-            }()
+            }(LogCategory("database"))
+            """#
+        }
+    }
+
+    /// A raw string interpolates as `\#(…)`, so the inserted prefix has to
+    /// carry the same delimiter or it would be literal text.
+    @Test func categorySelectionWithRawStringMessage() {
+        assertMacro {
+            ##"""
+            #log(.info, category: .network, #"path: \#(path, privacy: .public)"#)
+            """##
+        } expansion: {
+            ##"""
+            { (selectedLogCategory: OSToolbox.LogCategory) in
+                if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
+                    Self.logger(for: selectedLogCategory).info(#"\#(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory), privacy: .public)path: \#(path, privacy: .public)"#)
+                } else {
+                    "\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory))".withCString { legacyArgument0 in
+                        "\(path)".withCString { legacyArgument1 in
+                            os_log(.info, log: Self._osLog(for: selectedLogCategory), "%{public}spath: %{public}s", legacyArgument0, legacyArgument1)
+                        }
+                    }
+                }
+            }(.network)
+            """##
+        }
+    }
+
+    @Test func categorySelectionWithMessageStartingWithInterpolation() {
+        assertMacro {
             """
+            #log(.debug, category: .network, "\\(value, privacy: .public) arrived")
+            """
+        } expansion: {
+            #"""
+            { (selectedLogCategory: OSToolbox.LogCategory) in
+                if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
+                    Self.logger(for: selectedLogCategory).debug("\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory), privacy: .public)\(value, privacy: .public) arrived")
+                } else {
+                    "\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory))".withCString { legacyArgument0 in
+                        "\(value)".withCString { legacyArgument1 in
+                            os_log(.debug, log: Self._osLog(for: selectedLogCategory), "%{public}s%{public}s arrived", legacyArgument0, legacyArgument1)
+                        }
+                    }
+                }
+            }(.network)
+            """#
+        }
+    }
+
+    @Test func categorySelectionWithEmptyMessage() {
+        assertMacro {
+            """
+            #log(.debug, category: .network, "")
+            """
+        } expansion: {
+            #"""
+            { (selectedLogCategory: OSToolbox.LogCategory) in
+                if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
+                    Self.logger(for: selectedLogCategory).debug("\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory), privacy: .public)")
+                } else {
+                    "\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory))".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog(for: selectedLogCategory), "%{public}s", legacyArgument0)
+                    }
+                }
+            }(.network)
+            """#
+        }
+    }
+
+    /// A caller's own variable may share the closure parameter's name and still
+    /// be passed as the category, because the argument is evaluated outside.
+    @Test func categoryNamedLikeTheClosureParameter() {
+        assertMacro {
+            """
+            #log(.debug, category: selectedLogCategory, "Hello")
+            """
+        } expansion: {
+            #"""
+            { (selectedLogCategory: OSToolbox.LogCategory) in
+                if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
+                    Self.logger(for: selectedLogCategory).debug("\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory), privacy: .public)Hello")
+                } else {
+                    "\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory))".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog(for: selectedLogCategory), "%{public}sHello", legacyArgument0)
+                    }
+                }
+            }(selectedLogCategory)
+            """#
+        }
+    }
+
+    /// An empty multi-line literal has no first line for the prefix to open, so
+    /// the message becomes a one-line literal holding the prefix alone.
+    ///
+    /// A multi-line message with content is not pinned here: the prefix does
+    /// take the closing delimiter's indentation in the `os.Logger` branch, but
+    /// the legacy `os_log` branch copies the message's line breaks into a
+    /// one-line format literal and does not compile — with or without a
+    /// category, a defect older than the prefix.
+    @Test func categorySelectionWithEmptyMultilineMessage() {
+        assertMacro {
+            #"""
+            #log(.debug, category: .network, """
+                """)
+            """#
+        } expansion: {
+            #"""
+            { (selectedLogCategory: OSToolbox.LogCategory) in
+                if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
+                    Self.logger(for: selectedLogCategory).debug("\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory), privacy: .public)")
+                } else {
+                    "\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory))".withCString { legacyArgument0 in
+                        os_log(.debug, log: Self._osLog(for: selectedLogCategory), "%{public}s", legacyArgument0)
+                    }
+                }
+            }(.network)
+            """#
         }
     }
 

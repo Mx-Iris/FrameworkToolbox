@@ -5,6 +5,17 @@ import SwiftSyntaxMacros
 import SwiftDiagnostics
 
 public struct LogMacro: ExpressionMacro {
+    /// The parameter of the expansion's closure that a `category:` argument is
+    /// bound to, so the handle and the message prefix read one value.
+    ///
+    /// A closure parameter rather than a `let` inside the closure: the category
+    /// expression is then evaluated outside, so a caller's own variable of this
+    /// name still works as the argument. A fixed name rather than a
+    /// `makeUniqueName` one, as with `legacyArgument0`, to keep expansions
+    /// readable; the message's interpolations could only be shadowed by naming
+    /// an identifier exactly this.
+    static let selectedCategoryName = "selectedLogCategory"
+
     public static func expansion(
         of node: some FreestandingMacroExpansionSyntax,
         in context: some MacroExpansionContext
@@ -31,25 +42,43 @@ public struct LogMacro: ExpressionMacro {
             throw LogMacroError.missingMessage
         }
 
-        // The category expression is transplanted verbatim into the expansion:
-        // it re-type-checks there against the LogCategory parameter of the
-        // generated logger(for:) / _osLog(for:) accessors, so leading-dot
-        // references and arbitrary LogCategory expressions both work.
+        // The category expression is transplanted verbatim into the expansion,
+        // as the argument of the closure the expansion is wrapped in. Its
+        // parameter is typed `LogCategory`, so leading-dot references and
+        // arbitrary `LogCategory` expressions both re-type-check there, and the
+        // expression is still evaluated exactly once.
+        //
+        // A category may ask for its name in front of every message. Whether it
+        // does is only known at runtime — the macro sees `.network`, not the
+        // value behind it — so the message always gets a leading public
+        // interpolation, which comes out empty for a category that does not.
+        let closureParameterClause: String
+        let closureArgument: String
         let loggerExpression: String
         let osLogExpression: String
+        let modernMessage: ExprSyntax
+        let legacyFormat: LegacyOSLogFormat
         if let categoryArgument {
-            let categoryExpression = categoryArgument.expression.trimmedDescription
-            loggerExpression = "Self.logger(for: \(categoryExpression))"
-            osLogExpression = "Self._osLog(for: \(categoryExpression))"
+            let categoryName = selectedCategoryName
+            closureParameterClause = " (\(categoryName): OSToolbox.LogCategory) in"
+            closureArgument = categoryArgument.expression.trimmedDescription
+            loggerExpression = "Self.logger(for: \(categoryName))"
+            osLogExpression = "Self._osLog(for: \(categoryName))"
+            let prefixExpression = "OSToolbox.LoggableMacro._messagePrefix(for: \(categoryName))"
+            modernMessage = prependingPublicInterpolation(of: prefixExpression, to: messageArgument)
+            legacyFormat = buildLegacyOSLogFormat(from: messageArgument, leadingPublicSegment: prefixExpression)
         } else {
+            closureParameterClause = ""
+            closureArgument = ""
             loggerExpression = "Self.logger"
             osLogExpression = "Self._osLog"
+            modernMessage = messageArgument
+            legacyFormat = buildLegacyOSLogFormat(from: messageArgument)
         }
 
         let osMethodName = mapLevelToOSLogMethod(levelArgument)
         let osLogType = mapLevelToOSLogType(levelArgument)
 
-        let legacyFormat = buildLegacyOSLogFormat(from: messageArgument)
         let legacyCall = legacyFormat.wrappingInCStringScopes(
             "os_log(.\(osLogType), log: \(osLogExpression), \(legacyFormat.formatLiteral)\(legacyFormat.argumentList))",
             // The `else` branch of the expansion below sits eight spaces in.
@@ -57,14 +86,86 @@ public struct LogMacro: ExpressionMacro {
         )
 
         return """
-        {
+        {\(raw: closureParameterClause)
             if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
-                \(raw: loggerExpression).\(raw: osMethodName)(\(messageArgument))
+                \(raw: loggerExpression).\(raw: osMethodName)(\(modernMessage))
             } else {
                 \(raw: legacyCall)
             }
-        }()
+        }(\(raw: closureArgument))
         """
+    }
+
+    /// `message` with `\(prefixExpression, privacy: .public)` put ahead of its
+    /// first character, or `message` unchanged when it is not a string literal —
+    /// such a message does not type-check as an `OSLogMessage` anyway.
+    ///
+    /// The prefix has to be an interpolation: its text depends on the category
+    /// value, which only exists at runtime. And it has to be `.public`, since
+    /// `os` redacts an interpolated string as `<private>` by default once no
+    /// debugger is attached.
+    ///
+    /// The segment is spliced into the literal's own segment list rather than
+    /// the literal being rebuilt as text, so everything else — escapes, the
+    /// raw-string delimiter, line breaks — stays as the caller wrote it. Two
+    /// shapes need care:
+    /// - A raw string interpolates with as many `#` as its delimiter, so the
+    ///   segment carries the literal's own delimiter.
+    /// - In a multi-line string the indentation of each line is trivia, and no
+    ///   line may be indented less than the closing `"""`. The new segment
+    ///   opens the first line, so it takes the closing delimiter's indentation
+    ///   and the segment it displaces gives up its own.
+    private static func prependingPublicInterpolation(
+        of prefixExpression: String,
+        to message: ExprSyntax
+    ) -> ExprSyntax {
+        guard let literal = message.as(StringLiteralExprSyntax.self) else {
+            return message
+        }
+
+        // Built node by node rather than parsed out of a template literal: a
+        // parsed `"\(x)"` brings empty string segments along on either side of
+        // the interpolation, and taking the wrong one silently drops the prefix.
+        var prefixSegment = ExpressionSegmentSyntax(
+            pounds: literal.openingPounds.map { .rawStringPoundDelimiter($0.text) },
+            expressions: LabeledExprListSyntax([
+                LabeledExprSyntax(
+                    expression: ExprSyntax("\(raw: prefixExpression)"),
+                    trailingComma: .commaToken(trailingTrivia: .space)
+                ),
+                LabeledExprSyntax(
+                    label: .identifier("privacy"),
+                    colon: .colonToken(trailingTrivia: .space),
+                    expression: ExprSyntax(".public")
+                ),
+            ])
+        )
+
+        var segments = Array(literal.segments)
+        let hasContent = segments.contains { segment in
+            if case .stringSegment(let text) = segment {
+                return !text.content.text.isEmpty
+            }
+            return true
+        }
+        if literal.openingQuote.tokenKind == .multilineStringQuote {
+            // An empty multi-line literal has no line to open: the prefix
+            // alone, in a one-line literal, is the same string.
+            guard hasContent else {
+                return ExprSyntax(
+                    literal
+                        .with(\.openingQuote, .stringQuoteToken())
+                        .with(\.segments, [.expressionSegment(prefixSegment)])
+                        .with(\.closingQuote, .stringQuoteToken())
+                )
+            }
+            prefixSegment.leadingTrivia = literal.closingQuote.leadingTrivia
+            if !segments.isEmpty {
+                segments[0].leadingTrivia = []
+            }
+        }
+        segments.insert(.expressionSegment(prefixSegment), at: 0)
+        return ExprSyntax(literal.with(\.segments, StringLiteralSegmentListSyntax(segments)))
     }
 
     /// Maps OSLogType member access expressions to os.Logger method names.

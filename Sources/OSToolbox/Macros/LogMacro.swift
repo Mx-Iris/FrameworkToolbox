@@ -330,18 +330,28 @@ public macro log(_ level: LoggableMacro.OSLogType, _ message: LoggableMacro.OSLo
 ///     }
 ///
 ///     // The #log call expands to:
-///     // {
+///     // { (selectedLogCategory: OSToolbox.LogCategory) in
 ///     //     if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
-///     //         Self.logger(for: .network).debug("request issued")
+///     //         Self.logger(for: selectedLogCategory).debug("\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory), privacy: .public)request issued")
 ///     //     } else {
-///     //         os_log(.debug, log: Self._osLog(for: .network), "request issued")
+///     //         "\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory))".withCString { legacyArgument0 in
+///     //             os_log(.debug, log: Self._osLog(for: selectedLogCategory), "%{public}srequest issued", legacyArgument0)
+///     //         }
 ///     //     }
-///     // }()
+///     // }(.network)
 ///
 /// The expansion routes through the `logger(for:)` / `_osLog(for:)` accessors
 /// that `@Loggable` generates on every annotated type, so any category can be
 /// used from any `@Loggable` type; the subsystem stays the type's own. Any
-/// `LogCategory` expression is accepted, not just leading-dot references.
+/// `LogCategory` expression is accepted, not just leading-dot references, and
+/// it is evaluated once, as the argument of the closure the call expands to.
+///
+/// A category declared with `prefixesMessages: true` puts its name in front of
+/// every message logged to it — `LogCategory("Network", prefixesMessages: true)`
+/// turns the call above into `[Network] request issued`. The leading
+/// interpolation in the expansion carries that prefix: it is public, because
+/// the name is structural rather than user data, and empty for a category that
+/// does not prefix messages, leaving the text unchanged.
 @freestanding(expression)
 public macro log(
     _ level: LoggableMacro.OSLogType,

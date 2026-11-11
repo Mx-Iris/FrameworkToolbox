@@ -109,6 +109,56 @@ private nonisolated static func logger(for category: FoundationToolbox.LogCatego
   `#log(category:)` 三例（leading-dot、带插值隐私、任意表达式）；
   `FoundationToolboxClient` 含 `extension LogCategory` 声明与真实调用点验证。
 
+## 消息前缀 `[Category]`
+
+配套提案：[`LogCategory` 可以让 `#log` 在消息开头标出 `[Category]`](Evolutions/draft-log-category-message-prefix.md)。
+
+消息文字本身不带 category，使用方于是逐条手写标签（`#log(.debug, "[EngineMirroring] …")`）。现在声明 category 时可以
+要求 `#log` 自动加上：
+
+```swift
+extension LogCategory {
+    static let engineMirroring = LogCategory("EngineMirroring", prefixesMessages: true)
+}
+
+#log(.debug, category: .engineMirroring, "requesting engine list")
+// [EngineMirroring] requesting engine list
+```
+
+### `#log(category:)` 展开的变化
+
+```swift
+{ (selectedLogCategory: OSToolbox.LogCategory) in
+    if #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) {
+        Self.logger(for: selectedLogCategory).debug("\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory), privacy: .public)requesting engine list")
+    } else {
+        "\(OSToolbox.LoggableMacro._messagePrefix(for: selectedLogCategory))".withCString { legacyArgument0 in
+            os_log(.debug, log: Self._osLog(for: selectedLogCategory), "%{public}srequesting engine list", legacyArgument0)
+        }
+    }
+}(.engineMirroring)
+```
+
+| 取舍 | 决定 | 理由 |
+|------|------|------|
+| 前缀怎么进消息 | 在消息字面量开头插入一个插值，不是拼进格式串 | 宏只看得到 `.engineMirroring` 这几个字符，名字和开关都要到运行时才知道 |
+| 没打开前缀的 category | 照样插入，取值为空串 | 宏分不出传进来的 category 有没有打开前缀；为它另生成一份不带前缀的消息会让每条日志的代码翻倍 |
+| 插值的隐私级别 | `.public` | `os` 默认把插值的字符串打码成 `<private>`，而 category 名是结构信息，不是用户数据 |
+| category 表达式放哪 | 作为外层闭包的实参，绑定到参数 `selectedLogCategory` | 句柄与前缀读同一个值，表达式只求值一次；放在闭包外求值，调用方自己有同名变量也能当实参传 |
+| raw 字符串与多行字符串 | 插入的插值带上同样的 `#`；多行时接过结束符 `"""` 的缩进 | 否则插值成了普通文字，或者第一行缩进不足、编译不过 |
+| 前缀文字存哪 | 构造 `LogCategory` 时算好存起来（internal），由 `LoggableMacro._messagePrefix(for:)` 交给展开 | category 通常是 `static let`，只拼一次字符串 |
+| `init(_:)` | 保留为独立的构造器，新增 `init(_:prefixesMessages:)` | 改成带默认值的参数，`LogCategory.init` 就不能再当 `(String) -> LogCategory` 用 |
+
+### 要留意
+
+- 前缀是消息文字的一部分：`log stream` 按 `eventMessage` 写的谓词能看到它；os_log 的 category 仍是不带方括号的名字。
+- 把手写标签换成 `category:`，日志也就从类型自己的 category（类型名）挪到了这个 category：按 category 过滤的谓词、
+  `LoggingControl.setEnabled(_:for:)` 都要改用新名字。
+- 只有 `#log(category:)` 加前缀；不写 `category:` 的 `#log`，以及经 `logger(for:)` 手写的调用，都不加。
+- 写了 `category:` 的 `#log`，展开一律多一个前缀参数。没打开前缀时它是空串，输出文字不变，只有 `log show --style json`
+  里的 `formatString` 多一个 `%{public}s`。
+- `LoggingControl` 的开关按 `name` 匹配，同名的 category 不论是否打开前缀都受同一个开关控制；`==` 则把前缀开关算在内。
+
 ## 相关文件
 
 - `Sources/FoundationToolbox/LogCategory.swift` — `LogCategory` 结构体
